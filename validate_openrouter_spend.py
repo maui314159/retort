@@ -64,12 +64,17 @@ def http_get(path: str, key: str, params: dict | None = None) -> dict | None:
             with urllib.request.urlopen(req, timeout=30) as r:
                 return json.loads(r.read())
         except urllib.error.HTTPError as e:
-            if e.code == 429 and attempt < 3:      # rate limited — back off
+            # Transient: rate-limit, request-timeout, upstream 5xx. A freshly
+            # created generation often 408s until OpenRouter finishes indexing it.
+            if e.code in (408, 429, 500, 502, 503, 504) and attempt < 3:
                 time.sleep(2 * (attempt + 1))
                 continue
-            if e.code in (404,):                    # gen not yet billed / unknown id
+            if e.code in (404, 408, 429, 500, 502, 503, 504):
+                # Unknown id, or a transient that outlived our retries — skip this
+                # one lookup (the caller counts it as missing) rather than aborting
+                # the entire reconcile on a single id.
                 return None
-            raise
+            raise                                   # 401/403/… are fatal (bad key)
         except urllib.error.URLError:
             if attempt < 3:
                 time.sleep(2 * (attempt + 1))
