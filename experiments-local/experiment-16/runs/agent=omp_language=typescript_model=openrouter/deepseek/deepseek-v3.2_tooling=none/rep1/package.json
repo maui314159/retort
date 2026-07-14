@@ -1,0 +1,29 @@
+{
+  "name": "brazilian-soccer-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for Brazilian soccer data",
+  "main": "dist/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": ["mcp", "soccer", "brazil", "football"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.10.6",
+    "@types/papaparse": "^5.3.15",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.6.0",
+    "papaparse": "^5.4.1",
+    "date-fns": "^4.1.0"
+  }
+}

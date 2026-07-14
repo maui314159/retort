@@ -1,0 +1,11 @@
+Metadata-Version: 2.4
+Name: brazilian-soccer-mcp
+Version: 1.0.0
+Summary: MCP knowledge-graph server for Brazilian soccer data
+Requires-Python: >=3.10
+Requires-Dist: mcp>=1.0
+Requires-Dist: pandas>=2.0
+Provides-Extra: test
+Requires-Dist: pytest>=8; extra == "test"
+Requires-Dist: pytest-bdd>=7; extra == "test"
+Requires-Dist: pytest-asyncio>=0.23; extra == "test"

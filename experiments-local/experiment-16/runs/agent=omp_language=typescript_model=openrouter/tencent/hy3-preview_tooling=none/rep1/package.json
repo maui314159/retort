@@ -1,0 +1,32 @@
+{
+  "name": "brazilian-soccer-mcp-server",
+  "version": "1.0.0",
+  "description": "Brazilian Soccer MCP Server - Knowledge graph for Brazilian soccer data",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "test": "tsx src/test.ts"
+  },
+  "keywords": [
+    "mcp",
+    "soccer",
+    "brazilian",
+    "sports"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "csv-parser": "^3.2.1",
+    "xlsx": "^0.18.5",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.3",
+    "tsx": "^4.22.4",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,4 @@
+/target
+/books.db
+/books.db-shm
+/books.db-wal

@@ -1,0 +1,6 @@
+run,language,model,agent,tooling
+0,python,openrouter/nvidia/nemotron-3-ultra-550b-a55b,omp,none
+1,go,openrouter/nvidia/nemotron-3-ultra-550b-a55b,omp,none
+2,typescript,openrouter/nvidia/nemotron-3-ultra-550b-a55b,omp,none
+3,rust,openrouter/nvidia/nemotron-3-ultra-550b-a55b,omp,none
+4,java,openrouter/nvidia/nemotron-3-ultra-550b-a55b,omp,none

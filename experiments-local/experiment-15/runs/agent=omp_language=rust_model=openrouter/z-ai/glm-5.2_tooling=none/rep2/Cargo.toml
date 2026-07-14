@@ -1,0 +1,31 @@
+[package]
+name = "book_collection"
+version = "0.1.0"
+edition = "2021"
+description = "REST API for managing a book collection"
+
+[[bin]]
+name = "book_collection"
+path = "src/main.rs"
+
+[lib]
+name = "book_collection"
+path = "src/lib.rs"
+
+[dependencies]
+axum = { version = "0.8", features = ["json"] }
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.32", features = ["bundled"] }
+r2d2 = "0.8"
+r2d2_sqlite = "0.25"
+tower = "0.5"
+tower-http = { version = "0.6", features = ["trace"] }
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+http-body-util = "0.1"
+mime = "0.3"

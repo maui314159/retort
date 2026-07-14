@@ -1,0 +1,54 @@
+# experiment-18 — Claude Sonnet level-set for the brazil-bench firm pass (exp-17).
+#
+# A SECOND Anthropic reference point between opus-4.8 (top) and the open-weight
+# field. Run as a SEPARATE experiment, not appended to exp-17, because retort
+# persists --design rows by POSITION (the CSV `run` column is decorative), so
+# any new model added to exp-17's matrix would collide with row_index 0,1,2 and
+# overwrite an existing model. Fresh matrix = no collision.
+#
+# IDENTICAL conditions to exp-17 (same task, same integration checkout, mechanical
+# gate only) so Sonnet's 9 cells are directly comparable to exp-17's rows. NOTE:
+# like exp-17, this inherits the dependency-declaration confound (no dep-fix) — it
+# level-sets against the existing confounded numbers, not a clean capability run.
+#   PYTHONPATH=../retort-firmrun/src retort run --phase screening \
+#     --config experiment-18/workspace.yaml --design experiment-18/design.csv \
+#     --replicates 3 --resume
+
+experiment:
+  name: exp18-sonnet-levelset
+  visibility: private
+
+factors:
+  language:
+    levels: [python, typescript, csharp]
+  model:
+    levels:
+      - "openrouter/anthropic/claude-sonnet-4.6"
+      - "openrouter/anthropic/claude-opus-4.8"   # 2nd level only to satisfy the factor; not run here
+
+responses:
+  - code_quality
+  - test_coverage
+  - defect_rate
+  - build_time
+  - maintainability
+  - token_efficiency
+
+tasks:
+  - source: github://brazil-bench/benchmark-template/brazilian-soccer-mcp-guide.md
+
+playpen:
+  runner: local
+  replicates: 3
+  timeout_minutes: 40
+  max_turns: 100
+  local_agents:
+    omp:
+      harness: omp
+
+design:
+  screening_resolution: 3
+  significance_threshold: 0.10
+
+evaluation:
+  enabled: false

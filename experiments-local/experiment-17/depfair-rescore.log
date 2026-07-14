@@ -1,0 +1,29 @@
+Re-scoring 27 run(s) in experiment-17 (metrics=code_quality,test_coverage,defect_rate,build_time,maintainability,token_efficiency, 1 workers)
+  claude-opus-4.8_tooling=none/rep1: code_quality=0.00 test_coverage=0.00 defect_rate=0.00 maintainability=0.00 token_efficiency=0.00 -> failed still-fails-gate
+  deepseek-v4-pro_tooling=none/rep1: code_quality=0.00 test_coverage=0.00 defect_rate=0.00 maintainability=0.00 token_efficiency=0.00 -> failed still-fails-gate
+  deepseek-v4-pro_tooling=none/rep2: code_quality=0.00 test_coverage=0.00 defect_rate=0.00 maintainability=0.00 token_efficiency=0.00 -> failed still-fails-gate
+  kimi-k2.7-code_tooling=none/rep1: code_quality=0.00 test_coverage=0.00 defect_rate=0.00 maintainability=0.00 token_efficiency=0.00 -> failed still-fails-gate
+  kimi-k2.7-code_tooling=none/rep2: code_quality=0.00 test_coverage=0.00 defect_rate=0.00 maintainability=0.00 token_efficiency=0.00 -> failed still-fails-gate
+  qwen3.7-plus_tooling=none/rep1: code_quality=0.00 test_coverage=0.00 defect_rate=0.00 maintainability=0.00 token_efficiency=0.00 -> failed still-fails-gate
+  qwen3.7-plus_tooling=none/rep3: code_quality=0.00 test_coverage=0.00 defect_rate=0.00 maintainability=0.00 token_efficiency=0.00 -> failed still-fails-gate
+  glm-5.1_tooling=none/rep1: code_quality=0.00 test_coverage=0.00 defect_rate=0.00 maintainability=0.00 token_efficiency=0.00 -> failed still-fails-gate
+  claude-opus-4.8_tooling=none/rep3: code_quality=0.67 test_coverage=0.68 defect_rate=0.00 maintainability=0.50 token_efficiency=0.00 -> completed RECOVERED
+  deepseek-v4-pro_tooling=none/rep1: code_quality=0.67 test_coverage=0.86 defect_rate=0.00 maintainability=0.36 token_efficiency=0.01 -> completed RECOVERED
+  deepseek-v4-pro_tooling=none/rep2: code_quality=0.67 test_coverage=0.91 defect_rate=0.00 maintainability=0.30 token_efficiency=0.01 -> completed RECOVERED
+  deepseek-v4-pro_tooling=none/rep3: code_quality=0.67 test_coverage=0.91 defect_rate=0.00 maintainability=0.65 token_efficiency=0.00 -> completed RECOVERED
+  kimi-k2.7-code_tooling=none/rep2: code_quality=0.00 test_coverage=0.00 defect_rate=0.00 maintainability=0.00 token_efficiency=0.00 -> failed still-fails-gate
+  kimi-k2.7-code_tooling=none/rep3: code_quality=0.67 test_coverage=0.69 defect_rate=0.69 maintainability=0.35 token_efficiency=0.00 -> completed RECOVERED
+  qwen3.7-plus_tooling=none/rep1: code_quality=0.67 test_coverage=0.64 defect_rate=0.00 maintainability=0.50 token_efficiency=0.00 -> completed RECOVERED
+  qwen3.7-plus_tooling=none/rep2: code_quality=0.67 test_coverage=0.88 defect_rate=0.00 maintainability=0.54 token_efficiency=0.00 -> completed RECOVERED
+  glm-5.1_tooling=none/rep1: code_quality=0.67 test_coverage=0.83 defect_rate=0.26 maintainability=0.45 token_efficiency=0.00 -> completed RECOVERED
+  glm-5.1_tooling=none/rep2: code_quality=0.67 test_coverage=0.91 defect_rate=0.73 maintainability=0.55 token_efficiency=0.01 -> completed RECOVERED
+  glm-5.1_tooling=none/rep3: code_quality=0.67 test_coverage=0.94 defect_rate=0.45 maintainability=0.66 token_efficiency=0.01 -> completed RECOVERED
+  deepseek-v4-pro_tooling=none/rep1: code_quality=0.00 test_coverage=0.00 defect_rate=0.00 maintainability=0.00 token_efficiency=0.00 -> failed still-fails-gate
+  deepseek-v4-pro_tooling=none/rep2: code_quality=0.00 test_coverage=0.00 defect_rate=0.00 maintainability=0.00 token_efficiency=0.00 -> failed still-fails-gate
+  deepseek-v4-pro_tooling=none/rep3: code_quality=0.00 test_coverage=0.00 defect_rate=0.00 maintainability=0.00 token_efficiency=0.00 -> failed still-fails-gate
+  kimi-k2.7-code_tooling=none/rep2: code_quality=0.00 test_coverage=0.00 defect_rate=0.00 maintainability=0.00 token_efficiency=0.00 -> failed still-fails-gate
+  qwen3.7-plus_tooling=none/rep2: code_quality=0.00 test_coverage=0.00 defect_rate=0.00 maintainability=0.00 token_efficiency=0.00 -> failed still-fails-gate
+  qwen3.7-plus_tooling=none/rep3: code_quality=0.00 test_coverage=0.00 defect_rate=0.00 maintainability=0.00 token_efficiency=0.00 -> failed still-fails-gate
+  glm-5.1_tooling=none/rep1: code_quality=0.00 test_coverage=0.00 defect_rate=0.00 maintainability=0.00 token_efficiency=0.00 -> failed still-fails-gate
+  glm-5.1_tooling=none/rep2: code_quality=0.00 test_coverage=0.00 defect_rate=0.00 maintainability=0.00 token_efficiency=0.00 -> failed still-fails-gate
+Re-scored 27 run(s); 10 now completed. Run `retort reevaluate` then `retort aggregate` to refresh.

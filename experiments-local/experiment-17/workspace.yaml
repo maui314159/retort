@@ -1,0 +1,61 @@
+# experiment-17 — brazil-bench FIRM pass (the discriminating run).
+#
+# Follows the exp-16 screening, which showed brazil-bench (hard task) separates
+# models that rest-api-crud (exp-15, saturated) could not. This run firms up the
+# ranking:
+#   * roster = the exp-16 survivors (>=2/3): qwen, opus, glm, kimi
+#     + deepseek-v4-pro (deepseek's FLAGSHIP — exp-16 used the stale v3.2, whose
+#       0/3 was a weak-variant artifact, not deepseek's real capability).
+#     dropped (<2/3): tencent/hy3-preview, minimax-m3.
+#   * 5 models x {python, typescript, csharp} x 3 reps = 45 runs — 3 reps to
+#     average out the single-rep language luck that made the exp-16 middle noisy.
+#
+# Run from the INTEGRATION checkout (omp cost-summing + generation-id capture
+# AND the C# scorer AND ts-node + slash fixes), so cost reconciles cleanly:
+#   PYTHONPATH=../retort-firmrun/src retort run --phase screening \
+#     --config experiment-17/workspace.yaml --design experiment-17/design.csv \
+#     --replicates 3 --shard i/4 --resume
+# Then a SERIAL rescore (--workers 1) to rule out the concurrency false-fails
+# seen in exp-15, and the validator /generation reconcile for billed cost.
+
+experiment:
+  name: exp17-brazil-firm
+  visibility: private
+
+factors:
+  language:
+    levels: [python, typescript, csharp]
+  model:
+    levels:
+      - "openrouter/qwen/qwen3.7-plus"
+      - "openrouter/anthropic/claude-opus-4.8"   # baseline
+      - "openrouter/z-ai/glm-5.1"
+      - "openrouter/moonshotai/kimi-k2.7-code"
+      - "openrouter/deepseek/deepseek-v4-pro"    # flagship, replaces v3.2
+
+responses:
+  - code_quality
+  - test_coverage
+  - defect_rate
+  - build_time
+  - maintainability
+  - token_efficiency
+
+tasks:
+  - source: github://brazil-bench/benchmark-template/brazilian-soccer-mcp-guide.md
+
+playpen:
+  runner: local
+  replicates: 3
+  timeout_minutes: 40
+  max_turns: 100
+  local_agents:
+    omp:
+      harness: omp
+
+design:
+  screening_resolution: 3
+  significance_threshold: 0.10
+
+evaluation:
+  enabled: false

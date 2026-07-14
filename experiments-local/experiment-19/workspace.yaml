@@ -1,0 +1,56 @@
+# experiment-19 — Claude Sonnet level-set, NATIVE Anthropic provider.
+#
+# exp-18 tried Sonnet via OpenRouter (openai-completions) and hit oh-my-pi #2685:
+# omp aborts Sonnet's request after the first tool call (4/9 cells empty). The
+# native Anthropic provider (anthropic-messages, /v1/messages) is a separate code
+# path that does NOT have the bug (confirmed: a read-a-file task ran 4 turns and
+# wrote code). This run is the clean Sonnet level-set.
+#
+# Model id is the NATIVE Anthropic form `claude-sonnet-4-6` (no openrouter/ prefix)
+# so omp routes via anthropic-messages using ANTHROPIC_API_KEY. Run from the
+# integration checkout, with the Anthropic key in the env:
+#   export ANTHROPIC_API_KEY="$(op read 'op://Private/Anthropic Oh-My-Pi API Key/credential')"
+#   PYTHONPATH=../retort-firmrun/src retort run --phase screening \
+#     --config experiment-19/workspace.yaml --design experiment-19/design.csv \
+#     --replicates 3 --resume
+# NOTE: different provider than exp-17 (Anthropic-direct vs OpenRouter) — same
+# model/task/scoring, so the capability read is comparable; the provider axis isn't.
+
+experiment:
+  name: exp19-sonnet-native
+  visibility: private
+
+factors:
+  language:
+    levels: [python, typescript, csharp]
+  model:
+    levels:
+      - "claude-sonnet-4-6"
+      - "openrouter/anthropic/claude-opus-4.8"   # 2nd level only to satisfy the factor; not run here
+
+responses:
+  - code_quality
+  - test_coverage
+  - defect_rate
+  - build_time
+  - maintainability
+  - token_efficiency
+
+tasks:
+  - source: github://brazil-bench/benchmark-template/brazilian-soccer-mcp-guide.md
+
+playpen:
+  runner: local
+  replicates: 3
+  timeout_minutes: 40
+  max_turns: 100
+  local_agents:
+    omp:
+      harness: omp
+
+design:
+  screening_resolution: 3
+  significance_threshold: 0.10
+
+evaluation:
+  enabled: false

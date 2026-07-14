@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="BrazilianSoccerMcp.Server/BrazilianSoccerMcp.Server.csproj" />
+  <Project Path="BrazilianSoccerMcp.Tests/BrazilianSoccerMcp.Tests.csproj" />
+</Solution>

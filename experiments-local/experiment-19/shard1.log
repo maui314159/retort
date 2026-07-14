@@ -1,0 +1,10 @@
+Design matrix: 3 runs (loaded from experiment-19/design.csv)
+Task: repo#brazilian-soccer-mcp-guide.md
+Replicates: 3 (9 total runs)
+
+Starting experiment runs...
+  [2/3 rep 1/3] typescript/unknown/omp — ok (729.6s) [code_quality=0.73, test_coverage=1.00, defect_rate=1.00, maintainability=0.85, token_efficiency=1.00] tokens=4,605,620 cost=$2.6252
+  [2/3 rep 2/3] typescript/unknown/omp — ok (759.1s) [code_quality=0.73, test_coverage=1.00, defect_rate=1.00, maintainability=0.53, token_efficiency=1.00] tokens=6,834,211 cost=$3.3842
+  [2/3 rep 3/3] typescript/unknown/omp — ok (866.5s) [code_quality=0.73, test_coverage=1.00, defect_rate=1.00, maintainability=0.56, token_efficiency=1.00] tokens=10,001,630 cost=$5.9784
+
+Done: 3 completed, 0 failed out of 9

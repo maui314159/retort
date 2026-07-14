@@ -1,0 +1,25 @@
+Design matrix: 15 runs (loaded from experiment-17/design.csv)
+Task: repo#brazilian-soccer-mcp-guide.md
+Replicates: 3 (45 total runs)
+
+Starting experiment runs...
+  [1/15 rep 1/3] python/unknown/omp — FAIL (669.6s) [code_quality=0.00, test_coverage=0.00, defect_rate=0.00, maintainability=0.00, token_efficiency=0.00] tokens=4,395,123 cost=$0.3910
+    gate: tests did not run (test_coverage=0) — marked failed
+  [9/15 rep 1/3] typescript/unknown/omp — ok (786.4s) [code_quality=0.73, test_coverage=0.83, defect_rate=1.00, maintainability=0.42, token_efficiency=1.00] tokens=9,090,644 cost=$2.1331
+  [10/15 rep 1/3] typescript/unknown/omp — FAIL (812.7s) [code_quality=0.00, test_coverage=0.00, defect_rate=0.00, maintainability=0.00, token_efficiency=0.00] tokens=4,623,197 cost=$0.6359
+    gate: tests did not run (test_coverage=0) — marked failed
+  [11/15 rep 1/3] csharp/unknown/omp — FAIL (719.5s) [code_quality=0.00, test_coverage=0.00, defect_rate=0.00, maintainability=0.00, token_efficiency=0.00] tokens=8,357,128 cost=$0.6860
+    gate: tests did not run (test_coverage=0) — marked failed
+  [14/15 rep 1/3] csharp/unknown/omp — FAIL (1201.8s) [code_quality=0.00, test_coverage=0.00, defect_rate=0.00, maintainability=0.00, token_efficiency=0.00] tokens=890,280 cost=$0.3741
+    gate: tests did not run (test_coverage=0) — marked failed
+  [3/15 rep 2/3] python/unknown/omp — FAIL (473.2s) [code_quality=0.00, test_coverage=0.00, defect_rate=0.00, maintainability=0.00, token_efficiency=0.00] tokens=2,286,878 cost=$0.5578
+    gate: tests did not run (test_coverage=0) — marked failed
+  [6/15 rep 2/3] typescript/unknown/omp — FAIL (263.2s) [code_quality=0.00, test_coverage=0.00, defect_rate=0.00, maintainability=0.00, token_efficiency=0.00] tokens=153,368 cost=$0.0235
+    gate: tests did not run (test_coverage=0) — marked failed
+  [8/15 rep 2/3] typescript/unknown/omp — FAIL (129.9s) [code_quality=0.00, test_coverage=0.00, defect_rate=0.00, maintainability=0.00, token_efficiency=0.00] tokens=1,555,867 cost=$0.4303
+    gate: tests did not run (test_coverage=0) — marked failed
+  [8/15 rep 3/3] typescript/unknown/omp — ok (581.4s) [code_quality=0.73, test_coverage=1.00, defect_rate=1.00, maintainability=0.72, token_efficiency=1.00] tokens=2,626,638 cost=$0.5854
+  [13/15 rep 3/3] csharp/unknown/omp — ok (781.6s) [code_quality=1.00, test_coverage=0.93, defect_rate=1.00, maintainability=0.60, token_efficiency=0.01] tokens=5,316,592 cost=$1.1300
+  [15/15 rep 3/3] csharp/unknown/omp — ok (1311.0s) [code_quality=1.00, test_coverage=0.53, defect_rate=1.00, maintainability=0.47, token_efficiency=0.00] tokens=14,318,823 cost=$0.4335
+
+Done: 4 completed, 7 failed out of 45

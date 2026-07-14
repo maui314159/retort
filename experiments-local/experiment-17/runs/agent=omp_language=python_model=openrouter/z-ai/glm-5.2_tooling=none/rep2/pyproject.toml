@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "brazilian-soccer-mcp"
+version = "2.0.0"
+description = "MCP server exposing a knowledge-graph query interface over Brazilian soccer datasets."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pandas>=2.0",
+    "mcp>=1.20",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8.0", "pytest-bdd>=8.0"]
+
+[project.scripts]
+brazilian-soccer-mcp = "brazilian_soccer.__main__:mcp.run"
+
+[tool.setuptools.packages.find]
+include = ["brazilian_soccer*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,16 @@
+{
+  "name": "book-collection-api",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "REST API for managing a book collection",
+  "scripts": {
+    "dev": "bun run --watch src/server.ts",
+    "start": "bun run src/server.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5"
+  }
+}

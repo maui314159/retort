@@ -1,0 +1,45 @@
+# ============================================================================
+# Context: Brazilian Soccer MCP Server benchmark
+# Package metadata. Python 3.10+, MCP server exposing tools over the Model
+# Context Protocol for querying Brazilian soccer datasets (matches, players).
+# Build: `pip install -e .`. Run tests: `pytest -q`.
+# ============================================================================
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "brazilian-soccer-mcp"
+version = "2.0.0"
+description = "MCP server exposing Brazilian soccer datasets (matches, players) as queryable tools."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Brazilian Soccer MCP" }]
+dependencies = [
+    "pandas>=2.0",
+    "mcp>=1.0",
+    "fastmcp>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-bdd>=8.0",
+    "pytest-cov>=5.0",
+]
+
+[project.scripts]
+brazilian-soccer-mcp = "brazilian_soccer_mcp.server:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["brazilian_soccer_mcp*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]

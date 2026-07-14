@@ -1,0 +1,14 @@
+Design matrix: 3 runs (loaded from experiment-18/design.csv)
+Task: repo#brazilian-soccer-mcp-guide.md
+Replicates: 3 (9 total runs)
+Resume: 2 run(s) already recorded — will skip.
+
+Starting experiment runs...
+  [2/3 rep 1/3] typescript/unknown/omp — skip (resume)
+  [1/3 rep 2/3] python/unknown/omp — FAIL (4.3s) [code_quality=0.00, test_coverage=0.00, defect_rate=0.00, maintainability=0.00, token_efficiency=0.00] tokens=38,150 cost=$0.1446
+    gate: tests did not run (test_coverage=0) — marked failed
+  [2/3 rep 2/3] typescript/unknown/omp — ok (739.2s) [code_quality=0.73, test_coverage=0.82, defect_rate=1.00, maintainability=0.51, token_efficiency=1.00] tokens=7,183,162 cost=$3.7239
+  [3/3 rep 3/3] csharp/unknown/omp — FAIL (4.7s) [code_quality=0.00, test_coverage=0.00, defect_rate=0.00, maintainability=0.00, token_efficiency=0.00] tokens=38,193 cost=$0.1448
+    gate: tests did not run (test_coverage=0) — marked failed
+
+Done: 1 completed, 2 failed out of 9 (1 skipped via resume)

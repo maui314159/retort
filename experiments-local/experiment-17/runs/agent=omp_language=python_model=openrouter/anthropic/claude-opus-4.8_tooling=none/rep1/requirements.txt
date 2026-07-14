@@ -1,0 +1,7 @@
+# Runtime dependencies for the Brazilian Soccer MCP server.
+mcp>=1.2.0
+pandas>=2.0
+
+# Test dependencies (BDD suite). Install with: pip install -r requirements.txt
+pytest>=8.0
+pytest-bdd>=8.0

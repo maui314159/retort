@@ -1,0 +1,8 @@
+target/
+*.db
+books.db
+*.iml
+.idea/
+.vscode/
+.DS_Store
+HELP.md

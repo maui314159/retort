@@ -1,0 +1,11 @@
+{
+  "replicate": 1,
+  "run_config": {
+    "agent": "omp",
+    "language": "typescript",
+    "model": "openrouter/qwen/qwen3.7-plus",
+    "tooling": "none"
+  },
+  "succeeded": true,
+  "visibility": "private"
+}

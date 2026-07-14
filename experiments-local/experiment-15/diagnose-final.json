@@ -1,0 +1,57 @@
+[
+  {
+    "cell": "agent=omp_language=java_model=openrouter/deepseek/deepseek-v3.2_tooling=none/rep1",
+    "class": "GENUINE",
+    "cause": "tests do not run / do not pass on the archived code"
+  },
+  {
+    "cell": "agent=omp_language=python_model=openrouter/deepseek/deepseek-v3.2_tooling=none/rep2",
+    "class": "GENUINE",
+    "cause": "tests do not run / do not pass on the archived code"
+  },
+  {
+    "cell": "agent=omp_language=python_model=openrouter/minimax/minimax-m3_tooling=none/rep2",
+    "class": "GENUINE",
+    "cause": "tests do not run / do not pass on the archived code"
+  },
+  {
+    "cell": "agent=omp_language=rust_model=openrouter/deepseek/deepseek-v3.2_tooling=none/rep1",
+    "class": "GENUINE",
+    "cause": "tests do not run / do not pass on the archived code"
+  },
+  {
+    "cell": "agent=omp_language=rust_model=openrouter/minimax/minimax-m3_tooling=none/rep1",
+    "class": "GENUINE",
+    "cause": "tests do not run / do not pass on the archived code"
+  },
+  {
+    "cell": "agent=omp_language=rust_model=openrouter/minimax/minimax-m3_tooling=none/rep2",
+    "class": "GENUINE",
+    "cause": "tests do not run / do not pass on the archived code"
+  },
+  {
+    "cell": "agent=omp_language=rust_model=openrouter/qwen/qwen3.7-plus_tooling=none/rep1",
+    "class": "GENUINE",
+    "cause": "tests do not run / do not pass on the archived code"
+  },
+  {
+    "cell": "agent=omp_language=typescript_model=openrouter/anthropic/claude-opus-4.8_tooling=none/rep1",
+    "class": "GENUINE",
+    "cause": "tests do not run / do not pass on the archived code"
+  },
+  {
+    "cell": "agent=omp_language=typescript_model=openrouter/deepseek/deepseek-v3.2_tooling=none/rep2",
+    "class": "GENUINE",
+    "cause": "tests do not run / do not pass on the archived code"
+  },
+  {
+    "cell": "agent=omp_language=typescript_model=openrouter/deepseek/deepseek-v3.2_tooling=none/rep3",
+    "class": "GENUINE",
+    "cause": "tests do not run / do not pass on the archived code"
+  },
+  {
+    "cell": "agent=omp_language=typescript_model=openrouter/moonshotai/kimi-k2.7-code_tooling=none/rep3",
+    "class": "GENUINE",
+    "cause": "tests do not run / do not pass on the archived code"
+  }
+]

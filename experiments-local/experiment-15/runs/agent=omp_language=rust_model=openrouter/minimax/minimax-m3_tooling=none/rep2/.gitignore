@@ -1,0 +1,9 @@
+/target
+**/*.rs.bk
+Cargo.lock.bak
+*.db
+*.sqlite
+*.sqlite3
+.env
+.env.local
+.DS_Store

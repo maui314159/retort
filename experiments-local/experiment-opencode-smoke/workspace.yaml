@@ -1,0 +1,47 @@
+# experiment-opencode-smoke — end-to-end smoke for the opencode harness
+# One real cell: rest-api-crud / python / opencode / glm-5.2, to confirm the full
+# path (retort -> opencode --pure --format json -> built+tested+scored). Cells come
+# from design-smoke.csv (--design); factor levels below only satisfy the schema.
+
+experiment:
+  name: exp-opencode-smoke
+  visibility: private
+
+factors:
+  language:
+    levels: [python, go]
+  agent:
+    levels: [omp, opencode]
+  model:
+    levels:
+      - "openrouter/z-ai/glm-5.2"
+      - "openrouter/anthropic/claude-opus-4.8"
+
+responses:
+  - code_quality
+  - test_coverage
+  - defect_rate
+  - build_time
+  - maintainability
+  - token_efficiency
+
+tasks:
+  - source: bundled://rest-api-crud
+
+playpen:
+  runner: local
+  replicates: 1
+  timeout_minutes: 30
+  max_turns: 60
+  local_agents:
+    omp:
+      harness: omp
+    opencode:
+      harness: opencode
+
+design:
+  screening_resolution: 3
+  significance_threshold: 0.10
+
+evaluation:
+  enabled: false

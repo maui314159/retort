@@ -1,0 +1,79 @@
+Metadata-Version: 2.4
+Name: brazilian-soccer-mcp
+Version: 2.0.0
+Summary: MCP server exposing a knowledge-graph query interface over Brazilian soccer datasets.
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: pandas>=2.0
+Requires-Dist: mcp>=1.20
+Provides-Extra: test
+Requires-Dist: pytest>=8.0; extra == "test"
+Requires-Dist: pytest-bdd>=8.0; extra == "test"
+
+# Brazilian Soccer MCP Server
+
+An MCP (Model Context Protocol) server that exposes a knowledge-graph-style
+query interface over the bundled Brazilian soccer datasets. Connect it to any
+MCP-compatible LLM client to answer natural-language questions about players,
+teams, matches and competitions.
+
+## What was built
+
+A Python package, `brazilian_soccer`, plus a BDD (Given/When/Then) test suite.
+
+| Module | Responsibility |
+|--------|----------------|
+| `brazilian_soccer/normalize.py` | Team-name / date / competition normalisation and alias resolution. Canonical keys **retain** the state token so same-named clubs from different states (Atlético-MG vs Atlético-GO) never merge, while an alias map reconciles spellings across files (`Palmeiras-SP` ↔ `Palmeiras` ↔ `EC Bahia` ↔ `Bahia-BA`). |
+| `brazilian_soccer/data_loader.py` | Loads all six CSV files into a unified `matches` frame and a `players` frame; **deduplicates** matches that the overlapping sources file multiple times (a 2019 Brasileirão match appears in three files — collapsed to one by ordered `(season, competition, home, away)` pairing, with extended corner/shot stats merged back in from the stats file). |
+| `brazilian_soccer/queries.py` | Pure query functions (no I/O) covering all five required capability categories: match, team, player, competition and statistical queries. |
+| `brazilian_soccer/server.py` | FastMCP server exposing 17 tools that return formatted text matching the spec's answer formats. |
+| `brazilian_soccer/__main__.py` | stdio transport entry point. |
+
+### Tools exposed
+
+`search_matches`, `last_match_between`, `head_to_head`, `get_team_stats`,
+`team_competitions`, `competition_standings`, `competition_champion`,
+`biggest_wins`, `average_goals`, `best_record`, `derby_matches`,
+`search_players`, `top_players`, `players_at_club`, `match_statistics`,
+`list_teams`, `list_competitions`.
+
+## Data handling highlights
+
+- **All six datasets** are loaded and queryable (Brasileirão, Copa do Brasil,
+  Copa Libertadores, extended match statistics, 2003–2019 historical archive,
+  FIFA player database).
+- **Team-name normalisation** handles state suffixes, parenthetical notes,
+  accents, club legal-form tokens (EC/FC/SC…) and curated aliases for
+  ambiguous clubs — verified by 20+ scenario-outline cases.
+- **Deduplication** removes ~7,000 cross-source duplicate rows, yielding
+  16,971 unique matches. The 2019 Brasileirão champion computes correctly to
+  **Flamengo – 90 pts (28W, 6D, 4L)**, matching the historical record.
+- **Cross-file queries** work (e.g. player + match data via resolved club ids).
+
+## Running
+
+```bash
+pip install -r requirements.txt
+python -m brazilian_soccer          # stdio MCP transport
+```
+
+Connect from any MCP client (Claude Desktop, etc.) by pointing its server
+config at `python -m brazilian_soccer`.
+
+## Testing
+
+BDD GWT-structured tests with `pytest-bdd`, plus unit tests for data
+invariants and server formatting:
+
+```bash
+pip install -r requirements.txt
+pytest                              # 62 tests
+```
+
+Feature files live under `tests/features/` and cover match, team, player,
+competition, statistical and normalisation scenarios.
+
+## Data Sources
+
+Kaggle datasets (pre-downloaded in `data/kaggle/`), licensed CC BY 4.0 / CC0 /
+Apache 2.0 — see the original `README.md` notes and `TASK.md` for attributions.

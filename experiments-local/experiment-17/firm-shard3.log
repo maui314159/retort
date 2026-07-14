@@ -1,0 +1,20 @@
+Design matrix: 15 runs (loaded from experiment-17/design.csv)
+Task: repo#brazilian-soccer-mcp-guide.md
+Replicates: 3 (45 total runs)
+
+Starting experiment runs...
+  [7/15 rep 1/3] typescript/unknown/omp — ok (1486.1s) [code_quality=0.73, test_coverage=1.00, defect_rate=1.00, maintainability=0.58, token_efficiency=1.00] tokens=11,123,411 cost=$9.8175
+  [13/15 rep 1/3] csharp/unknown/omp — FAIL (151.4s) [code_quality=0.00, test_coverage=0.00, defect_rate=0.00, maintainability=0.00, token_efficiency=0.00] tokens=1,697,571 cost=$0.5909
+    gate: tests did not run (test_coverage=0) — marked failed
+  [7/15 rep 2/3] typescript/unknown/omp — ok (1061.1s) [code_quality=0.73, test_coverage=1.00, defect_rate=1.00, maintainability=0.56, token_efficiency=1.00] tokens=9,219,587 cost=$7.9680
+  [12/15 rep 2/3] csharp/unknown/omp — ok (1048.0s) [code_quality=1.00, test_coverage=1.00, defect_rate=1.00, maintainability=0.66, token_efficiency=0.00] tokens=7,855,016 cost=$7.3768
+  [13/15 rep 2/3] csharp/unknown/omp — FAIL (101.5s) [code_quality=0.00, test_coverage=0.00, defect_rate=0.00, maintainability=0.00, token_efficiency=0.00] tokens=1,151,834 cost=$0.3518
+    gate: tests did not run (test_coverage=0) — marked failed
+  [14/15 rep 2/3] csharp/unknown/omp — FAIL (1091.4s) [code_quality=0.00, test_coverage=0.00, defect_rate=0.00, maintainability=0.00, token_efficiency=0.00] tokens=7,067,814 cost=$1.4817
+    gate: tests did not run (test_coverage=0) — marked failed
+  [6/15 rep 3/3] typescript/unknown/omp — FAIL (427.1s) [code_quality=0.00, test_coverage=0.00, defect_rate=0.00, maintainability=0.00, token_efficiency=0.00] tokens=2,604,620 cost=$0.2475
+    gate: tests did not run (test_coverage=0) — marked failed
+  [7/15 rep 3/3] typescript/unknown/omp — ok (1471.1s) [code_quality=0.73, test_coverage=1.00, defect_rate=1.00, maintainability=0.56, token_efficiency=1.00] tokens=9,655,493 cost=$8.9377
+  [14/15 rep 3/3] csharp/unknown/omp — ok (1289.7s) [code_quality=1.00, test_coverage=0.68, defect_rate=1.00, maintainability=0.55, token_efficiency=0.00] tokens=17,777,658 cost=$3.7054
+
+Done: 5 completed, 4 failed out of 45

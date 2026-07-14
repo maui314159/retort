@@ -1,0 +1,2 @@
+run,language,model,agent,tooling
+0,python,openrouter/nvidia/nemotron-3-ultra-550b-a55b,omp,none

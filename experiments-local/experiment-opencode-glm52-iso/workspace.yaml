@@ -1,0 +1,51 @@
+# experiment-opencode-glm52 — opencode harness on the exp-15 easy grid
+#
+# Harness-dimension comparison: the SAME model (glm-5.2) + task (rest-api-crud) +
+# languages as exp-15's omp run, but driven by the opencode harness instead of omp.
+# `retort aggregate` rolls this into master alongside exp-15, so omp-vs-opencode is a
+# direct head-to-head (agent factor) holding model/language/task constant.
+# Cells come from design-opencode.csv (--design). Run via the feat/opencode-harness
+# worktree code (PYTHONPATH), since that harness isn't in the main checkout yet.
+
+experiment:
+  name: exp-opencode-glm52-iso
+  visibility: private
+
+factors:
+  language:
+    levels: [python, go, typescript, rust, java]
+  agent:
+    levels: [omp, opencode]
+  model:
+    levels:
+      - "openrouter/z-ai/glm-5.2"
+      - "openrouter/anthropic/claude-opus-4.8"
+
+responses:
+  - code_quality
+  - test_coverage
+  - defect_rate
+  - build_time
+  - maintainability
+  - token_efficiency
+
+tasks:
+  - source: bundled://rest-api-crud
+
+playpen:
+  runner: local
+  replicates: 3
+  timeout_minutes: 30
+  max_turns: 60
+  local_agents:
+    omp:
+      harness: omp
+    opencode:
+      harness: opencode
+
+design:
+  screening_resolution: 3
+  significance_threshold: 0.10
+
+evaluation:
+  enabled: false

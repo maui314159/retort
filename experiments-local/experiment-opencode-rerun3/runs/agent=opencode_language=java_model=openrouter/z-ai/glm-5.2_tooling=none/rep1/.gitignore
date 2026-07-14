@@ -1,0 +1,7 @@
+target/
+*.db
+books.db
+.idea/
+*.iml
+.DS_Store
+HELP.md

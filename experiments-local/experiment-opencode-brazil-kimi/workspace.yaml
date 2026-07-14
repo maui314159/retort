@@ -1,0 +1,61 @@
+# experiment-opencode-brazil-kimi — opencode harness on the HARD task, model = kimi-k2.7-code.
+#
+# Second model in the harness study (after glm-5.2). Two purposes:
+#   1. Clean kimi number — exp-17 scored kimi-k2.7-code 3/9 (dep-fair) via the omp
+#      harness, which we showed understates results (glm omp 6/9 -> opencode 9/9 on
+#      this same task). This asks whether kimi's 3/9 was real or a harness artifact.
+#   2. Make the harness finding n=2 — if opencode also lifts kimi, "the harness moves
+#      outcomes" no longer rests on a single model (glm-5.2).
+#
+# Mirrors experiment-opencode-brazil exactly: opencode x {python,typescript,csharp}
+# x 3 reps = 9 cells, brazil-bench, 40-min timeout, max_turns 100. Run from the
+# ../retort-brazil worktree (PYTHONPATH): opencode harness (OPENCODE_DB isolation +
+# external_directory permissions + --print-logs + log capture) + inferred/transitive
+# dep install + firmrun C#/ts-node scorers, so scoring matches the glm-5.2 run.
+#
+# kimi-k2.7-code (Moonshot, released 2026-06-12) is the newest kimi; K3 is unreleased.
+
+experiment:
+  name: exp-opencode-brazil-kimi
+  visibility: private
+
+factors:
+  language:
+    levels: [python, typescript, csharp]
+  agent:
+    levels: [omp, opencode]
+  model:
+    # Two levels satisfy the design-framework minimum; only kimi appears in the
+    # design CSV, so opus-4.8 is declared-but-unused (same pattern as the glm run).
+    levels:
+      - "openrouter/moonshotai/kimi-k2.7-code"
+      - "openrouter/anthropic/claude-opus-4.8"
+
+responses:
+  - code_quality
+  - test_coverage
+  - defect_rate
+  - build_time
+  - maintainability
+  - token_efficiency
+
+tasks:
+  - source: github://brazil-bench/benchmark-template/brazilian-soccer-mcp-guide.md
+
+playpen:
+  runner: local
+  replicates: 3
+  timeout_minutes: 40
+  max_turns: 100
+  local_agents:
+    omp:
+      harness: omp
+    opencode:
+      harness: opencode
+
+design:
+  screening_resolution: 3
+  significance_threshold: 0.10
+
+evaluation:
+  enabled: false

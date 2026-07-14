@@ -1,0 +1,15 @@
+Design matrix: 10 runs (loaded from experiment-15/design-newmodels.csv)
+Task: rest-api-crud
+Replicates: 3 (30 total runs)
+Resume: 65 run(s) already recorded — will skip.
+
+Starting experiment runs...
+  [1/10 rep 1/3] python/unknown/omp — FAIL (106.9s) [code_quality=0.00, test_coverage=0.00, defect_rate=0.00, maintainability=0.00, token_efficiency=0.00] tokens=551,758 cost=$0.1486
+    gate: tests did not run (test_coverage=0) — marked failed
+  [4/10 rep 1/3] rust/unknown/omp — ok (387.6s) [code_quality=0.83, test_coverage=1.00, defect_rate=0.95, maintainability=0.93, token_efficiency=0.06] tokens=2,379,151 cost=$0.5384
+  [5/10 rep 1/3] java/unknown/omp — ok (401.1s) [code_quality=1.00, test_coverage=1.00, defect_rate=1.00, maintainability=0.97, token_efficiency=0.00] tokens=2,571,014 cost=$0.6008
+  [6/10 rep 1/3] python/unknown/omp — ok (172.9s) [code_quality=0.67, test_coverage=0.96, defect_rate=0.95, maintainability=0.91, token_efficiency=0.01] tokens=744,440 cost=$0.0235
+  [5/10 rep 3/3] java/unknown/omp — ok (220.3s) [code_quality=1.00, test_coverage=1.00, defect_rate=1.00, maintainability=0.97, token_efficiency=0.00] tokens=1,716,656 cost=$0.3683
+  [9/10 rep 3/3] rust/unknown/omp — ok (343.2s) [code_quality=0.83, test_coverage=1.00, defect_rate=1.00, maintainability=0.58, token_efficiency=0.10] tokens=1,557,050 cost=$0.0442
+
+Done: 5 completed, 1 failed out of 30

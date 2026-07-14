@@ -1,0 +1,27 @@
+[package]
+name = "book-api"
+version = "0.1.0"
+edition = "2021"
+description = "A REST API service for managing a book collection, built with Axum and SQLite."
+
+[dependencies]
+axum = "0.7"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio-rustls", "sqlite", "macros"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+tower-http = { version = "0.5", features = ["trace"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
+
+[[bin]]
+name = "book-api"
+path = "src/main.rs"
+
+[lib]
+name = "book_api"
+path = "src/lib.rs"

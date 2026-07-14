@@ -1,0 +1,46 @@
+# experiment-nemotron-paid — quick-settle A/B for the exp-15 nemotron:free failure
+#
+# Single cell: paid `nvidia/nemotron-3-ultra-550b-a55b` (same weights as the
+# exp-15 `:free` run that GENUINE-failed) on rest-api-crud / python / omp.
+# Purpose: settle whether that failure was the model or free-tier throttling.
+# Cells come from design-paid.csv (--design); factor levels below only satisfy
+# the registry's "≥2 levels per factor, ≥2 factors" schema rule.
+
+experiment:
+  name: exp-nemotron-paid
+  visibility: private
+
+factors:
+  language:
+    levels: [python, go]
+  model:
+    levels:
+      - "openrouter/nvidia/nemotron-3-ultra-550b-a55b"
+      - "openrouter/nvidia/nemotron-3-ultra-550b-a55b:free"
+
+responses:
+  - code_quality
+  - test_coverage
+  - defect_rate
+  - build_time
+  - maintainability
+  - token_efficiency
+
+tasks:
+  - source: bundled://rest-api-crud
+
+playpen:
+  runner: local
+  replicates: 1
+  timeout_minutes: 30
+  max_turns: 60
+  local_agents:
+    omp:
+      harness: omp
+
+design:
+  screening_resolution: 3
+  significance_threshold: 0.10
+
+evaluation:
+  enabled: false

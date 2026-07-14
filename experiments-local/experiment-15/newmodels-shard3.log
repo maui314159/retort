@@ -1,0 +1,16 @@
+Design matrix: 10 runs (loaded from experiment-15/design-newmodels.csv)
+Task: rest-api-crud
+Replicates: 3 (30 total runs)
+Resume: 65 run(s) already recorded — will skip.
+
+Starting experiment runs...
+  [7/10 rep 1/3] go/unknown/omp — ok (182.5s) [code_quality=0.96, test_coverage=0.70, defect_rate=1.00, maintainability=0.99, token_efficiency=0.01] tokens=936,817 cost=$0.0284
+  [2/10 rep 2/3] go/unknown/omp — ok (158.3s) [code_quality=1.00, test_coverage=0.65, defect_rate=1.00, maintainability=0.89, token_efficiency=0.02] tokens=473,756 cost=$0.1136
+  [4/10 rep 2/3] rust/unknown/omp — ok (219.1s) [code_quality=0.83, test_coverage=1.00, defect_rate=1.00, maintainability=0.82, token_efficiency=0.06] tokens=1,192,453 cost=$0.2643
+  [9/10 rep 2/3] rust/unknown/omp — ok (550.7s) [code_quality=0.83, test_coverage=1.00, defect_rate=1.00, maintainability=0.50, token_efficiency=0.05] tokens=3,143,008 cost=$0.0809
+  [2/10 rep 3/3] go/unknown/omp — ok (181.3s) [code_quality=1.00, test_coverage=0.68, defect_rate=1.00, maintainability=0.88, token_efficiency=0.01] tokens=1,080,122 cost=$0.2473
+  [4/10 rep 3/3] rust/unknown/omp — ok (121.7s) [code_quality=0.83, test_coverage=1.00, defect_rate=0.95, maintainability=0.51, token_efficiency=0.26] tokens=293,734 cost=$0.0719
+  [6/10 rep 3/3] python/unknown/omp — ok (216.0s) [code_quality=0.62, test_coverage=0.95, defect_rate=0.94, maintainability=1.00, token_efficiency=0.01] tokens=698,526 cost=$0.0243
+  [8/10 rep 3/3] typescript/unknown/omp — ok (273.2s) [code_quality=0.73, test_coverage=0.77, defect_rate=1.00, maintainability=0.49, token_efficiency=1.00] tokens=1,402,527 cost=$0.0393
+
+Done: 8 completed, 0 failed out of 30

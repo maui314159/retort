@@ -1,0 +1,16 @@
+run,language,model,agent,tooling
+0,python,openrouter/qwen/qwen3.7-plus,omp,none
+1,python,openrouter/anthropic/claude-opus-4.8,omp,none
+2,python,openrouter/z-ai/glm-5.1,omp,none
+3,python,openrouter/moonshotai/kimi-k2.7-code,omp,none
+4,python,openrouter/deepseek/deepseek-v4-pro,omp,none
+5,typescript,openrouter/qwen/qwen3.7-plus,omp,none
+6,typescript,openrouter/anthropic/claude-opus-4.8,omp,none
+7,typescript,openrouter/z-ai/glm-5.1,omp,none
+8,typescript,openrouter/moonshotai/kimi-k2.7-code,omp,none
+9,typescript,openrouter/deepseek/deepseek-v4-pro,omp,none
+10,csharp,openrouter/qwen/qwen3.7-plus,omp,none
+11,csharp,openrouter/anthropic/claude-opus-4.8,omp,none
+12,csharp,openrouter/z-ai/glm-5.1,omp,none
+13,csharp,openrouter/moonshotai/kimi-k2.7-code,omp,none
+14,csharp,openrouter/deepseek/deepseek-v4-pro,omp,none

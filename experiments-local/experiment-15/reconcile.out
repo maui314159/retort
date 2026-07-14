@@ -1,0 +1,81 @@
+
+OpenRouter spend reconciliation — experiment-15/retort.db
+credits: total_usage=$140.155620498 of 158
+
+PER RUN (billed = sum /generation over the run's generation ids)
+  run model                                    st   ids      omp$  sumturns$   billed$  Δ omp% up
+    1 qwen/qwen3.7-plus                        comp   9   0.04345    0.04345   0.04345    +0.0 Alibaba
+    2 moonshotai/kimi-k2.7-code                comp   6   0.06151    0.06151   0.07247   -15.1 ⚠ Moonshot AI
+    3 minimax/minimax-m3                       comp  27   0.12383    0.12383   0.12383    +0.0 Minimax
+    4 minimax/minimax-m3                       comp  19   0.09034    0.09034   0.09034    -0.0 Minimax
+    5 moonshotai/kimi-k2.7-code                comp  51   0.35530    0.35530   0.42203   -15.8 ⚠ !2miss Moonshot AI
+    6 moonshotai/kimi-k2.7-code                comp  21   0.19576    0.19576   0.22752   -14.0 ⚠ Parasail,Moonshot AI
+    7 deepseek/deepseek-v3.2                   comp  59   0.26525    0.26525   0.28754    -7.8 ⚠ Baidu
+    8 deepseek/deepseek-v3.2                   comp  61   0.29979    0.29979   0.32944    -9.0 ⚠ Baidu
+    9 qwen/qwen3.7-plus                        comp  11   0.07004    0.07004   0.07004    +0.0 Alibaba
+   10 minimax/minimax-m3                       comp  42   0.15396    0.15396   0.15919    -3.3 Minimax
+   11 qwen/qwen3.7-plus                        comp  34   0.13281    0.13281   0.13281    +0.0 !1miss Alibaba
+   12 moonshotai/kimi-k2.7-code                comp  10   0.09282    0.09282   0.10957   -15.3 ⚠ Moonshot AI
+   13 minimax/minimax-m3                       fail  42   0.15778    0.15778   0.15778    +0.0 !1miss Minimax
+   14 deepseek/deepseek-v3.2                   comp  46   0.19905    0.19905   0.22020    -9.6 ⚠ Alibaba,Baidu
+   15 moonshotai/kimi-k2.7-code                comp  20   0.21298    0.21298   0.25241   -15.6 ⚠ Moonshot AI
+   16 anthropic/claude-opus-4.8                comp   0   0.00000    0.00000   0.00000       — 
+   19 minimax/minimax-m3                       comp  70   0.32400    0.32400   0.32400    -0.0 Minimax
+   20 qwen/qwen3.7-plus                        comp  16   0.12653    0.12653   0.12653    +0.0 Alibaba
+   22 deepseek/deepseek-v3.2                   fail  89   0.48656    0.48656   0.52763    -7.8 ⚠ Baidu
+   23 qwen/qwen3.7-plus                        fail   0   0.00000    0.00000   0.00000       — 
+   24 deepseek/deepseek-v3.2                   fail   3   0.00909    0.00909   0.01385   -34.4 ⚠ !1miss DeepInfra
+   25 anthropic/claude-opus-4.8                fail  23   1.61016    1.61016   1.61016    +0.0 !1miss Anthropic
+   26 moonshotai/kimi-k2.7-code                comp  17   0.15932    0.15932   0.18620   -14.4 ⚠ Parasail,Moonshot AI
+   27 qwen/qwen3.7-plus                        comp  25   0.16649    0.16649   0.16649    +0.0 Alibaba
+   28 minimax/minimax-m3                       fail  24   0.11399    0.11399   0.11399    +0.0 Minimax
+   29 qwen/qwen3.7-plus                        comp  37   0.19573    0.19573   0.19573    +0.0 Alibaba
+   30 moonshotai/kimi-k2.7-code                comp  21   0.16463    0.16463   0.19498   -15.6 ⚠ Moonshot AI
+   31 qwen/qwen3.7-plus                        comp  21   0.09190    0.09190   0.09190    +0.0 Alibaba
+   32 moonshotai/kimi-k2.7-code                comp  19   0.16592    0.16592   0.19521   -15.0 ⚠ Parasail,Moonshot AI
+   33 deepseek/deepseek-v3.2                   fail  51   0.29271    0.29271   0.31759    -7.8 ⚠ Baidu
+   34 moonshotai/kimi-k2.7-code                comp  22   0.15211    0.15211   0.18033   -15.6 ⚠ Moonshot AI
+   35 minimax/minimax-m3                       comp  57   0.21697    0.21697   0.22044    -1.6 Minimax
+   36 moonshotai/kimi-k2.7-code                comp  28   0.24222    0.24222   0.28768   -15.8 ⚠ Moonshot AI
+   37 qwen/qwen3.7-plus                        comp   5   0.03253    0.03253   0.03253    +0.0 Alibaba
+   38 minimax/minimax-m3                       comp  48   0.19597    0.19597   0.19597    +0.0 Minimax
+   39 qwen/qwen3.7-plus                        comp  64   0.34192    0.34192   0.34192    +0.0 Alibaba
+   40 deepseek/deepseek-v3.2                   comp 109   0.63562    0.63562   0.91089   -30.2 ⚠ Baidu,Friendli,AtlasCloud
+   41 moonshotai/kimi-k2.7-code                comp  18   0.14322    0.14322   0.17055   -16.0 ⚠ Moonshot AI
+   42 deepseek/deepseek-v3.2                   comp  35   0.17662    0.17662   0.19160    -7.8 ⚠ Baidu
+   43 moonshotai/kimi-k2.7-code                comp  45   0.46571    0.46571   0.55337   -15.8 ⚠ Moonshot AI
+   44 deepseek/deepseek-v3.2                   comp  72   0.37570    0.37570   0.40748    -7.8 ⚠ Baidu
+   45 minimax/minimax-m3                       comp  24   0.08690    0.08690   0.08690    +0.0 Minimax
+   46 minimax/minimax-m3                       comp  32   0.14445    0.14445   0.14445    +0.0 Minimax
+   47 deepseek/deepseek-v3.2                   fail  33   0.13067    0.13067   0.14748   -11.4 ⚠ Baidu
+   48 deepseek/deepseek-v3.2                   comp  57   0.28789    0.28789   0.31226    -7.8 ⚠ Baidu
+   49 deepseek/deepseek-v3.2                   comp  42   0.18411    0.18411   0.19972    -7.8 ⚠ Baidu
+   50 minimax/minimax-m3                       comp  36   0.13740    0.13740   0.13740    -0.0 Minimax
+   51 minimax/minimax-m3                       fail   0   0.00000    0.00000   0.00000       — 
+   52 moonshotai/kimi-k2.7-code                fail   0   0.00000    0.00000   0.00000       — 
+   53 qwen/qwen3.7-plus                        comp  14   0.07862    0.07862   0.07862    +0.0 Alibaba
+   54 moonshotai/kimi-k2.7-code                comp  22   0.18670    0.18670   0.22301   -16.3 ⚠ Moonshot AI
+   55 minimax/minimax-m3                       comp  33   0.13822    0.13822   0.13822    -0.0 Minimax
+   56 qwen/qwen3.7-plus                        comp   9   0.06011    0.06011   0.06011    +0.0 Alibaba
+   57 deepseek/deepseek-v3.2                   comp  65   0.34422    0.34422   0.46821   -26.5 ⚠ AtlasCloud,Friendli,Baidu
+   58 deepseek/deepseek-v3.2                   comp  91   0.20630    0.20630   0.78166   -73.6 ⚠ Friendli,AtlasCloud
+   59 moonshotai/kimi-k2.7-code                comp  31   0.30025    0.30025   0.35783   -16.1 ⚠ Moonshot AI
+   60 qwen/qwen3.7-plus                        comp  24   0.12557    0.12557   0.12557    -0.0 Alibaba
+   61 deepseek/deepseek-v3.2                   fail  56   0.25806    0.25806   0.28434    -9.2 ⚠ Baidu
+   62 qwen/qwen3.7-plus                        comp  22   0.10181    0.10181   0.10181    +0.0 !1miss Alibaba
+   63 minimax/minimax-m3                       comp  65   0.25622    0.25622   0.25622    +0.0 Minimax
+   64 qwen/qwen3.7-plus                        comp  58   0.29664    0.29664   0.29664    +0.0 !1miss Alibaba
+   65 minimax/minimax-m3                       comp  60   0.26280    0.26280   0.26280    +0.0 Minimax
+   66 anthropic/claude-opus-4.8                comp  23   1.90365    1.90365   1.90365    +0.0 Anthropic
+   67 anthropic/claude-opus-4.8                comp  17   1.54556    1.54556   1.54556    +0.0 Anthropic
+   68 anthropic/claude-opus-4.8                comp  16   1.61828    1.61828   1.61828    -0.0 Anthropic
+
+PER MODEL
+  model                                    runs      omp$   billed$   activity$  Δ omp%
+  anthropic/claude-opus-4.8                   5   6.67765   6.67765     0.00000    +0.0
+  deepseek/deepseek-v3.2                     15   4.15164   5.39987     0.00000   -23.1 ⚠
+  minimax/minimax-m3                         15   2.40284   2.41153     0.00000    -0.4
+  moonshotai/kimi-k2.7-code                  15   2.89845   3.43317     0.00000   -15.6 ⚠
+  qwen/qwen3.7-plus                          15   1.86417   1.86417     0.00000    +0.0
+  TOTAL                                          17.99474  19.78639     0.00000    -9.1
+

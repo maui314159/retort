@@ -1,0 +1,24 @@
+[package]
+name = "book-api"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = { version = "0.7", features = ["macros"] }
+tokio = { version = "1.0", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+
+tower = "0.5"
+hyper = "0.14"
+serde_json = "1.0"
+sqlx = { version = "0.7", features = ["sqlite", "runtime-tokio-native-tls"] }
+tower-http = { version = "0.5", features = ["cors"] }
+anyhow = "1.0"
+thiserror = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+uuid = { version = "1.7", features = ["serde", "v4"] }
+
+[dev-dependencies]
+reqwest = { version = "0.12", features = ["json"] }
+tokio = { version = "1.0", features = ["full"] }

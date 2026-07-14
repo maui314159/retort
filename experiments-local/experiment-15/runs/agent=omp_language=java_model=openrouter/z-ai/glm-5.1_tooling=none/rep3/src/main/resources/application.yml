@@ -1,0 +1,11 @@
+spring:
+  datasource:
+    url: jdbc:h2:file:./booksdb;DATABASE_TO_UPPER=false;CASE_INSENSITIVE_IDENTIFIERS=TRUE
+    driver-class-name: org.h2.Driver
+    name: booksdb
+  h2:
+    console:
+      enabled: false
+  sql:
+    init:
+      mode: always

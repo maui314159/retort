@@ -1,0 +1,6 @@
+# .NET build artifacts
+bin/
+obj/
+*.user
+
+# Data files are large but intentionally tracked under data/kaggle; nothing to ignore there.

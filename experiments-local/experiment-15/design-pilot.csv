@@ -1,0 +1,9 @@
+run,language,model,agent,tooling
+0,python,openrouter/moonshotai/kimi-k2.7-code,omp,none
+1,python,openrouter/minimax/minimax-m3,omp,none
+2,python,openrouter/xiaomi/mimo-v2.5,omp,none
+3,python,openrouter/deepseek/deepseek-v3.2,omp,none
+4,python,openrouter/qwen/qwen3.7-plus,omp,none
+5,python,openrouter/nvidia/nemotron-3-ultra-550b-a55b:free,omp,none
+6,python,openrouter/openrouter/owl-alpha,omp,none
+7,python,openrouter/anthropic/claude-opus-4.8,omp,none

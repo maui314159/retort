@@ -1,0 +1,8 @@
+<Project>
+  <PropertyGroup>
+    <!-- Restrict Microsoft.Build.Tasks.Git (built into the .NET 10 SDK) to
+         local repository config only. This avoids "Access to the path
+         '~/.gitconfig' is denied" failures on sandboxed machines. -->
+    <GitRepositoryConfigurationScope>local</GitRepositoryConfigurationScope>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <!-- The Microsoft.Build.Tasks.Git target (pulled in transitively) reads ~/.gitconfig
+         to embed source-link metadata; in sandboxed build environments that file is
+         unreadable and the build fails. We don't publish source-link artifacts, so
+         disable git metadata generation entirely. -->
+    <GenerateGitMetadata>false</GenerateGitMetadata>
+    <EnableSourceControlManagerQueries>false</EnableSourceControlManagerQueries>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
+    <PackageReference Include="ModelContextProtocol" Version="1.4.0" />
+  </ItemGroup>
+
+</Project>

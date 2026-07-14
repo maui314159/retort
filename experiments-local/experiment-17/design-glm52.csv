@@ -1,0 +1,4 @@
+run,language,model,agent,tooling
+15,python,openrouter/z-ai/glm-5.2,omp,none
+16,typescript,openrouter/z-ai/glm-5.2,omp,none
+17,csharp,openrouter/z-ai/glm-5.2,omp,none

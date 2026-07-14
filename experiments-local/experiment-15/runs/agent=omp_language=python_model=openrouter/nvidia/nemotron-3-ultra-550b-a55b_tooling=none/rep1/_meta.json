@@ -1,0 +1,11 @@
+{
+  "replicate": 1,
+  "run_config": {
+    "agent": "omp",
+    "language": "python",
+    "model": "openrouter/nvidia/nemotron-3-ultra-550b-a55b",
+    "tooling": "none"
+  },
+  "succeeded": true,
+  "visibility": "private"
+}

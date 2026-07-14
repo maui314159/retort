@@ -1,0 +1,8 @@
+Design matrix: 3 runs (loaded from experiment-19/design.csv)
+Task: repo#brazilian-soccer-mcp-guide.md
+Replicates: 3 (9 total runs)
+
+Starting experiment runs...
+  [3/3 rep 1/3] csharp/unknown/omp — ok (1381.3s) [code_quality=1.00, test_coverage=0.60, defect_rate=1.00, maintainability=0.61, token_efficiency=0.00] tokens=15,189,529 cost=$6.4525
+
+Done: 1 completed, 0 failed out of 9

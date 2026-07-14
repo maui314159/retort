@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Brazilian Soccer MCP Server
+    ===========================
+    An MCP (Model Context Protocol) server exposing a knowledge-graph-style
+    query interface over Brazilian soccer datasets (Brasileirão, Copa do Brasil,
+    Copa Libertadores, extended match stats, historical Brasileirão 2003-2019,
+    and the FIFA player database).
+
+    Context / contract:
+      - Loads all 6 CSV files under data/kaggle/ at startup into an in-memory store.
+      - Exposes MCP tools (stdio transport) for match / team / player / competition
+        / statistical queries.
+      - Team names are normalized across datasets (state suffixes, accents, spaces)
+        so cross-file queries work.
+
+    Transport: stdio JSON-RPC (ModelContextProtocol SDK + Microsoft.Extensions.Hosting).
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>BrazilianSoccerMcp</RootNamespace>
+    <AssemblyName>BrazilianSoccerMcp</AssemblyName>
+    <EnableSourceLink>false</EnableSourceLink>
+    <PublishRepositoryUrl>false</PublishRepositoryUrl>
+    <DeterministicSourcePaths>false</DeterministicSourcePaths>
+    <GitRepositoryConfigurationScope>local</GitRepositoryConfigurationScope>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The test project lives under Tests/; keep it out of the server build. -->
+    <Compile Remove="Tests\**\*" />
+    <None Remove="Tests\**\*" />
+    <EmbeddedResource Remove="Tests\**\*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CsvHelper" Version="33.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
+    <PackageReference Include="ModelContextProtocol" Version="1.4.0" />
+  </ItemGroup>
+</Project>

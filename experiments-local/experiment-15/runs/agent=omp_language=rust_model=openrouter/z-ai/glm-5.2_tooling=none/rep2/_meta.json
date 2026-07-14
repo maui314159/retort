@@ -1,0 +1,11 @@
+{
+  "replicate": 2,
+  "run_config": {
+    "agent": "omp",
+    "language": "rust",
+    "model": "openrouter/z-ai/glm-5.2",
+    "tooling": "none"
+  },
+  "succeeded": true,
+  "visibility": "private"
+}

@@ -1,0 +1,175 @@
+timestamp=2026-06-21T12:30:44.473Z level=INFO run=94b22a41 message="creating instance" directory=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96
+timestamp=2026-06-21T12:30:44.474Z level=INFO run=94b22a41 message=fromDirectory directory=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96
+timestamp=2026-06-21T12:30:44.537Z level=INFO run=94b22a41 message=bootstrapping directory=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96
+timestamp=2026-06-21T12:30:44.543Z level=INFO run=94b22a41 message=loading path=/Users/maui/.config/opencode/config.json
+timestamp=2026-06-21T12:30:44.543Z level=INFO run=94b22a41 message=loading path=/Users/maui/.config/opencode/opencode.json
+timestamp=2026-06-21T12:30:44.545Z level=INFO run=94b22a41 message=loading path=/Users/maui/.config/opencode/opencode.jsonc
+timestamp=2026-06-21T12:30:44.548Z level=INFO run=94b22a41 message=loading path=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96/opencode.json
+timestamp=2026-06-21T12:30:44.575Z level=INFO run=94b22a41 message="all LSPs are disabled"
+timestamp=2026-06-21T12:30:44.576Z level=INFO run=94b22a41 message="all formatters are disabled"
+timestamp=2026-06-21T12:30:44.576Z level=INFO run=94b22a41 message=init
+timestamp=2026-06-21T12:30:44.646Z level=INFO run=94b22a41 message=created id=ses_115d69059ffepYpzQ2TcD57L0o slug=shiny-mountain version=1.17.5 projectID=global directory=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 path="" workspaceID=undefined parentID=undefined title="New session - 2026-06-21T12:30:44.646Z" agent=undefined model=undefined metadata=undefined permission="[{\"permission\":\"question\",\"pattern\":\"*\",\"action\":\"deny\"},{\"permission\":\"plan_enter\",\"pattern\":\"*\",\"action\":\"deny\"},{\"permission\":\"plan_exit\",\"pattern\":\"*\",\"action\":\"deny\"}]" cost=0 tokens.input=0 tokens.output=0 tokens.reasoning=0 tokens.cache.read=0 tokens.cache.write=0 time.created=1782045044646 time.updated=1782045044646
+timestamp=2026-06-21T12:30:44.653Z level=INFO run=94b22a41 message="event connected"
+timestamp=2026-06-21T12:30:44.671Z level=INFO run=94b22a41 message="booting location services" directory=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 workspaceID=undefined
+timestamp=2026-06-21T12:30:45.313Z level=INFO run=94b22a41 message="watcher backend" directory=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 platform=darwin backend=fs-events
+timestamp=2026-06-21T12:30:45.523Z level=INFO run=94b22a41 message="project copy refresh started" projectID=global
+timestamp=2026-06-21T12:30:45.524Z level=INFO run=94b22a41 message="project copy refresh done" projectID=global updated=[] removed=[]
+timestamp=2026-06-21T12:30:45.542Z level=INFO run=94b22a41 message=loop session.id=ses_115d69059ffepYpzQ2TcD57L0o step=0
+timestamp=2026-06-21T12:30:45.550Z level=INFO run=94b22a41 message=stream providerID=azure-foundry modelID=gpt-5.4 session.id=ses_115d69059ffepYpzQ2TcD57L0o small=true agent=title mode=primary
+timestamp=2026-06-21T12:30:45.553Z level=INFO run=94b22a41 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=azure-foundry llm.model=gpt-5.4
+timestamp=2026-06-21T12:30:45.710Z level=INFO run=94b22a41 message=initialized
+timestamp=2026-06-21T12:30:45.796Z level=INFO run=94b22a41 message=tracking hash=68399faac4d033f84440a2b435741bf6e1b0a821 cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:30:45.799Z level=INFO run=94b22a41 message="shell tool using shell" shell=/bin/zsh
+timestamp=2026-06-21T12:30:45.804Z level=INFO run=94b22a41 message=init count=8
+timestamp=2026-06-21T12:30:45.808Z level=INFO run=94b22a41 message=process session.id=ses_115d69059ffepYpzQ2TcD57L0o messageID=msg_eea297328001W1FvHkhRFRxqLj
+timestamp=2026-06-21T12:30:45.809Z level=INFO run=94b22a41 message=stream providerID=openrouter modelID=z-ai/glm-5.2 session.id=ses_115d69059ffepYpzQ2TcD57L0o small=false agent=build mode=primary
+timestamp=2026-06-21T12:30:45.814Z level=INFO run=94b22a41 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.2
+timestamp=2026-06-21T12:30:52.911Z level=INFO run=94b22a41 message=evaluated permission=read pattern=TASK.md action.permission=read action.action=allow action.pattern=*
+timestamp=2026-06-21T12:30:52.924Z level=INFO run=94b22a41 message="touching file" file=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96/TASK.md
+timestamp=2026-06-21T12:30:52.994Z level=INFO run=94b22a41 message=tracking hash=68399faac4d033f84440a2b435741bf6e1b0a821 cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:30:53.052Z level=INFO run=94b22a41 message=loop session.id=ses_115d69059ffepYpzQ2TcD57L0o step=1
+timestamp=2026-06-21T12:30:53.107Z level=INFO run=94b22a41 message=tracking hash=68399faac4d033f84440a2b435741bf6e1b0a821 cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:30:53.110Z level=INFO run=94b22a41 message=process session.id=ses_115d69059ffepYpzQ2TcD57L0o messageID=msg_eea29907d001We0OF0bWLSJmqJ
+timestamp=2026-06-21T12:30:53.110Z level=INFO run=94b22a41 message=stream providerID=openrouter modelID=z-ai/glm-5.2 session.id=ses_115d69059ffepYpzQ2TcD57L0o small=false agent=build mode=primary
+timestamp=2026-06-21T12:30:53.111Z level=INFO run=94b22a41 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.2
+timestamp=2026-06-21T12:30:55.055Z level=INFO run=94b22a41 message=evaluated permission=bash pattern="ls -la" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-06-21T12:30:55.055Z level=INFO run=94b22a41 message=evaluated permission=bash pattern="go version" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-06-21T12:30:55.198Z level=INFO run=94b22a41 message=tracking hash=68399faac4d033f84440a2b435741bf6e1b0a821 cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:30:55.248Z level=INFO run=94b22a41 message=loop session.id=ses_115d69059ffepYpzQ2TcD57L0o step=2
+timestamp=2026-06-21T12:30:55.297Z level=INFO run=94b22a41 message=tracking hash=68399faac4d033f84440a2b435741bf6e1b0a821 cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:30:55.299Z level=INFO run=94b22a41 message=process session.id=ses_115d69059ffepYpzQ2TcD57L0o messageID=msg_eea299911001xelklK6aHhfDBH
+timestamp=2026-06-21T12:30:55.299Z level=INFO run=94b22a41 message=stream providerID=openrouter modelID=z-ai/glm-5.2 session.id=ses_115d69059ffepYpzQ2TcD57L0o small=false agent=build mode=primary
+timestamp=2026-06-21T12:30:55.300Z level=INFO run=94b22a41 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.2
+timestamp=2026-06-21T12:30:57.089Z level=INFO run=94b22a41 message=evaluated permission=read pattern=stack.json action.permission=read action.action=allow action.pattern=*
+timestamp=2026-06-21T12:30:57.092Z level=INFO run=94b22a41 message="touching file" file=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96/stack.json
+timestamp=2026-06-21T12:30:57.150Z level=INFO run=94b22a41 message=tracking hash=68399faac4d033f84440a2b435741bf6e1b0a821 cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:30:57.220Z level=INFO run=94b22a41 message=loop session.id=ses_115d69059ffepYpzQ2TcD57L0o step=3
+timestamp=2026-06-21T12:30:57.274Z level=INFO run=94b22a41 message=tracking hash=68399faac4d033f84440a2b435741bf6e1b0a821 cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:30:57.276Z level=INFO run=94b22a41 message=process session.id=ses_115d69059ffepYpzQ2TcD57L0o messageID=msg_eea29a0c40018ggYvuQK3n57XM
+timestamp=2026-06-21T12:30:57.276Z level=INFO run=94b22a41 message=stream providerID=openrouter modelID=z-ai/glm-5.2 session.id=ses_115d69059ffepYpzQ2TcD57L0o small=false agent=build mode=primary
+timestamp=2026-06-21T12:30:57.276Z level=INFO run=94b22a41 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.2
+timestamp=2026-06-21T12:31:00.498Z level=INFO run=94b22a41 message=evaluated permission=edit pattern=go.mod action.permission=edit action.action=allow action.pattern=*
+timestamp=2026-06-21T12:31:00.499Z level=INFO run=94b22a41 message=formatting file=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96/go.mod
+timestamp=2026-06-21T12:31:00.500Z level=INFO run=94b22a41 message="touching file" file=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96/go.mod
+timestamp=2026-06-21T12:31:00.741Z level=INFO run=94b22a41 message=tracking hash=26c3a04bd75f5cac3f249d316df8f42cbe10c575 cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:31:00.814Z level=INFO run=94b22a41 message=loop session.id=ses_115d69059ffepYpzQ2TcD57L0o step=4
+timestamp=2026-06-21T12:31:00.867Z level=INFO run=94b22a41 message=tracking hash=26c3a04bd75f5cac3f249d316df8f42cbe10c575 cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:31:00.869Z level=INFO run=94b22a41 message=process session.id=ses_115d69059ffepYpzQ2TcD57L0o messageID=msg_eea29aece001HAACKZnwimrDsL
+timestamp=2026-06-21T12:31:00.870Z level=INFO run=94b22a41 message=stream providerID=openrouter modelID=z-ai/glm-5.2 session.id=ses_115d69059ffepYpzQ2TcD57L0o small=false agent=build mode=primary
+timestamp=2026-06-21T12:31:00.870Z level=INFO run=94b22a41 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.2
+timestamp=2026-06-21T12:31:05.963Z level=INFO run=94b22a41 message=evaluated permission=edit pattern=model.go action.permission=edit action.action=allow action.pattern=*
+timestamp=2026-06-21T12:31:05.966Z level=INFO run=94b22a41 message=formatting file=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96/model.go
+timestamp=2026-06-21T12:31:05.966Z level=INFO run=94b22a41 message="touching file" file=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96/model.go
+timestamp=2026-06-21T12:31:06.085Z level=INFO run=94b22a41 message=tracking hash=28e75e5d56e40f6ba4cdfebfc3064da7ed8d81dc cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:31:06.155Z level=INFO run=94b22a41 message=loop session.id=ses_115d69059ffepYpzQ2TcD57L0o step=5
+timestamp=2026-06-21T12:31:06.211Z level=INFO run=94b22a41 message=tracking hash=28e75e5d56e40f6ba4cdfebfc3064da7ed8d81dc cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:31:06.213Z level=INFO run=94b22a41 message=process session.id=ses_115d69059ffepYpzQ2TcD57L0o messageID=msg_eea29c3ab001bAakGQi7saTfCy
+timestamp=2026-06-21T12:31:06.214Z level=INFO run=94b22a41 message=stream providerID=openrouter modelID=z-ai/glm-5.2 session.id=ses_115d69059ffepYpzQ2TcD57L0o small=false agent=build mode=primary
+timestamp=2026-06-21T12:31:06.214Z level=INFO run=94b22a41 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.2
+timestamp=2026-06-21T12:31:21.496Z level=INFO run=94b22a41 message=evaluated permission=edit pattern=store.go action.permission=edit action.action=allow action.pattern=*
+timestamp=2026-06-21T12:31:21.497Z level=INFO run=94b22a41 message=formatting file=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96/store.go
+timestamp=2026-06-21T12:31:21.497Z level=INFO run=94b22a41 message="touching file" file=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96/store.go
+timestamp=2026-06-21T12:31:21.623Z level=INFO run=94b22a41 message=tracking hash=a438decd7b370b7f3893cb1699867730eb66c698 cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:31:21.680Z level=INFO run=94b22a41 message=loop session.id=ses_115d69059ffepYpzQ2TcD57L0o step=6
+timestamp=2026-06-21T12:31:21.726Z level=INFO run=94b22a41 message=tracking hash=a438decd7b370b7f3893cb1699867730eb66c698 cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:31:21.728Z level=INFO run=94b22a41 message=process session.id=ses_115d69059ffepYpzQ2TcD57L0o messageID=msg_eea2a0051001FEXgTKXVatQxnS
+timestamp=2026-06-21T12:31:21.729Z level=INFO run=94b22a41 message=stream providerID=openrouter modelID=z-ai/glm-5.2 session.id=ses_115d69059ffepYpzQ2TcD57L0o small=false agent=build mode=primary
+timestamp=2026-06-21T12:31:21.733Z level=INFO run=94b22a41 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.2
+timestamp=2026-06-21T12:31:30.075Z level=INFO run=94b22a41 message=evaluated permission=edit pattern=validation.go action.permission=edit action.action=allow action.pattern=*
+timestamp=2026-06-21T12:31:30.080Z level=INFO run=94b22a41 message=formatting file=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96/validation.go
+timestamp=2026-06-21T12:31:30.088Z level=INFO run=94b22a41 message="touching file" file=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96/validation.go
+timestamp=2026-06-21T12:31:30.219Z level=INFO run=94b22a41 message=tracking hash=7534b731f7cb8b725b006db189fd9e81f267bf02 cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:31:30.294Z level=INFO run=94b22a41 message=loop session.id=ses_115d69059ffepYpzQ2TcD57L0o step=7
+timestamp=2026-06-21T12:31:30.349Z level=INFO run=94b22a41 message=tracking hash=7534b731f7cb8b725b006db189fd9e81f267bf02 cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:31:30.353Z level=INFO run=94b22a41 message=process session.id=ses_115d69059ffepYpzQ2TcD57L0o messageID=msg_eea2a21f70015s4odNzOLHyBwR
+timestamp=2026-06-21T12:31:30.353Z level=INFO run=94b22a41 message=stream providerID=openrouter modelID=z-ai/glm-5.2 session.id=ses_115d69059ffepYpzQ2TcD57L0o small=false agent=build mode=primary
+timestamp=2026-06-21T12:31:30.354Z level=INFO run=94b22a41 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.2
+timestamp=2026-06-21T12:31:44.702Z level=INFO run=94b22a41 message=cleanup prune=7.days
+timestamp=2026-06-21T12:31:47.078Z level=INFO run=94b22a41 message=evaluated permission=edit pattern=handler.go action.permission=edit action.action=allow action.pattern=*
+timestamp=2026-06-21T12:31:47.078Z level=INFO run=94b22a41 message=formatting file=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96/handler.go
+timestamp=2026-06-21T12:31:47.078Z level=INFO run=94b22a41 message="touching file" file=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96/handler.go
+timestamp=2026-06-21T12:31:47.165Z level=INFO run=94b22a41 message=tracking hash=c75424d75319baea10d9460cd9fc54f94cafe162 cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:31:47.224Z level=INFO run=94b22a41 message=loop session.id=ses_115d69059ffepYpzQ2TcD57L0o step=8
+timestamp=2026-06-21T12:31:47.269Z level=INFO run=94b22a41 message=tracking hash=c75424d75319baea10d9460cd9fc54f94cafe162 cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:31:47.272Z level=INFO run=94b22a41 message=process session.id=ses_115d69059ffepYpzQ2TcD57L0o messageID=msg_eea2a6419001r42uKx43eV2Vh7
+timestamp=2026-06-21T12:31:47.272Z level=INFO run=94b22a41 message=stream providerID=openrouter modelID=z-ai/glm-5.2 session.id=ses_115d69059ffepYpzQ2TcD57L0o small=false agent=build mode=primary
+timestamp=2026-06-21T12:31:47.273Z level=INFO run=94b22a41 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.2
+timestamp=2026-06-21T12:31:53.531Z level=INFO run=94b22a41 message=evaluated permission=edit pattern=main.go action.permission=edit action.action=allow action.pattern=*
+timestamp=2026-06-21T12:31:53.531Z level=INFO run=94b22a41 message=formatting file=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96/main.go
+timestamp=2026-06-21T12:31:53.532Z level=INFO run=94b22a41 message="touching file" file=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96/main.go
+timestamp=2026-06-21T12:31:53.677Z level=INFO run=94b22a41 message=tracking hash=97a59b846483fb1efa8cdd9451ff298019c86dab cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:31:53.795Z level=INFO run=94b22a41 message=loop session.id=ses_115d69059ffepYpzQ2TcD57L0o step=9
+timestamp=2026-06-21T12:31:53.863Z level=INFO run=94b22a41 message=tracking hash=97a59b846483fb1efa8cdd9451ff298019c86dab cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:31:53.865Z level=INFO run=94b22a41 message=process session.id=ses_115d69059ffepYpzQ2TcD57L0o messageID=msg_eea2a7dc3001UXGgwfiPpDAK5z
+timestamp=2026-06-21T12:31:53.866Z level=INFO run=94b22a41 message=stream providerID=openrouter modelID=z-ai/glm-5.2 session.id=ses_115d69059ffepYpzQ2TcD57L0o small=false agent=build mode=primary
+timestamp=2026-06-21T12:31:53.866Z level=INFO run=94b22a41 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.2
+timestamp=2026-06-21T12:32:50.750Z level=INFO run=94b22a41 message=evaluated permission=edit pattern=api_test.go action.permission=edit action.action=allow action.pattern=*
+timestamp=2026-06-21T12:32:50.751Z level=INFO run=94b22a41 message=formatting file=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96/api_test.go
+timestamp=2026-06-21T12:32:50.751Z level=INFO run=94b22a41 message="touching file" file=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96/api_test.go
+timestamp=2026-06-21T12:32:50.889Z level=INFO run=94b22a41 message=tracking hash=9f6249f6f48d94bbff5496be523b024f641bf14b cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:32:50.967Z level=INFO run=94b22a41 message=loop session.id=ses_115d69059ffepYpzQ2TcD57L0o step=10
+timestamp=2026-06-21T12:32:51.030Z level=INFO run=94b22a41 message=tracking hash=9f6249f6f48d94bbff5496be523b024f641bf14b cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:32:51.032Z level=INFO run=94b22a41 message=process session.id=ses_115d69059ffepYpzQ2TcD57L0o messageID=msg_eea2b5d18001vgGfMO5DV4zz56
+timestamp=2026-06-21T12:32:51.033Z level=INFO run=94b22a41 message=stream providerID=openrouter modelID=z-ai/glm-5.2 session.id=ses_115d69059ffepYpzQ2TcD57L0o small=false agent=build mode=primary
+timestamp=2026-06-21T12:32:51.033Z level=INFO run=94b22a41 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.2
+timestamp=2026-06-21T12:32:54.553Z level=INFO run=94b22a41 message=evaluated permission=edit pattern=api_test.go action.permission=edit action.action=allow action.pattern=*
+timestamp=2026-06-21T12:32:54.553Z level=INFO run=94b22a41 message=formatting file=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96/api_test.go
+timestamp=2026-06-21T12:32:54.554Z level=INFO run=94b22a41 message="touching file" file=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96/api_test.go
+timestamp=2026-06-21T12:32:54.668Z level=INFO run=94b22a41 message=tracking hash=526089273f822643912f8f5e737e67bf7069ee44 cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:32:54.729Z level=INFO run=94b22a41 message=loop session.id=ses_115d69059ffepYpzQ2TcD57L0o step=11
+timestamp=2026-06-21T12:32:54.778Z level=INFO run=94b22a41 message=tracking hash=526089273f822643912f8f5e737e67bf7069ee44 cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:32:54.781Z level=INFO run=94b22a41 message=process session.id=ses_115d69059ffepYpzQ2TcD57L0o messageID=msg_eea2b6bca001b315dT3DDLWxDV
+timestamp=2026-06-21T12:32:54.781Z level=INFO run=94b22a41 message=stream providerID=openrouter modelID=z-ai/glm-5.2 session.id=ses_115d69059ffepYpzQ2TcD57L0o small=false agent=build mode=primary
+timestamp=2026-06-21T12:32:54.781Z level=INFO run=94b22a41 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.2
+timestamp=2026-06-21T12:32:58.794Z level=INFO run=94b22a41 message=evaluated permission=edit pattern=api_test.go action.permission=edit action.action=allow action.pattern=*
+timestamp=2026-06-21T12:32:58.794Z level=INFO run=94b22a41 message=formatting file=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96/api_test.go
+timestamp=2026-06-21T12:32:58.797Z level=INFO run=94b22a41 message="touching file" file=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96/api_test.go
+timestamp=2026-06-21T12:32:58.946Z level=INFO run=94b22a41 message=tracking hash=3e9e4470991dc4fb2de888ead9630afc9d9d23b4 cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:32:59.027Z level=INFO run=94b22a41 message=loop session.id=ses_115d69059ffepYpzQ2TcD57L0o step=12
+timestamp=2026-06-21T12:32:59.084Z level=INFO run=94b22a41 message=tracking hash=3e9e4470991dc4fb2de888ead9630afc9d9d23b4 cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:32:59.086Z level=INFO run=94b22a41 message=process session.id=ses_115d69059ffepYpzQ2TcD57L0o messageID=msg_eea2b7c93001YjgA657cZZWT6y
+timestamp=2026-06-21T12:32:59.086Z level=INFO run=94b22a41 message=stream providerID=openrouter modelID=z-ai/glm-5.2 session.id=ses_115d69059ffepYpzQ2TcD57L0o small=false agent=build mode=primary
+timestamp=2026-06-21T12:32:59.086Z level=INFO run=94b22a41 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.2
+timestamp=2026-06-21T12:33:20.618Z level=INFO run=94b22a41 message=evaluated permission=edit pattern=README.md action.permission=edit action.action=allow action.pattern=*
+timestamp=2026-06-21T12:33:20.618Z level=INFO run=94b22a41 message=formatting file=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96/README.md
+timestamp=2026-06-21T12:33:20.619Z level=INFO run=94b22a41 message="touching file" file=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96/README.md
+timestamp=2026-06-21T12:33:20.745Z level=INFO run=94b22a41 message=tracking hash=961640b3256847a5aee79738a69f64aab6fef4e9 cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:33:20.812Z level=INFO run=94b22a41 message=loop session.id=ses_115d69059ffepYpzQ2TcD57L0o step=13
+timestamp=2026-06-21T12:33:20.868Z level=INFO run=94b22a41 message=tracking hash=961640b3256847a5aee79738a69f64aab6fef4e9 cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:33:20.871Z level=INFO run=94b22a41 message=process session.id=ses_115d69059ffepYpzQ2TcD57L0o messageID=msg_eea2bd1ad001HRtTQZa8uEAB6J
+timestamp=2026-06-21T12:33:20.871Z level=INFO run=94b22a41 message=stream providerID=openrouter modelID=z-ai/glm-5.2 session.id=ses_115d69059ffepYpzQ2TcD57L0o small=false agent=build mode=primary
+timestamp=2026-06-21T12:33:20.871Z level=INFO run=94b22a41 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.2
+timestamp=2026-06-21T12:33:25.690Z level=INFO run=94b22a41 message=evaluated permission=bash pattern="go mod tidy 2>&1" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-06-21T12:33:25.690Z level=INFO run=94b22a41 message=evaluated permission=bash pattern="tail -40" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-06-21T12:33:25.944Z level=INFO run=94b22a41 message=tracking hash=298c3dca94f1097f91b2583eb7c6c9dae6a9eff3 cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:33:26.016Z level=INFO run=94b22a41 message=loop session.id=ses_115d69059ffepYpzQ2TcD57L0o step=14
+timestamp=2026-06-21T12:33:26.069Z level=INFO run=94b22a41 message=tracking hash=298c3dca94f1097f91b2583eb7c6c9dae6a9eff3 cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:33:26.071Z level=INFO run=94b22a41 message=process session.id=ses_115d69059ffepYpzQ2TcD57L0o messageID=msg_eea2be601001mT1Wb4bguuZN5l
+timestamp=2026-06-21T12:33:26.071Z level=INFO run=94b22a41 message=stream providerID=openrouter modelID=z-ai/glm-5.2 session.id=ses_115d69059ffepYpzQ2TcD57L0o small=false agent=build mode=primary
+timestamp=2026-06-21T12:33:26.071Z level=INFO run=94b22a41 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.2
+timestamp=2026-06-21T12:33:31.075Z level=INFO run=94b22a41 message=evaluated permission=bash pattern="go build ./... 2>&1" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-06-21T12:33:32.478Z level=INFO run=94b22a41 message=tracking hash=298c3dca94f1097f91b2583eb7c6c9dae6a9eff3 cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:33:32.568Z level=INFO run=94b22a41 message=loop session.id=ses_115d69059ffepYpzQ2TcD57L0o step=15
+timestamp=2026-06-21T12:33:32.651Z level=INFO run=94b22a41 message=tracking hash=298c3dca94f1097f91b2583eb7c6c9dae6a9eff3 cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:33:32.656Z level=INFO run=94b22a41 message=process session.id=ses_115d69059ffepYpzQ2TcD57L0o messageID=msg_eea2bff98001h6vmRuywHms3sZ
+timestamp=2026-06-21T12:33:32.656Z level=INFO run=94b22a41 message=stream providerID=openrouter modelID=z-ai/glm-5.2 session.id=ses_115d69059ffepYpzQ2TcD57L0o small=false agent=build mode=primary
+timestamp=2026-06-21T12:33:32.657Z level=INFO run=94b22a41 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.2
+timestamp=2026-06-21T12:33:36.059Z level=INFO run=94b22a41 message=evaluated permission=bash pattern="go test ./... 2>&1" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-06-21T12:33:36.059Z level=INFO run=94b22a41 message=evaluated permission=bash pattern="tail -40" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-06-21T12:33:37.093Z level=INFO run=94b22a41 message=tracking hash=298c3dca94f1097f91b2583eb7c6c9dae6a9eff3 cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:33:37.158Z level=INFO run=94b22a41 message=loop session.id=ses_115d69059ffepYpzQ2TcD57L0o step=16
+timestamp=2026-06-21T12:33:37.219Z level=INFO run=94b22a41 message=tracking hash=298c3dca94f1097f91b2583eb7c6c9dae6a9eff3 cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:33:37.221Z level=INFO run=94b22a41 message=process session.id=ses_115d69059ffepYpzQ2TcD57L0o messageID=msg_eea2c1187001PBUxHPERXc1x8J
+timestamp=2026-06-21T12:33:37.222Z level=INFO run=94b22a41 message=stream providerID=openrouter modelID=z-ai/glm-5.2 session.id=ses_115d69059ffepYpzQ2TcD57L0o small=false agent=build mode=primary
+timestamp=2026-06-21T12:33:37.222Z level=INFO run=94b22a41 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.2
+timestamp=2026-06-21T12:33:41.978Z level=INFO run=94b22a41 message=evaluated permission=bash pattern="go vet ./... 2>&1" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-06-21T12:33:42.251Z level=INFO run=94b22a41 message=tracking hash=298c3dca94f1097f91b2583eb7c6c9dae6a9eff3 cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:33:42.340Z level=INFO run=94b22a41 message=loop session.id=ses_115d69059ffepYpzQ2TcD57L0o step=17
+timestamp=2026-06-21T12:33:42.429Z level=INFO run=94b22a41 message=tracking hash=298c3dca94f1097f91b2583eb7c6c9dae6a9eff3 cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:33:42.432Z level=INFO run=94b22a41 message=process session.id=ses_115d69059ffepYpzQ2TcD57L0o messageID=msg_eea2c25c50016dmvDecAh2bA89
+timestamp=2026-06-21T12:33:42.433Z level=INFO run=94b22a41 message=stream providerID=openrouter modelID=z-ai/glm-5.2 session.id=ses_115d69059ffepYpzQ2TcD57L0o small=false agent=build mode=primary
+timestamp=2026-06-21T12:33:42.433Z level=INFO run=94b22a41 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.2
+timestamp=2026-06-21T12:33:51.261Z level=INFO run=94b22a41 message=tracking hash=298c3dca94f1097f91b2583eb7c6c9dae6a9eff3 cwd=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96 git=/Users/maui/.local/share/opencode/snapshot/global/741bef99b08421320a978eccbef6982107fb49f9
+timestamp=2026-06-21T12:33:51.338Z level=INFO run=94b22a41 message=loop session.id=ses_115d69059ffepYpzQ2TcD57L0o step=18
+timestamp=2026-06-21T12:33:51.339Z level=INFO run=94b22a41 message="exiting loop" session.id=ses_115d69059ffepYpzQ2TcD57L0o
+timestamp=2026-06-21T12:33:51.344Z level=INFO run=94b22a41 message="disposing instance" directory=/private/var/folders/t6/p1v727892_qc9xqqdzq2rpym0000gn/T/retort-local-z0i76flh/retort-581b9182ea96

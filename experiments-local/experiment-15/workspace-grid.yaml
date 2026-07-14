@@ -1,0 +1,65 @@
+# experiment-15 — open-weight models via OpenRouter (FULL GRID)
+#
+# Follows the pilot (see results.md). Roster = the pilot's 4 open-weight survivors
+# + opus-4.8 baseline; owl-alpha, mimo-v2.5 (genuine fails) and nemotron (its
+# :free fail was GENUINE capability, so a paid retry would fail the same) dropped.
+#
+# Mixed replication (baseline is just an anchor → 1 rep; open-weight → 3 reps).
+# retort's --replicates is uniform per run, so this runs as TWO passes over ONE
+# matrix (same config name): pass 1 = 1 rep of all 25 cells (design-grid.csv,
+# open-weight at rows 0-19, opus at 20-24); pass 2 = reps 2-3 of the 20 open-weight
+# cells (design-openweight.csv = rows 0-19, identical order) with --resume skipping
+# the rep-1s. Total 25 + 40 = 65 runs. Run from a checkout WITH the omp summing fix;
+# authoritative cost comes from the validator's /generation reconcile.
+#
+# LAUNCH (sharded; one auth for the whole grid):
+#   export OPENROUTER_API_KEY="$(op read 'op://Private/OpenRouter - Initial Retort Key/credential')"
+#   for i in 1 2 3 4; do retort run --phase screening --config experiment-15/workspace-grid.yaml \
+#       --design experiment-15/design-grid.csv       --replicates 1 --shard $i/4 --resume & done; wait
+#   for i in 1 2 3 4; do retort run --phase screening --config experiment-15/workspace-grid.yaml \
+#       --design experiment-15/design-openweight.csv --replicates 3 --shard $i/4 --resume & done; wait
+#   python ../retort-validator/validate_openrouter_spend.py --db experiment-15/retort.db
+
+experiment:
+  name: exp15-openweight-grid
+  visibility: private
+
+factors:
+  language:
+    levels: [python, go, typescript, rust, java]
+  model:
+    levels:
+      - "openrouter/moonshotai/kimi-k2.7-code"
+      - "openrouter/minimax/minimax-m3"
+      - "openrouter/deepseek/deepseek-v3.2"
+      - "openrouter/qwen/qwen3.7-plus"
+      - "openrouter/anthropic/claude-opus-4.8"   # baseline (1 rep)
+      - "openrouter/z-ai/glm-5.1"                # added later (3 reps)
+      - "openrouter/tencent/hy3-preview"         # added later (3 reps)
+
+responses:
+  - code_quality
+  - test_coverage
+  - defect_rate
+  - build_time
+  - maintainability
+  - token_efficiency
+
+tasks:
+  - source: bundled://rest-api-crud
+
+playpen:
+  runner: local
+  replicates: 3
+  timeout_minutes: 30
+  max_turns: 60
+  local_agents:
+    omp:
+      harness: omp
+
+design:
+  screening_resolution: 3
+  significance_threshold: 0.10
+
+evaluation:
+  enabled: false

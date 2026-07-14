@@ -1,0 +1,33 @@
+# Brazilian Soccer MCP Server
+#
+# This project implements a Model Context Protocol (MCP) server backed by the
+# freely available Kaggle datasets listed in README.md. It exposes a small set
+# of read-only tools that answer natural language questions about Brazilian
+# football matches, teams, players and competitions.
+#
+# Targets Python 3.10+. The production server has a single external dependency
+# on the official MCP Python SDK. The data layer uses only the standard library
+# so loading remains lightweight and dependency-free.
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "brazilian-soccer-mcp"
+version = "1.0.0"
+description = "MCP server for Brazilian soccer data"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

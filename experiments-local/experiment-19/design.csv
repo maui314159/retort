@@ -1,0 +1,4 @@
+run,language,model,agent,tooling
+0,python,claude-sonnet-4-6,omp,none
+1,typescript,claude-sonnet-4-6,omp,none
+2,csharp,claude-sonnet-4-6,omp,none

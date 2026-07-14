@@ -1,0 +1,33 @@
+{
+  "name": "brazilian-soccer-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server providing a knowledge graph interface for Brazilian soccer data",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "brazilian-soccer-mcp-server": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.config.cjs",
+    "start": "node dist/index.js"
+  },
+  "keywords": [
+    "mcp",
+    "soccer",
+    "brazilian-soccer",
+    "mcp-server"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "csv-parse": "^5.6.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.10.5",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.5",
+    "typescript": "^5.7.3"
+  }
+}

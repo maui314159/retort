@@ -1,0 +1,64 @@
+# experiment-opencode-brazil — opencode harness on the HARD task (brazil-bench).
+#
+# Harness-dimension comparison, discriminating run. Holds model (glm-5.2) + task
+# (brazil-bench) + languages constant against exp-17's omp glm-5.2 cells, swapping
+# only the agent: omp -> opencode. The easy task (rest-api-crud, exp-opencode-easy-
+# final) was saturated — both harnesses 15/15 — so it could not separate them.
+# brazil-bench is the discriminating task: exp-17 omp glm-5.2 scored python 2/3,
+# typescript 2/3, csharp 0/3 (4/9). This run asks whether opencode moves that.
+#
+# omp baseline for the head-to-head (exp-17, design-glm52.csv rows 15-17):
+#   python  glm-5.2 omp 2/3
+#   typescript glm-5.2 omp 2/3
+#   csharp  glm-5.2 omp 0/3
+#
+# Run from the ../retort-brazil worktree (PYTHONPATH): integ opencode harness
+# (OPENCODE_DB isolation + external_directory permissions + --print-logs + log
+# capture) + inferred/transitive dep install + firmrun's C#/ts-node scorers, so
+# scoring matches the omp baseline exactly and the only changed factor is the agent.
+
+experiment:
+  name: exp-opencode-brazil-glm52
+  visibility: private
+
+factors:
+  language:
+    levels: [python, typescript, csharp]
+  agent:
+    levels: [omp, opencode]
+  model:
+    # Two levels satisfy the design-framework minimum; only glm-5.2 appears in
+    # design-opencode.csv, so opus-4.8 is declared-but-unused (same pattern as the
+    # easy-final workspace). The actual cells are driven entirely by --design.
+    levels:
+      - "openrouter/z-ai/glm-5.2"
+      - "openrouter/anthropic/claude-opus-4.8"
+
+responses:
+  - code_quality
+  - test_coverage
+  - defect_rate
+  - build_time
+  - maintainability
+  - token_efficiency
+
+tasks:
+  - source: github://brazil-bench/benchmark-template/brazilian-soccer-mcp-guide.md
+
+playpen:
+  runner: local
+  replicates: 3
+  timeout_minutes: 40
+  max_turns: 100
+  local_agents:
+    omp:
+      harness: omp
+    opencode:
+      harness: opencode
+
+design:
+  screening_resolution: 3
+  significance_threshold: 0.10
+
+evaluation:
+  enabled: false

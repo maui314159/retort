@@ -1,0 +1,26 @@
+{
+  "name": "brazilian-soccer-mcp",
+  "version": "0.1.0",
+  "description": "MCP server exposing Brazilian soccer match, team, player, competition and statistics queries over the supplied Kaggle CSV datasets.",
+  "type": "module",
+  "bin": {
+    "brazilian-soccer-mcp": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "test": "cucumber-js --config cucumber.mjs",
+    "test:unit": "cucumber-js --config cucumber.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.13.2",
+    "csv-parse": "^5.6.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@cucumber/cucumber": "^11.3.0",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.2"
+  }
+}

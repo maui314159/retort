@@ -1,0 +1,11 @@
+run,language,model,agent,tooling
+0,python,openrouter/z-ai/glm-5.1,omp,none
+1,go,openrouter/z-ai/glm-5.1,omp,none
+2,typescript,openrouter/z-ai/glm-5.1,omp,none
+3,rust,openrouter/z-ai/glm-5.1,omp,none
+4,java,openrouter/z-ai/glm-5.1,omp,none
+5,python,openrouter/tencent/hy3-preview,omp,none
+6,go,openrouter/tencent/hy3-preview,omp,none
+7,typescript,openrouter/tencent/hy3-preview,omp,none
+8,rust,openrouter/tencent/hy3-preview,omp,none
+9,java,openrouter/tencent/hy3-preview,omp,none

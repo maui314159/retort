@@ -1,0 +1,77 @@
+# experiment-15 — open-weight models via OpenRouter (PILOT)
+#
+# Capability pilot: do the 8 OpenRouter models each drive the omp harness to a
+# built-and-tested project? Python-only, 1 replicate, easy task. The grid is an
+# explicit 8-row matrix (design-pilot.csv) run via `--design`, NOT the fractional
+# generator — so the single-level language/agent/tooling factors are fine.
+#
+# Routing: `agent=omp` (constant) sends every cell through the omp harness, and
+# the `model` column (an openrouter/<provider>/<id> slug) is passed to `omp
+# --model`. The omp provider `openrouter` is defined in ~/.omp/agent/models.yml
+# (key resolved once per grid from 1Password — see PILOT.md "Auth model").
+#
+# LAUNCH (the only billed step — ~$1–2):
+#   export OPENROUTER_API_KEY="$(op read 'op://Private/OpenRouter - Initial Retort Key/credential')"
+#   retort run --phase screening \
+#     --config experiment-15/workspace.yaml \
+#     --design experiment-15/design-pilot.csv \
+#     --replicates 1
+#   retort monitor experiment-15        # live progress in another shell
+
+experiment:
+  name: exp15-openweight-pilot
+  visibility: private          # artifacts stay local until we choose to publish
+
+# Declared for the registry (≥2 levels per factor, ≥2 factors). The actual cells
+# come from design-pilot.csv (--design), so these levels don't drive generation —
+# `language` lists the real full-grid set even though the pilot CSV runs python only.
+# `agent` (omp) and `tooling` (none) are constant for this whole experiment, so
+# they live as CSV-only columns (the registry rejects single-level factors); they
+# still flow into each run via StackConfig, just aren't recorded as matrix cells.
+factors:
+  language:
+    levels: [python, go, typescript, rust, java]
+  model:
+    levels:
+      - "openrouter/moonshotai/kimi-k2.7-code"
+      - "openrouter/minimax/minimax-m3"
+      - "openrouter/xiaomi/mimo-v2.5"
+      - "openrouter/deepseek/deepseek-v3.2"
+      - "openrouter/qwen/qwen3.7-plus"
+      - "openrouter/nvidia/nemotron-3-ultra-550b-a55b:free"
+      - "openrouter/openrouter/owl-alpha"
+      - "openrouter/anthropic/claude-opus-4.8"   # baseline
+
+responses:
+  - code_quality
+  - test_coverage
+  - defect_rate
+  - build_time
+  - maintainability
+  - token_efficiency
+
+tasks:
+  - source: bundled://rest-api-crud
+
+playpen:
+  runner: local
+  replicates: 1                # pilot: one rep per model (override with --replicates)
+  timeout_minutes: 30          # open-weight models are often slower/less efficient
+  max_turns: 60                # headroom for a less token-efficient model to finish
+  # cost_limit_usd: 10.0       # NOTE: not yet enforced by `retort run` (scheduler-only)
+
+  # `run` only accepts agent = claude-code or a declared local_agents profile.
+  # Declare `omp` (harness only — the per-cell model comes from the CSV `model`
+  # column, so one profile serves all 8 OpenRouter models).
+  local_agents:
+    omp:
+      harness: omp
+
+design:
+  screening_resolution: 3      # unused under --design; kept for schema completeness
+  significance_threshold: 0.10
+
+# Skip the per-run evaluate-run skill for the pilot (it shells out to claude).
+# The spec gate / requirement_coverage is applied later via `retort reevaluate`.
+evaluation:
+  enabled: false

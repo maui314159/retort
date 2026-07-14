@@ -1,0 +1,12 @@
+Re-scoring 10 run(s) in experiment-15 (metrics=code_quality,test_coverage,defect_rate,build_time,maintainability,token_efficiency, 4 workers)
+  deepseek-v3.2_tooling=none/rep1: code_quality=0.00 test_coverage=0.00 defect_rate=0.00 maintainability=0.00 token_efficiency=0.00 -> failed still-fails-gate
+  deepseek-v3.2_tooling=none/rep1: code_quality=0.00 test_coverage=0.00 defect_rate=0.00 maintainability=0.00 token_efficiency=0.00 -> failed still-fails-gate
+  minimax-m3_tooling=none/rep1: code_quality=0.00 test_coverage=0.00 defect_rate=0.00 maintainability=0.00 token_efficiency=0.00 -> failed still-fails-gate
+  qwen3.7-plus_tooling=none/rep1: code_quality=0.00 test_coverage=0.00 defect_rate=0.00 maintainability=0.00 token_efficiency=0.00 -> failed still-fails-gate
+  minimax-m3_tooling=none/rep2: code_quality=0.00 test_coverage=0.00 defect_rate=0.00 maintainability=0.00 token_efficiency=0.00 -> failed still-fails-gate
+  claude-opus-4.8_tooling=none/rep1: code_quality=0.83 test_coverage=0.99 defect_rate=0.73 maintainability=0.94 token_efficiency=0.50 -> completed RECOVERED
+  claude-opus-4.8_tooling=none/rep1: code_quality=0.00 test_coverage=0.00 defect_rate=0.00 maintainability=0.00 token_efficiency=0.00 -> failed still-fails-gate
+  deepseek-v3.2_tooling=none/rep2: code_quality=0.00 test_coverage=0.00 defect_rate=0.00 maintainability=0.00 token_efficiency=0.00 -> failed still-fails-gate
+  deepseek-v3.2_tooling=none/rep2: code_quality=0.00 test_coverage=0.00 defect_rate=0.00 maintainability=0.00 token_efficiency=0.00 -> failed still-fails-gate
+  deepseek-v3.2_tooling=none/rep3: code_quality=0.00 test_coverage=0.00 defect_rate=0.00 maintainability=0.00 token_efficiency=0.00 -> failed still-fails-gate
+Re-scored 10 run(s); 1 now completed. Run `retort reevaluate` then `retort aggregate` to refresh.

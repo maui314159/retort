@@ -1,0 +1,15 @@
+<Project>
+  <PropertyGroup>
+    <EnableSourceLink>false</EnableSourceLink>
+    <PublishRepositoryUrl>false</PublishRepositoryUrl>
+    <EmbedUntrackedSources>false</EmbedUntrackedSources>
+    <DeterministicSourcePaths>false</DeterministicSourcePaths>
+    <UseSourceLink>false</UseSourceLink>
+    <SourceLinkEnabled>false</SourceLinkEnabled>
+    <ContinuousIntegrationBuild>false</ContinuousIntegrationBuild>
+    <GitRepositoryConfigurationScope>local</GitRepositoryConfigurationScope>
+  </PropertyGroup>
+  <ItemGroup>
+    <SourceRoot Include="$(MSBuildThisFileDirectory)/" />
+  </ItemGroup>
+</Project>

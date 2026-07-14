@@ -1,0 +1,61 @@
+
+OpenRouter spend reconciliation — experiment-17/retort.db
+credits: total_usage=$330.235134809 of 333
+
+PER RUN (billed = sum /generation over the run's generation ids)
+  run model                                    st   ids      omp$  sumturns$   billed$  Δ omp% up
+    1 qwen/qwen3.7-plus                        fail  60   0.39096    0.39096   0.39096    +0.0 Alibaba
+    2 anthropic/claude-opus-4.8                comp  77   7.69027    7.69027   7.69027    +0.0 Anthropic
+    3 moonshotai/kimi-k2.7-code                comp  47   2.13307    2.13307   2.40389   -11.3 ⚠ !1miss Ambient,Parasail,Moonshot AI
+    4 anthropic/claude-opus-4.8                comp  99   9.81750    9.81750   9.81750    +0.0 Anthropic
+    5 z-ai/glm-5.1                             fail  12   0.59091    0.59091   0.59091    +0.0 !1miss Baidu,Z.AI
+    6 z-ai/glm-5.1                             fail  66   1.03476    1.03476   1.03476    +0.0 Baidu
+    7 deepseek/deepseek-v4-pro                 fail  65   0.63595    0.63595   1.95829   -67.5 ⚠ StreamLake,GMICloud
+    8 qwen/qwen3.7-plus                        comp  37   0.22282    0.22282   0.22282    +0.0 !1miss Alibaba
+    9 moonshotai/kimi-k2.7-code                fail   0   0.00000    0.00000   0.00000       — 
+   10 anthropic/claude-opus-4.8                comp  83   7.96795    7.96795   7.96795    +0.0 Anthropic
+   11 qwen/qwen3.7-plus                        fail  52   0.30624    0.30624   0.30624    +0.0 Alibaba
+   12 qwen/qwen3.7-plus                        fail  93   0.68600    0.68600   0.68600    +0.0 Alibaba
+   13 deepseek/deepseek-v4-pro                 fail  40   0.59235    0.59235   1.79973   -67.1 ⚠ StreamLake,GMICloud
+   14 anthropic/claude-opus-4.8                comp  73   7.37678    7.37678   7.37678    +0.0 Anthropic
+   15 z-ai/glm-5.1                             fail  14   0.57201    0.57201   0.57201    +0.0 !1miss Baidu,Z.AI
+   16 z-ai/glm-5.1                             comp  10   0.35184    0.35184   0.35184    +0.0 !1miss Baidu,Novita
+   17 anthropic/claude-opus-4.8                comp  70   6.69188    6.69188   6.69188    +0.0 Anthropic
+   18 moonshotai/kimi-k2.7-code                fail  21   0.37413    0.37413   0.37413    +0.0 Ambient
+   19 z-ai/glm-5.1                             fail  41   0.55785    0.55785   0.57004    -2.1 Baidu,AtlasCloud
+   20 qwen/qwen3.7-plus                        fail   5   0.02349    0.02349   0.03966   -40.8 ⚠ Alibaba
+   21 anthropic/claude-opus-4.8                fail  74   8.22178    8.22178   8.32579    -1.2 Anthropic
+   22 moonshotai/kimi-k2.7-code                fail  40   1.48174    1.48174   1.73102   -14.4 ⚠ Ambient,Moonshot AI
+   23 z-ai/glm-5.1                             fail  12   0.43028    0.43028   0.43028    +0.0 !1miss Baidu,Novita
+   24 deepseek/deepseek-v4-pro                 fail  64   0.60861    0.60861   2.14036   -71.6 ⚠ StreamLake,GMICloud
+   25 deepseek/deepseek-v4-pro                 fail  22   0.12349    0.12349   0.31828   -61.2 ⚠ StreamLake
+   26 qwen/qwen3.7-plus                        fail  46   0.24749    0.24749   0.24749    +0.0 !1miss Alibaba
+   27 moonshotai/kimi-k2.7-code                fail  10   0.12886    0.12886   0.12886    +0.0 Ambient
+   28 z-ai/glm-5.1                             comp  44   0.58540    0.58540   0.58540    +0.0 Baidu
+   29 deepseek/deepseek-v4-pro                 fail  38   0.16720    0.16720   0.46330   -63.9 ⚠ StreamLake
+   30 z-ai/glm-5.1                             comp  65   1.13002    1.13002   1.13002    -0.0 Baidu
+   31 qwen/qwen3.7-plus                        comp  82   0.55940    0.55940   0.55940    +0.0 Alibaba
+   32 moonshotai/kimi-k2.7-code                fail  93   1.69751    1.69751   1.77193    -4.2 Ambient,Moonshot AI
+   33 anthropic/claude-opus-4.8                comp  92   8.93768    8.93768   8.93768    +0.0 !1miss Anthropic
+   34 qwen/qwen3.7-plus                        comp  22   0.15374    0.15374   0.15374    +0.0 Alibaba
+   35 z-ai/glm-5.1                             fail  43   0.57777    0.57777   0.57777    +0.0 Baidu
+   36 deepseek/deepseek-v4-pro                 comp 102   0.43355    0.43355   1.81402   -76.1 ⚠ StreamLake,GMICloud
+   37 moonshotai/kimi-k2.7-code                comp  81   3.70542    3.70542   4.33954   -14.6 ⚠ Ambient,Parasail,Moonshot AI,Novita
+   38 deepseek/deepseek-v4-pro                 fail  84   1.50541    1.50541   4.11497   -63.4 ⚠ StreamLake
+   39 moonshotai/kimi-k2.7-code                fail  52   2.38400    2.38400   2.76615   -13.8 ⚠ Ambient,Moonshot AI
+   40 anthropic/claude-opus-4.8                fail 117  11.71658   11.71658  11.71658    +0.0 Anthropic
+   41 anthropic/claude-opus-4.8                comp 133  13.97826   13.97826  13.97826    +0.0 Anthropic
+   42 deepseek/deepseek-v4-pro                 fail  62   1.67804    1.67804   5.50917   -69.5 ⚠ StreamLake,GMICloud
+   43 moonshotai/kimi-k2.7-code                fail   0   0.00000    0.00000   0.00000       — 
+   44 deepseek/deepseek-v4-pro                 fail  51   1.23870    1.23870   3.84574   -67.8 ⚠ StreamLake,GMICloud
+   45 qwen/qwen3.7-plus                        fail  89   0.57181    0.57181   0.57181    +0.0 Alibaba
+
+PER MODEL
+  model                                    runs      omp$   billed$   activity$  Δ omp%
+  anthropic/claude-opus-4.8                   9  82.39867  82.50269     0.00000    -0.1
+  deepseek/deepseek-v4-pro                    9   6.98329  21.96386     0.00000   -68.2 ⚠
+  moonshotai/kimi-k2.7-code                   9  11.90474  13.51551     0.00000   -11.9 ⚠
+  qwen/qwen3.7-plus                           9   3.16195   3.17812     0.00000    -0.5
+  z-ai/glm-5.1                                9   5.83083   5.84303     0.00000    -0.2
+  TOTAL                                         110.27947 127.00321     0.00000   -13.2
+

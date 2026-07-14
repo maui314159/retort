@@ -1,0 +1,159 @@
+Metadata-Version: 2.4
+Name: brazil-soccer-mcp
+Version: 1.0.0
+Summary: MCP server providing a knowledge-graph interface over Brazilian soccer datasets
+License: Apache-2.0
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: mcp>=1.0
+Requires-Dist: pandas>=2.0
+Provides-Extra: test
+Requires-Dist: pytest>=8.0; extra == "test"
+Requires-Dist: pytest-bdd>=8.0; extra == "test"
+
+# Brazilian Soccer MCP Server
+
+An [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server that
+exposes a knowledge-graph interface over Brazilian soccer datasets. It answers
+natural-language style questions about matches, teams, players, competitions
+and aggregated statistics, and is meant to be connected to an LLM client.
+
+Specification: [`brazilian-soccer-mcp-guide.md`](brazilian-soccer-mcp-guide.md)
+(identical to `TASK.md`).
+
+## What was built
+
+A pure-Python package, `brazil_soccer_mcp`, with an **in-memory knowledge
+graph** built from the six provided CSVs at startup. No external database is
+required — the graph loads in ~1.6s and every query then runs in single-digit
+milliseconds, well inside the spec's targets (simple < 2s, aggregate < 5s).
+
+```
+brazil_soccer_mcp/
+  normalize.py    Team-name / date / competition normalization
+  loaders.py      CSV -> normalized Match / Player records (UTF-8)
+  graph.py        In-memory knowledge graph + query engine
+  formatting.py   Human-readable response rendering
+  server.py       FastMCP server exposing 15 query tools (stdio)
+tests/
+  features/*.feature   Gherkin BDD scenarios (Given/When/Then)
+  test_*.py            pytest-bdd step definitions + unit tests
+```
+
+### Data model
+
+- **Match**: competition, season, date, home/away team, score, plus per-source
+  extras (round, stage, corners/shots, arena).
+- **Player**: FIFA attributes (overall, potential, position, club, nationality,
+  physicals).
+- Teams, competitions, players and clubs form the graph's nodes; matches and
+  club membership are the edges.
+
+### Handling the messy bits (per the spec's Data Quality Notes)
+
+- **Team name variations.** Names appear as `Palmeiras-SP`, `Palmeiras`,
+  `São Paulo` / `Sao Paulo`, `Nacional (URU)`, `Boavista Sport Club (antigo …) - RJ`.
+  `parse_team` folds accents, strips parenthetical asides and trailing
+  state/country suffixes into a `(base, state)` pair. Because distinct clubs
+  share a base (`Atlético-MG` vs `Atlético-GO`, `América-MG` vs `América-RN`),
+  the graph computes **corpus-aware canonical keys**: a base is keyed as
+  `base|STATE` only when it occurs with more than one state across the data;
+  otherwise the bare base is used, so `Palmeiras-SP` and `Palmeiras` still
+  merge. Query resolution honors a state in the user's input and falls back to
+  base match, curated aliases (`Galo`, `Timão`, `Inter`, …) and substring
+  containment.
+- **Overlapping sources / double counting.** The same season appears in up to
+  three files. For each `(competition, season)` the graph selects a single
+  **primary source** (most rows, ties broken by source priority) and computes
+  all standings, records and aggregates from it. The full match list stays
+  queryable; only aggregation is deduplicated. Validated against ground truth:
+  the 2019 Brasileirão table reproduces Flamengo 90 pts (28W-6D-4L) over 38
+  games exactly.
+- **Date formats.** `normalize_date` parses ISO (`2023-09-24`), datetime
+  (`2012-05-19 18:30:00`) and Brazilian day-first (`29/03/2003`).
+- **Encoding.** All CSVs are read as UTF-8; accents and cedillas are preserved
+  in display names and folded only for matching keys.
+
+## MCP tools
+
+| Category | Tools |
+|----------|-------|
+| Match | `find_matches`, `last_meeting` |
+| Team | `team_record`, `head_to_head`, `best_record` |
+| Player | `search_player`, `players_at_club`, `top_players`, `brazilian_clubs` |
+| Competition | `standings`, `champion`, `list_competitions`, `list_seasons` |
+| Statistics | `league_stats`, `biggest_wins` |
+
+## Usage
+
+```bash
+pip install -e .                 # installs deps + `brazil-soccer-mcp` script
+
+# Run the MCP server over stdio (what an LLM client connects to):
+python -m brazil_soccer_mcp.server
+# or
+brazil-soccer-mcp
+```
+
+The data directory defaults to `data/kaggle/` and can be overridden with the
+`BRAZIL_SOCCER_DATA_DIR` environment variable.
+
+### Example (programmatic)
+
+```python
+from brazil_soccer_mcp import build_graph
+g = build_graph()
+
+g.standings("Brasileirao", 2019)[0]          # (key, TeamRecord) champion
+g.head_to_head("Flamengo", "Fluminense")     # Fla-Flu derby summary
+g.top_players(nationality="Brazil", limit=5) # highest-rated Brazilians
+g.team_stats("Corinthians", 2022, "Brasileirao", home_only=True)
+```
+
+## Testing
+
+BDD (Behavior-Driven Development) with Gherkin feature files and `pytest-bdd`
+step definitions, plus focused unit tests for the normalization layer.
+
+```bash
+pip install -e ".[test]"
+pytest -q
+```
+
+Coverage: match queries, team records & head-to-head, player search/ranking,
+standings against known results, aggregate-statistics plausibility, and
+normalization edge cases (accent folding, day-first dates, same-base-name
+disambiguation).
+
+## Data Sources
+
+Kaggle data can't be downloaded without an account, so these (freely available
+with attribution) datasets have been downloaded for use here:
+
+https://www.kaggle.com/datasets/ricardomattos05/jogos-do-campeonato-brasileiro
+- License: Attribution 4.0 International (CC BY 4.0)
+- data/kaggle/Brasileirao_Matches.csv
+- data/kaggle/Brazilian_Cup_Matches.csv
+- data/kaggle/Libertadores_Matches.csv
+
+https://www.kaggle.com/datasets/cuecacuela/brazilian-football-matches
+- License: CC0: Public Domain
+- data/kaggle/BR-Football-Dataset.csv
+
+https://www.kaggle.com/datasets/macedojleo/campeonato-brasileiro-2003-a-2019
+- License: World Bank - Attribution 4.0 International (CC BY 4.0)
+- data/kaggle/novo_campeonato_brasileiro.csv
+
+https://www.kaggle.com/datasets/youssefelbadry10/fifa-players-data
+- License: Apache 2.0
+- data/kaggle/fifa_data.csv
+
+## Notes
+
+- The FIFA dataset is the FIFA 19 player database. Brazilian Série A clubs were
+  unlicensed in that edition, so players such as Gabriel Barbosa do not appear
+  and club-membership queries for those clubs return empty results — this is a
+  property of the source data, not a bug. Brazilian players at clubs that *were*
+  licensed (e.g. Cruzeiro, Grêmio, Internacional) are present and queryable.
+- Code is licensed Apache-2.0; datasets retain their original licenses above.
+```

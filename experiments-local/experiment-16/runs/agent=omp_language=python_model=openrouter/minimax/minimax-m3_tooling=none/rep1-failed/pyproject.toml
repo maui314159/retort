@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "brazilian-soccer-mcp"
+version = "1.0.0"
+description = "MCP server exposing Brazilian soccer match, team, and player data over the Model Context Protocol."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    {name = "Brazilian Soccer MCP Contributors"},
+]
+license = {text = "MIT"}
+dependencies = [
+    "mcp>=1.0.0",
+    "pandas>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-bdd>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+]
+
+[project.scripts]
+brazilian-soccer-mcp = "server:main"
+
+[tool.setuptools]
+py-modules = ["data_loader", "query_engine", "server"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+asyncio_mode = "auto"
+markers = [
+    "asyncio: mark test as asyncio",
+]

@@ -1,0 +1,6 @@
+target/
+*.db
+books.db
+.idea/
+*.iml
+.vscode/

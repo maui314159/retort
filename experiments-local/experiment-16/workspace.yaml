@@ -1,0 +1,63 @@
+# experiment-16 — brazil-bench (the HARD task) screening, with C# in the mix.
+#
+# Motivation: in experiment-15 the easy rest-api-crud task SATURATED — qwen,
+# kimi, tencent all tied the opus baseline at 100%, so it couldn't rank them.
+# brazil-bench (Brazilian-soccer MCP server from a multi-file guide) is the
+# repo's hard task (exp 2-5); it has headroom. This is a SCREENING pass:
+# 7 models × {python, typescript, csharp} × 1 rep = 21 runs. Expand the
+# languages/reps only where it discriminates.
+#
+# C# is new this session (scorer = PR #25, feat/csharp-scorer). Run from a
+# checkout that has the C# scorer:
+#   PYTHONPATH=../retort-csharp/src retort run --phase screening \
+#     --config experiment-16/workspace.yaml --design experiment-16/design.csv \
+#     --replicates 1 --resume
+# omp's self-reported cost undercounts (no summing fix on that branch); the
+# authoritative cost comes from the validator's /generation reconcile.
+#
+# evaluation.enabled=false: brazil-bench ships no pinned REQUIREMENTS.json here,
+# so we use the mechanical gate (build + tests run) only for screening.
+
+experiment:
+  name: exp16-brazil-screening
+  visibility: private
+
+factors:
+  language:
+    levels: [python, typescript, csharp]
+  model:
+    levels:
+      - "openrouter/moonshotai/kimi-k2.7-code"
+      - "openrouter/minimax/minimax-m3"
+      - "openrouter/deepseek/deepseek-v3.2"
+      - "openrouter/qwen/qwen3.7-plus"
+      - "openrouter/z-ai/glm-5.1"
+      - "openrouter/tencent/hy3-preview"
+      - "openrouter/anthropic/claude-opus-4.8"   # baseline
+
+responses:
+  - code_quality
+  - test_coverage
+  - defect_rate
+  - build_time
+  - maintainability
+  - token_efficiency
+
+tasks:
+  - source: github://brazil-bench/benchmark-template/brazilian-soccer-mcp-guide.md
+
+playpen:
+  runner: local
+  replicates: 1
+  timeout_minutes: 40
+  max_turns: 100
+  local_agents:
+    omp:
+      harness: omp
+
+design:
+  screening_resolution: 3
+  significance_threshold: 0.10
+
+evaluation:
+  enabled: false
