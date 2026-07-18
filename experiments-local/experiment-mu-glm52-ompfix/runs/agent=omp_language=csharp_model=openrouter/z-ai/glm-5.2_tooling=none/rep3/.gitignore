@@ -1,0 +1,16 @@
+# Build output
+bin/
+obj/
+publish/
+
+# IDE
+.vs/
+.idea/
+*.user
+
+# Python smoke driver artifacts
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store

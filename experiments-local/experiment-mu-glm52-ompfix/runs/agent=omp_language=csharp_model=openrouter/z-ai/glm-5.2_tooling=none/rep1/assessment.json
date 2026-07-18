@@ -1,0 +1,39 @@
+{
+  "severity_counts": {
+    "critical": 0,
+    "high": 3,
+    "medium": 0,
+    "low": 0,
+    "info": 0
+  },
+  "penalty_score": 0.7,
+  "top_findings": [
+    {
+      "id": "R9",
+      "kind": "requirement_partial",
+      "severity": "high",
+      "title": "Standings merge Serie A/B/C and triple-count overlapping datasets",
+      "evidence": "Services/SoccerDataService.cs:353 filters with m.Competition.Contains(competition) \u2014 'Brasileirao' substring-matches the labels 'Brasileirao' (Brasileirao_Matches.csv), 'Brasileirao Serie A/B/C' (BR-Football-Dataset.csv) and 'Brasileirao (Historico)' (novo_campeonato_brasileiro.csv) assigned at SoccerDataService.cs:80,155-160,196. Standings('Brasileirao', 2019) therefore aggregates 1712 matches (380+380+378+194+380) instead of the 380 of a real Serie A season, double-counting Serie A 2019 from three sources and mixing in Serie B and Serie C teams.",
+      "suggestion": "Deduplicate overlapping source datasets on (date, home, away) at load time, and match competition exactly (or on a canonical enum) rather than by substring Contains."
+    },
+    {
+      "id": "R6",
+      "kind": "requirement_partial",
+      "severity": "high",
+      "title": "Team W/L/D and goals for/against inflated ~3x by duplicate source datasets",
+      "evidence": "Services/SoccerDataService.cs:318-341 StatsForTeam iterates every loaded match with no dataset deduplication. Serie A seasons 2014-2022 are present in Brasileirao_Matches.csv, BR-Football-Dataset.csv and novo_campeonato_brasileiro.csv simultaneously (verified: Flamengo-Palmeiras 2019 appears twice in each of the three files), so an unscoped GetTeamStats counts each real fixture up to three times. stats.Matches, Wins, Losses, Draws, GoalsFor and GoalsAgainst are all multiples of the true values.",
+      "suggestion": "Deduplicate matches on (date, canonical home key, canonical away key) during EnsureLoaded before any aggregation."
+    },
+    {
+      "id": "R11",
+      "kind": "requirement_partial",
+      "severity": "high",
+      "title": "Head-to-head record reports 6 meetings where the true answer is 2",
+      "evidence": "Services/SoccerDataService.cs:302-309 HeadToHead selects across all datasets without dedup; Tools/MatchTools.cs:111-127 CompareTeams counts each returned row. Verified against the bundled CSVs: Flamengo vs Palmeiras in 2019 appears twice in Brasileirao_Matches.csv, twice in BR-Football-Dataset.csv and twice in novo_campeonato_brasileiro.csv, so CompareTeams('Flamengo','Palmeiras') reports 6 meetings for 2019 instead of 2, with wins/draws/losses scaled the same way.",
+      "suggestion": "Deduplicate at load time; the head-to-head match list should contain one row per real fixture."
+    }
+  ],
+  "requirement_coverage": 0.75,
+  "model": "openrouter/z-ai/glm-5.2",
+  "evaluated_at": "2026-07-15T19:41:34Z"
+}

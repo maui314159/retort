@@ -1,0 +1,31 @@
+{
+  "severity_counts": {
+    "critical": 0,
+    "high": 2,
+    "medium": 0,
+    "low": 0,
+    "info": 0
+  },
+  "penalty_score": 0.8,
+  "top_findings": [
+    {
+      "id": "build-backend",
+      "kind": "build_failure",
+      "severity": "high",
+      "title": "pyproject declares a build backend that does not exist in any setuptools release, so the package cannot be installed",
+      "evidence": "pyproject.toml:3 sets build-backend = \"setuptools.backends._legacy:_Backend\". Reproduced in a temp copy: `python -m build --wheel --no-isolation` against setuptools 82.0.1 fails with `BackendUnavailable: Cannot import 'setuptools.backends._legacy'` / `ERROR Backend 'setuptools.backends._legacy:_Backend' is not available.` The module is absent in setuptools 58.0.4 and 82.0.1 (setuptools has no `backends` subpackage at all); only `setuptools.build_meta` exists. Tests still pass because pytest imports the package from the repo root rather than from an install, so the mechanical gate never exercises the backend.",
+      "suggestion": "Set build-backend = \"setuptools.build_meta\". Without this, `pip install .` fails and the declared `brazilian-soccer-mcp` console script (pyproject.toml:24) can never be created."
+    },
+    {
+      "id": "R8",
+      "kind": "requirement_partial",
+      "severity": "high",
+      "title": "search_players silently discards the name/nationality/position filter when the club filter is set and the prior filters matched nothing, returning the club's whole roster instead of no results",
+      "evidence": "brazilian_soccer_mcp/query_engine.py:238 \u2014 `players = [p for p in players if p.id in player_ids] if players else found`. The `if players` guard is falsy exactly when a preceding filter (name at :232, nationality at :234) has already narrowed the list to empty, so the code falls back to `found` (every player at the club) and the earlier filter is dropped. Reproduced against the real QueryEngine with a stub graph: `search_players(name=\"NoSuchPlayerXYZ\", club=\"Flamengo\")` returned `Found 2 player(s) matching criteria: 1. Gabriel Barbosa ... 2. Everton Ribeiro ...` instead of \"No players found matching the criteria.\" (`search_players(nationality=\"Argentina\", club=\"Flamengo\")` correctly returns no players, because that intermediate list is non-empty \u2014 the bug needs an empty intermediate.)",
+      "suggestion": "Drop the ternary and always intersect: `players = [p for p in players if p.id in player_ids]`. The `else found` branch has no valid case \u2014 an empty `players` list should stay empty. Add a test for a non-matching name combined with a real club."
+    }
+  ],
+  "requirement_coverage": 0.8333,
+  "model": "openrouter/z-ai/glm-5.2",
+  "evaluated_at": "2026-07-15T19:56:03Z"
+}

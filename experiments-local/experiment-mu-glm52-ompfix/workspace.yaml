@@ -1,0 +1,57 @@
+# experiment-mu-glm52-ompfix — GLM-5.2 brazil-bench rerun on FIXED omp.
+#
+# The June exp-17 GLM-5.2 arm (5/9 failed, $2.3-3.4 per failure) ran on omp
+# <=16.4.0, whose GLM dialect corrupted tool-call arguments (missing/mistyped
+# in-band closers swallowed or merged subsequent args; fixed in omp 16.4.5,
+# commit 0b9bdaae). This mirrors that arm exactly on omp 16.5.0:
+#   glm-5.2 x {python, typescript, csharp} x 3 reps = 9 runs, brazil-bench.
+# Compare against (a) exp-17's pre-fix omp arm and (b) the opencode-glm52
+# family (same model, workaround harness) to split harness from model effect.
+#
+# Launch (from main checkout root, .venv active, OPENROUTER_API_KEY exported):
+#   retort run --phase screening \
+#     --config experiments-local/experiment-mu-glm52-ompfix/workspace.yaml \
+#     --design experiments-local/experiment-mu-glm52-ompfix/design.csv \
+#     --replicates 3 --shard i/3 --resume
+# omp version at run time: 16.5.0 (brew can1357/tap).
+
+experiment:
+  name: exp-mu-glm52-ompfix
+  visibility: private
+
+factors:
+  language:
+    levels: [python, typescript, csharp]
+  model:
+    levels:
+      # design.csv only schedules glm-5.2; glm-5.1 is here because the factor
+      # registry requires >=2 levels (and is the natural extension arm).
+      - "openrouter/z-ai/glm-5.2"
+      - "openrouter/z-ai/glm-5.1"
+
+responses:
+  - code_quality
+  - test_coverage
+  - defect_rate
+  - build_time
+  - maintainability
+  - token_efficiency
+
+tasks:
+  - source: github://brazil-bench/benchmark-template/brazilian-soccer-mcp-guide.md
+
+playpen:
+  runner: local
+  replicates: 3
+  timeout_minutes: 40
+  max_turns: 100
+  local_agents:
+    omp:
+      harness: omp
+
+design:
+  screening_resolution: 3
+  significance_threshold: 0.10
+
+evaluation:
+  enabled: false

@@ -1,0 +1,55 @@
+{
+  "severity_counts": {
+    "critical": 3,
+    "high": 3,
+    "medium": 0,
+    "low": 0,
+    "info": 0
+  },
+  "penalty_score": 0.0,
+  "top_findings": [
+    {
+      "id": "build-fail",
+      "kind": "build_failure",
+      "severity": "critical",
+      "title": "Agent aborted mid-run; only empty project scaffold written, no implementation",
+      "evidence": "_agent_stdout.log tail: stopReason=error, stopDetails.type=stream_interrupted_after_content ('OpenAI responses stream stalled while waiting for the next event'), then auto_retry attempts fail ('Was there a typo in the url or port?'). Archive contains 3 .csproj files and zero hand-written .cs source files (find src tests -name '*.cs' -not -path '*/obj/*' -not -path '*/bin/*' => 0).",
+      "suggestion": "Infrastructure failure (OpenRouter stream stall), not a model/spec miss. This attempt was correctly retried as the sibling rep3/ dir, which succeeded (DB run id=11, completed). Keep this archive as -failed-attempt1; do not score it."
+    },
+    {
+      "id": "score-mismatch",
+      "kind": "test_failure",
+      "severity": "critical",
+      "title": "scores.json in this failed archive is stale \u2014 its numbers belong to the successful rep3 retry",
+      "evidence": "scores.json here reports test_coverage=0.7892 / code_quality=1.0 / defect_rate=1.0, identical to DB run id=11 (the completed rep3 retry). But this archive has no source and no tests, so it would rescore 0.0. Second-try score/archive mismatch pattern.",
+      "suggestion": "Do not trust this archive's scores.json. Ground-truth from the archive contents (empty) or the sibling rep3/ dir. Audit other *-failed-attempt* dirs in this experiment for the same carried-over scores.json."
+    },
+    {
+      "id": "R12",
+      "kind": "requirement_missing",
+      "severity": "critical",
+      "title": "R12: no automated tests \u2014 test project contains zero test .cs files",
+      "evidence": "tests/BrazilianSoccerMcp.Tests/ has only the .csproj; no test source (find => 0 .cs). test_coverage effective = 0 (the 0.7892 in scores.json is the mismatched retry value).",
+      "suggestion": "Test gate fails: no tests execute against this archive."
+    },
+    {
+      "id": "R1",
+      "kind": "requirement_missing",
+      "severity": "high",
+      "title": "R1: no MCP server implementation",
+      "evidence": "BrazilianSoccerMcp.Server.csproj declares OutputType=Exe but no Program.cs or any .cs exists; no MCP SDK usage, no tool/handler definitions.",
+      "suggestion": "See successful rep3/ for the intended implementation (Program.cs, Tools/SoccerTools.cs)."
+    },
+    {
+      "id": "R2",
+      "kind": "requirement_missing",
+      "severity": "high",
+      "title": "R2: no dataset loading code",
+      "evidence": "data/kaggle/ CSVs are present but no .cs reads them; SoccerDataRepository-equivalent absent from this archive.",
+      "suggestion": "No code reads the provided CSVs."
+    }
+  ],
+  "requirement_coverage": 0.0,
+  "model": "openrouter/z-ai/glm-5.2",
+  "evaluated_at": "2026-07-18T01:39:28Z"
+}

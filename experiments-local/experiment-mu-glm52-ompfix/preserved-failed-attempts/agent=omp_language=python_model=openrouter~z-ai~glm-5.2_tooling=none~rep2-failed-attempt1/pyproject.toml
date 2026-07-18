@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "brazilian-soccer-mcp"
+version = "1.0.0"
+description = "MCP server exposing a knowledge-graph-style query interface over Brazilian soccer datasets (Brasileirao, Copa do Brasil, Libertadores, FIFA players)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Brazilian Soccer MCP" }]
+dependencies = [
+    "pandas>=2.0",
+    "mcp>=1.0",
+    "fastmcp>=2.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0",
+    "pytest-bdd>=8.0",
+    "pytest-asyncio>=0.23",
+]
+
+[project.scripts]
+brazilian-soccer-mcp = "brazilian_soccer.server:main"
+
+[tool.setuptools.packages.find]
+include = ["brazilian_soccer*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+bdd_features_base_dir = "."
+markers = [
+    "bdd: behavior-driven scenarios",
+]

@@ -1,0 +1,8 @@
+# Summary: agent=omp · language=python · model=openrouter/z-ai/glm-5.2 · tooling=none · rep 2
+
+- **Shape:** FastMCP (stdio) server over pandas DataFrames loaded from bundled Kaggle CSVs — no database, no HTTP; a clean 4-layer split of normalize → loader → queries → tools.
+- **Structure:** 6 source modules (`__init__`, `models`, `normalize`, `loader`, `queries`, `server`; 1,452 LOC) + 4 test files & 1 conftest (772 LOC) + 1 Gherkin feature file. 63 tests total (10 loader + 35 queries + 11 server + 7 pytest-bdd scenarios).
+- **Interfaces:** 0 HTTP routes / 14 MCP tools + 1 MCP resource (`data://summary`) / 1 CLI console script (`brazilian-soccer-mcp`, no subcommands) / ~24 exported library functions.
+- **Notable:** This was a **repair run** — `TASK.md` is a REPAIR TASK pointing at `FEEDBACK.md`, and `server.py`/`test_server.py` carry explicit `R3`/`R6`/`R9`-style requirement-ID comments mapping each tool back to the feedback checklist. The loader does real cross-source deduplication (5 overlapping match CSVs merged on `(home_key, away_key, date, goals)`, with a `_richness` tiebreak that preserves the BR-Football corner/shot enrichment) — more than the task strictly asks for. Team-name normalization is unusually thorough: state-suffix stripping validated against the 27 Brazilian UF codes plus 9 foreign codes, accent folding, and a 13-entry canonical derby table driving a dedicated `derbies` tool. The server layer is a pure pass-through with no validation or error handling, and the data layer uses `iterrows()` loops rather than vectorized pandas throughout.
+
+See [modules.md](modules.md), [interfaces.md](interfaces.md), [flow.md](flow.md).
