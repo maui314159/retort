@@ -1,0 +1,8 @@
+mcp>=1.27.0
+fastmcp>=3.4.0
+pandas>=2.0.0
+
+[dev]
+pytest>=8.0.0
+pytest-bdd>=8.0.0
+pytest-asyncio>=0.23.0

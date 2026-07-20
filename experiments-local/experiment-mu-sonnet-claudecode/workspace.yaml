@@ -1,0 +1,52 @@
+# experiment-mu-sonnet-claudecode — Sonnet 4.6 driven by the claude-code CLI, brazil-bench.
+#
+# Completes the harness dimension for a Claude model: exp-18 (omp × OpenRouter
+# adapter, 3/9), exp-19 (omp × native Anthropic API, 9/9, $3.45/run), and now
+# claude-code — the harness the model is actually tuned for. Auth = the user's
+# Claude Max subscription (claude.ai OAuth), so **no ANTHROPIC_API_KEY may be
+# set in the environment** (run-swarm.sh guards this): zero marginal API cost,
+# but subject to Max usage windows. retort's usage-limit signatures mark any
+# quota cutoff as "not attempted" (re-run on resume) rather than failed.
+# Model level "sonnet-4.6" is a pinned versioned alias -> claude-sonnet-4-6
+# (same model as exp-18/19 for cross-experiment comparability).
+
+experiment:
+  name: exp-mu-sonnet-claudecode
+  visibility: private
+
+factors:
+  language:
+    levels: [python, typescript, csharp]
+  agent:
+    levels: [claude-code, omp]
+  model:
+    levels:
+      - "sonnet-4.6"
+      - "opus-4.8"
+
+responses:
+  - code_quality
+  - test_coverage
+  - defect_rate
+  - build_time
+  - maintainability
+  - token_efficiency
+
+tasks:
+  - source: github://brazil-bench/benchmark-template/brazilian-soccer-mcp-guide.md
+
+playpen:
+  runner: local
+  replicates: 3
+  timeout_minutes: 40
+  max_turns: 100
+  local_agents:
+    omp:
+      harness: omp
+
+design:
+  screening_resolution: 3
+  significance_threshold: 0.10
+
+evaluation:
+  enabled: false

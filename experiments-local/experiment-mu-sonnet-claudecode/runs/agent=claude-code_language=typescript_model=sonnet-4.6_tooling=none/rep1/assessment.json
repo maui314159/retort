@@ -1,0 +1,39 @@
+{
+  "severity_counts": {
+    "critical": 0,
+    "high": 3,
+    "medium": 0,
+    "low": 0,
+    "info": 0
+  },
+  "penalty_score": 0.7,
+  "top_findings": [
+    {
+      "id": "R9",
+      "kind": "requirement_partial",
+      "severity": "high",
+      "title": "Standings double-count seasons 2012-2019 (overlapping Brasileir\u00e3o datasets, no dedup)",
+      "evidence": "src/data-loader.ts:156-225 buildNormalizedMatches concatenates Brasileirao_Matches.csv (2012-2022) and novo_campeonato_brasileiro.csv (2003-2019) with no dedup; verified against raw CSVs: Flamengo 2019 = 38 matches/90 pts in EACH file, and getStandings (src/query-engine.ts:210-268) filters competition via substring includes ('brasileirao' matches both 'Brasileir\u00e3o S\u00e9rie A' and '... (historical)'), so 2019 standings report 76 matches/180 pts per team. Rankings survive (uniform doubling) but points/match counts are 2x for 2012-2019.",
+      "suggestion": "Dedup on (date, home, away) when merging, or drop novo_campeonato rows with Ano >= 2012"
+    },
+    {
+      "id": "R6",
+      "kind": "requirement_partial",
+      "severity": "high",
+      "title": "getTeamStats W/L/D and goals doubled for seasons 2012-2019 (same missing-dedup root cause as R9)",
+      "evidence": "src/query-engine.ts:101-154 getTeamStats iterates db.matches which contains both copies of every 2012-2019 Brasileir\u00e3o fixture; verified: Flamengo 2019 sums to 76 matches, 180 points. All-time aggregates inflated by the 8-season overlap.",
+      "suggestion": "Same fix as R9 \u2014 dedup in buildNormalizedMatches"
+    },
+    {
+      "id": "R11",
+      "kind": "requirement_partial",
+      "severity": "high",
+      "title": "headToHead counts doubled and match list has duplicate rows for seasons 2012-2019 (same root cause as R9)",
+      "evidence": "src/query-engine.ts:158-206 headToHead filters db.matches; every 2012-2019 Brasileir\u00e3o fixture appears twice (competition labels 'Brasileir\u00e3o S\u00e9rie A' and '... (historical)'), so W/L/D and goal tallies are 2x over that span and the returned match list contains duplicates.",
+      "suggestion": "Same fix as R9 \u2014 dedup in buildNormalizedMatches"
+    }
+  ],
+  "requirement_coverage": 0.75,
+  "model": "sonnet-4.6",
+  "evaluated_at": "2026-07-19T18:33:48Z"
+}

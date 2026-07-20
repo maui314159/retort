@@ -1,0 +1,11 @@
+{
+  "replicate": 1,
+  "run_config": {
+    "agent": "opencode",
+    "language": "csharp",
+    "model": "openrouter/moonshotai/kimi-k3",
+    "tooling": "none"
+  },
+  "succeeded": true,
+  "visibility": "private"
+}

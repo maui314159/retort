@@ -1,0 +1,83 @@
+Metadata-Version: 2.4
+Name: brazilian-soccer-mcp
+Version: 1.0.0
+Summary: MCP server providing a knowledge-graph interface over Brazilian soccer datasets (matches, players, competitions).
+License: MIT
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: pandas>=2.0
+Requires-Dist: fastmcp>=2.0
+Provides-Extra: test
+Requires-Dist: pytest>=8.0; extra == "test"
+Requires-Dist: pytest-bdd>=8.0; extra == "test"
+
+# Brazilian Soccer MCP with spec and basic data sets
+
+## Specification
+brazilian-soccer-mcp-guide.md
+
+## Implementation
+
+An MCP (Model Context Protocol) server providing a knowledge-graph interface
+over the datasets below, implemented in Python with FastMCP + pandas.
+
+### Layout
+
+- `brazilian_soccer_mcp/normalization.py` — team-name normalization
+  ("Palmeiras-SP" ≡ "Palmeiras", ambiguous names like "Botafogo-SP" vs
+  "Botafogo-RJ" stay distinct), multi-format date parsing (ISO, ISO+time,
+  DD/MM/YYYY), accent-insensitive matching.
+- `brazilian_soccer_mcp/data.py` — loads all 6 CSVs into a unified,
+  deduplicated match table (one canonical source per competition/season) plus
+  the FIFA player table.
+- `brazilian_soccer_mcp/graph.py` — dependency-free in-memory knowledge graph
+  (teams, players, competitions, matches as nodes; PLAYED_HOME / PLAYED_AWAY /
+  PART_OF / PLAYS_FOR / HAS_NATIONALITY edges).
+- `brazilian_soccer_mcp/queries.py` — the five query categories from the spec:
+  match search, head-to-head, team statistics, player search/top-rated,
+  standings (3/1/0 points, champion + relegation tags), biggest wins and
+  aggregate stats.
+- `brazilian_soccer_mcp/server.py` — FastMCP server exposing 10 tools:
+  `dataset_overview`, `search_matches`, `head_to_head`, `team_statistics`,
+  `competition_standings`, `team_competitions`, `search_players`,
+  `top_rated_players`, `biggest_wins`, `competition_stats`.
+- `tests/` — BDD test suite (pytest-bdd, Gherkin Given/When/Then) covering all
+  five capability categories, data-quality handling and query performance.
+
+### Run
+
+```bash
+pip install -e .
+python -m brazilian_soccer_mcp.server                 # stdio (MCP client)
+python -m brazilian_soccer_mcp.server --transport streamable-http --port 8000
+```
+
+### Test
+
+```bash
+pip install -e ".[test]"
+pytest
+```
+
+28 BDD scenarios across 6 feature files; full suite runs in ~2 s.
+
+## Data Sources
+Kaggle data can't be downloaded without an account so these (freely available with attribution) data sets have been downloaded for use here:
+
+https://www.kaggle.com/datasets/ricardomattos05/jogos-do-campeonato-brasileiro
+- License: Attribution 4.0 International (CC BY 4.0)
+- data/kaggle/Brasileirao_Matches.csv
+- data/kaggle/Brazilian_Cup_Matches.csv
+- data/kaggle/Libertadores_Matches.csv
+
+https://www.kaggle.com/datasets/cuecacuela/brazilian-football-matches
+- License: CC0: Public Domain
+- data/kaggle/BR-Football-Dataset.csv
+
+https://www.kaggle.com/datasets/macedojleo/campeonato-brasileiro-2003-a-2019
+- License: World Bank - Attribution 4.0 International (CC BY 4.0)
+- data/kaggle/novo_campeonato_brasileiro.csv
+
+https://www.kaggle.com/datasets/youssefelbadry10/fifa-players-data
+- License: Apache 2.0
+- data/kaggle/fifa_data.csv

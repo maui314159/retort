@@ -1,0 +1,13 @@
+# .NET build artifacts
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+# Agent logs (benchmark run harness output)
+_agent_stderr.log
+_agent_stdout.log
+
+# OS cruft
+.DS_Store

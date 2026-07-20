@@ -1,0 +1,4 @@
+run,language,model,agent,tooling
+0,python,z-ai/glm-5.2,claude-code,none
+1,typescript,z-ai/glm-5.2,claude-code,none
+2,csharp,z-ai/glm-5.2,claude-code,none

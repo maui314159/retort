@@ -1,0 +1,69 @@
+# Brazilian Soccer MCP with spec and basic data sets
+
+## Specification
+brazilian-soccer-mcp-guide.md
+
+## Usage
+
+The MCP server is implemented in the `brazilian_soccer_mcp` package
+(Python 3.10+, pandas + the official `mcp` SDK).
+
+```bash
+pip install -e .            # install package + console script
+python -m brazilian_soccer_mcp.server   # run MCP server on stdio
+# or: brazilian-soccer-mcp
+```
+
+The server loads all six CSVs at startup (~1s), unifies the five match files
+into a single deduplicated match store (team names normalized across files,
+cross-file fixture duplicates removed) and exposes 11 tools:
+
+| Tool | Answers |
+|------|---------|
+| `find_matches` | Matches by team/opponent/competition/season/stage/dates |
+| `head_to_head` | Full history + win/draw summary between two teams |
+| `team_stats` | Wins/draws/losses, goals, win rate (home/away/all) |
+| `league_standings` | Season table calculated from results (champion/relegation) |
+| `search_players` | FIFA players by name/nationality/club/position/rating |
+| `club_players` | Club roster overview with top-rated players |
+| `biggest_wins` | Largest victory margins in the dataset |
+| `competition_statistics` | Goals averages, home/draw/away win rates |
+| `list_competitions` | Competitions with coverage info |
+| `list_teams` | All known team names (substring filter) |
+| `dataset_summary` | Per-file row counts and dedupe totals |
+
+Example (from any MCP client): `find_matches(team="Flamengo",
+opponent="Fluminense")` → Fla-Flu history with scores and competitions.
+
+## Development
+
+```bash
+pip install -e ".[dev]"
+pytest                  # 117 tests: unit + BDD (pytest-bdd) scenarios
+```
+
+Layout: `brazilian_soccer_mcp/normalization.py` (team-name aliases, date
+parsing), `data.py` (CSV loading + cross-file dedupe), `queries.py` (query
+engine), `formatting.py` (answer rendering), `server.py` (FastMCP tools);
+`tests/features/*.feature` holds the BDD scenarios.
+
+## Data Sources
+Kaggle data can't be downloaded without an account so these (freely available with attribution) data sets have been downloaded for use here:
+
+https://www.kaggle.com/datasets/ricardomattos05/jogos-do-campeonato-brasileiro
+- License: Attribution 4.0 International (CC BY 4.0)
+- data/kaggle/Brasileirao_Matches.csv
+- data/kaggle/Brazilian_Cup_Matches.csv
+- data/kaggle/Libertadores_Matches.csv
+
+https://www.kaggle.com/datasets/cuecacuela/brazilian-football-matches
+- License: CC0: Public Domain
+- data/kaggle/BR-Football-Dataset.csv
+
+https://www.kaggle.com/datasets/macedojleo/campeonato-brasileiro-2003-a-2019
+- License: World Bank - Attribution 4.0 International (CC BY 4.0)
+- data/kaggle/novo_campeonato_brasileiro.csv
+
+https://www.kaggle.com/datasets/youssefelbadry10/fifa-players-data
+- License: Apache 2.0
+- data/kaggle/fifa_data.csv

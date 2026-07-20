@@ -1,0 +1,51 @@
+# experiment-mu-kimi3-brazil — kimi-k3 on the hard task (brazil-bench), opencode.
+#
+# Step 2 of the kimi-k3 evaluation (step 1 = experiment-mu-kimi3-easy, 15/15 after
+# scorer fixes). Mirrors experiment-opencode-brazil (glm-5.2 control, 9/9 @ $0.98)
+# and experiment-opencode-brazil-kimi (k2.7-code, 5/9 @ $1.22): same task, langs,
+# harness — so k3-vs-k2.7 and k3-vs-glm-5.2 are both direct comparisons.
+
+experiment:
+  name: exp-mu-kimi3-brazil
+  visibility: private
+
+factors:
+  language:
+    levels: [python, typescript, csharp]
+  agent:
+    levels: [opencode, omp]
+  model:
+    levels:
+      - "openrouter/moonshotai/kimi-k3"
+      - "openrouter/z-ai/glm-5.2"
+
+responses:
+  - code_quality
+  - test_coverage
+  - defect_rate
+  - build_time
+  - maintainability
+  - token_efficiency
+
+tasks:
+  - source: github://brazil-bench/benchmark-template/brazilian-soccer-mcp-guide.md
+
+playpen:
+  runner: local
+  replicates: 3
+  # 40 -> 60: kimi-k3's completions took 29-36 min; 6/9 first-pass cells hit
+  # the 40-min wall mid-task (slow model, not a stall).
+  timeout_minutes: 60
+  max_turns: 100
+  local_agents:
+    omp:
+      harness: omp
+    opencode:
+      harness: opencode
+
+design:
+  screening_resolution: 3
+  significance_threshold: 0.10
+
+evaluation:
+  enabled: false

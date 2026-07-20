@@ -1,0 +1,54 @@
+# experiment-mu-glm52-claudecode — GLM-5.2 driven by the claude-code CLI, brazil-bench.
+#
+# Completes the glm-5.2 harness row set (opencode 9/9, omp-16.5.0 9/9, claude-code ?/9)
+# holding model/task/languages/prompt constant. claude-code reaches GLM via
+# OpenRouter's Anthropic-compatible /api/v1/messages endpoint:
+#   ANTHROPIC_BASE_URL=https://openrouter.ai/api
+#   ANTHROPIC_API_KEY=<1P "OpenRouter - Initial Retort Key">
+#   ANTHROPIC_SMALL_FAST_MODEL=z-ai/glm-5.2   (keep haiku side-calls on GLM too)
+# (set by run-swarm.sh; retort's _build_env passes the environment through).
+# NOTE model id is the bare OpenRouter form "z-ai/glm-5.2" — that's what
+# `claude --model` must receive; _model_cli_args passes non-alias ids through.
+# CAVEAT: claude-code's self-reported total_cost_usd won't know GLM pricing —
+# treat recorded cost as unreliable; reconcile from the OpenRouter dashboard.
+
+experiment:
+  name: exp-mu-glm52-claudecode
+  visibility: private
+
+factors:
+  language:
+    levels: [python, typescript, csharp]
+  agent:
+    levels: [claude-code, omp]
+  model:
+    levels:
+      - "z-ai/glm-5.2"
+      - "openrouter/z-ai/glm-5.2"
+
+responses:
+  - code_quality
+  - test_coverage
+  - defect_rate
+  - build_time
+  - maintainability
+  - token_efficiency
+
+tasks:
+  - source: github://brazil-bench/benchmark-template/brazilian-soccer-mcp-guide.md
+
+playpen:
+  runner: local
+  replicates: 3
+  timeout_minutes: 40
+  max_turns: 100
+  local_agents:
+    omp:
+      harness: omp
+
+design:
+  screening_resolution: 3
+  significance_threshold: 0.10
+
+evaluation:
+  enabled: false

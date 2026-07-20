@@ -1,0 +1,6 @@
+run,language,model,agent,tooling
+0,python,openrouter/moonshotai/kimi-k3,opencode,none
+1,go,openrouter/moonshotai/kimi-k3,opencode,none
+2,typescript,openrouter/moonshotai/kimi-k3,opencode,none
+3,rust,openrouter/moonshotai/kimi-k3,opencode,none
+4,java,openrouter/moonshotai/kimi-k3,opencode,none

@@ -1,0 +1,4 @@
+run,language,model,agent,tooling
+0,python,sonnet-4.6,claude-code,none
+1,typescript,sonnet-4.6,claude-code,none
+2,csharp,sonnet-4.6,claude-code,none

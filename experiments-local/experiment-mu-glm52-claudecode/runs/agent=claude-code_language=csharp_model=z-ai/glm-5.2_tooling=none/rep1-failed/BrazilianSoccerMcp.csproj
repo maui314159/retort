@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>BrazilianSoccerMcp</RootNamespace>
+    <AssemblyName>BrazilianSoccerMcp</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol" Version="1.4.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The test project lives in a nested folder with its own csproj; exclude
+         its sources from this (main) project's default **\*.cs glob. -->
+    <Compile Remove="BrazilianSoccerMcp.Tests\**" />
+    <None Remove="BrazilianSoccerMcp.Tests\**" />
+  </ItemGroup>
+
+</Project>
