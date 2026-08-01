@@ -1064,6 +1064,12 @@ class LocalRunner:
             # `--print-logs` sends opencode's internal logs (permission evaluations,
             # step loop, errors) to stderr — separate from the json stdout — so a
             # failed run's persisted _agent_stderr.log shows WHY it failed.
+            #
+            # NOTE: `playpen.max_turns` is deliberately NOT passed here — `opencode
+            # run` has no turn-cap flag (opencode 1.18.5). An opencode run is
+            # bounded only by the wall-clock timeout; exp-mu-kimi3-fireworks ran
+            # 135 steps against a declared cap of 100. See the PER-HARNESS SUPPORT
+            # note on WorkspacePlaypenConfig.max_turns in config/schema.py.
             cmd = ["opencode", "run", "--pure", "--print-logs", "--format", "json"]
             if workspace is not None:
                 cmd.extend(["--dir", str(workspace)])

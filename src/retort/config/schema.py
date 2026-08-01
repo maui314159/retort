@@ -305,11 +305,36 @@ class PlaypenConfig(BaseModel):
     max_turns: Annotated[int, Field(
         default=30, ge=1,
         description=(
-            "Per-run agent turn cap (passed to claude --max-turns). Bigger "
-            "tasks like brazil-bench or anything verbose-Java need more "
-            "turns to scaffold project structure AND write code."
+            "Per-run agent turn cap. Bigger tasks like brazil-bench or "
+            "anything verbose-Java need more turns to scaffold project "
+            "structure AND write code. "
+            "NOT ENFORCED FOR EVERY HARNESS — see PER-HARNESS SUPPORT below: "
+            "claude-code and hermes honour it; opencode and gemini do not."
         ),
     )]
+    # PER-HARNESS SUPPORT for max_turns — it is NOT universal, and a config
+    # value that silently does nothing is exactly the failure class this repo
+    # keeps paying for (Hermes ran at 30 while workspaces declared 200; the
+    # number was recorded faithfully in provenance and still wrong).
+    #
+    #   claude-code : ENFORCED — passed as `claude --max-turns N`.
+    #   hermes      : ENFORCED — written into ~/.hermes/config.yaml on reload.
+    #   opencode    : *** NOT ENFORCED ***  `opencode run` exposes no turn-cap
+    #                 flag or config key (checked against opencode 1.18.5
+    #                 `run --help`: only --model/--agent/--variant/--format/…).
+    #                 So an opencode run is bounded ONLY by the wall-clock
+    #                 `timeout_minutes`. Observed live: exp-mu-kimi3-fireworks
+    #                 ran 135 and 121 steps against a declared cap of 100.
+    #                 This affects EVERY agent=opencode experiment on record —
+    #                 their turn counts were never capped, so a comparison
+    #                 against a capped claude-code arm is not like-for-like.
+    #   gemini      : NOT ENFORCED — no flag passed.
+    #
+    # Documented rather than fixed on purpose: a harness-side turn counter is
+    # real work, and until it exists the honest move is to say the knob does
+    # nothing here instead of letting the config imply a bound. Per CLAUDE.md:
+    # "a parameter whose effect you cannot observe is not usable in the
+    # experiment — fix the plumbing or drop the factor."
     cost_limit_usd: Annotated[float | None, Field(default=None, ge=0, description="Spend cap per screening phase")]
     token_limit: Annotated[int | None, Field(
         default=None, ge=0,
