@@ -28,6 +28,7 @@ from retort.playpen.runner import (
     TaskSpec,
     stack_metadata,
 )
+from retort.pricing import estimate_fireworks_cost_usd
 
 logger = logging.getLogger(__name__)
 
@@ -1438,7 +1439,7 @@ def _is_fast_mode_model(model: str) -> bool:
     their own "-fast" endpoints whose economics are unrelated to Anthropic's 2×
     fast-mode billing. Fireworks' ``accounts/fireworks/routers/kimi-k3-fast`` is
     the live example — it is a +50% speed tier already priced into
-    FIREWORKS_PRICING, so applying FAST_MODE_COST_MULTIPLIER on top would bill it
+    pricing.FIREWORKS_PRICES, so applying FAST_MODE_COST_MULTIPLIER on top would bill it
     at 3× the true rate. A bare suffix test matched it; requiring a Claude id does
     not. (The bug was dormant only because opencode reports cost 0 for a custom
     provider, so the multiplier's ``cost_usd > 0`` guard never fired — deriving
@@ -1760,28 +1761,6 @@ OPENAI_COMPATIBLE_PROVIDERS: dict[str, tuple[str, str]] = {
     "fireworks": ("https://api.fireworks.ai/inference/v1", "FIREWORKS_API_KEY"),
 }
 
-# USD per MILLION tokens (input, output) for direct-to-provider models whose
-# agent reports no dollar cost of its own. opencode prices a run from its own
-# catalog, but a custom OpenAI-compatible provider isn't in that catalog, so it
-# reports `cost: 0` — verified by probe. Without this table those runs would
-# record cost 0 and silently corrupt the cost/token-efficiency responses.
-#
-# Rates from the Fireworks model page (2026-08-01). The `-fast` router is the
-# +50% "Fast Serverless" speed tier (priority is +25%, US-only +10%); its
-# $4.50/$22.50 matches the premium Fireworks endpoint OpenRouter exposes,
-# confirming the two are the same tier.
-FIREWORKS_PRICING: dict[str, tuple[float, float]] = {
-    "accounts/fireworks/models/kimi-k3": (3.00, 15.00),
-    "accounts/fireworks/routers/kimi-k3-fast": (4.50, 22.50),
-}
-# Cached input is billed at $0.30/Mtok on kimi-k3 (10% of fresh input) rather
-# than the fresh-input rate, so cache reads are priced separately.
-FIREWORKS_CACHED_INPUT_PER_MTOK: dict[str, float] = {
-    "accounts/fireworks/models/kimi-k3": 0.30,
-    "accounts/fireworks/routers/kimi-k3-fast": 0.45,
-}
-
-
 def _split_opencode_model(model: str) -> tuple[str, str]:
     """Split an opencode model level into ``(provider_id, model_id)``.
 
@@ -1799,22 +1778,21 @@ def _split_opencode_model(model: str) -> tuple[str, str]:
 def _fireworks_cost(model_id: str, metadata: dict[str, str]) -> float:
     """Derive a Fireworks run's USD cost from token counts, or 0.0 if unpriced.
 
-    Returns 0.0 for an unknown model rather than guessing, so an unpriced model
-    falls through to the existing zero-cost path instead of recording a fiction.
+    Rates live in ``retort.pricing`` — the module that exists so every metered
+    stack's cost column means the same thing. Returns 0.0 (not a guess) for an
+    unlisted model, so it falls through to the existing zero-cost path rather
+    than recording a fiction; ``pricing`` returns None for that case and this
+    translates it to the runner's sentinel.
     """
-    rate = FIREWORKS_PRICING.get(model_id)
-    if rate is None:
-        return 0.0
-    input_per_mtok, output_per_mtok = rate
-    cached_per_mtok = FIREWORKS_CACHED_INPUT_PER_MTOK.get(model_id, input_per_mtok)
-    fresh_input = _parse_float(metadata.get("input_tokens"), 0.0)
-    cached_input = _parse_float(metadata.get("cache_read_input_tokens"), 0.0)
-    output = _parse_float(metadata.get("output_tokens"), 0.0)
-    return (
-        fresh_input * input_per_mtok
-        + cached_input * cached_per_mtok
-        + output * output_per_mtok
-    ) / 1_000_000
+    cost = estimate_fireworks_cost_usd(
+        model_id,
+        input_tokens=int(_parse_float(metadata.get("input_tokens"), 0.0)),
+        output_tokens=int(_parse_float(metadata.get("output_tokens"), 0.0)),
+        cached_input_tokens=int(
+            _parse_float(metadata.get("cache_read_input_tokens"), 0.0)
+        ),
+    )
+    return cost if cost is not None else 0.0
 
 
 def _parse_opencode_usage(stdout_text: str) -> tuple[int, dict[str, str]]:

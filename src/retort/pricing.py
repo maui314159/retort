@@ -78,6 +78,71 @@ OPENAI_PRICES: dict[str, TokenPrice] = {
 }
 
 
+#: Fireworks' own table + when it was read. Separate from PRICES_SOURCE because
+#: the two vendors' pages go stale independently.
+FIREWORKS_PRICES_SOURCE = "https://fireworks.ai/models/fireworks/kimi-k3"
+FIREWORKS_PRICES_AS_OF = "2026-08-01"
+
+# USD per 1M tokens, as of FIREWORKS_PRICES_AS_OF. Keyed on the model id's LAST
+# path segment, since Fireworks ids are paths
+# (``accounts/fireworks/models/kimi-k3``, ``accounts/fireworks/routers/kimi-k3-fast``).
+#
+# `kimi-k3-fast` is the "Fast Serverless" tier at +50% on every rate (Priority is
+# +25%, US-only +10%). Its $4.50/$22.50 matches the premium Fireworks endpoint
+# OpenRouter exposes, which is how we know they are the same tier.
+FIREWORKS_PRICES: dict[str, TokenPrice] = {
+    "kimi-k3": TokenPrice(3.00, 0.30, 15.00),
+    "kimi-k3-fast": TokenPrice(4.50, 0.45, 22.50),
+}
+
+
+def normalize_fireworks_model(model: str) -> str:
+    """``fireworks/accounts/fireworks/routers/kimi-k3-fast`` → ``kimi-k3-fast``.
+
+    Returns the last path segment lowercased, so an unlisted model still misses
+    (and prices as ``None``) rather than colliding with a listed one.
+    """
+    return (model or "").strip().lower().rsplit("/", 1)[-1]
+
+
+def estimate_fireworks_cost_usd(
+    model: str,
+    *,
+    input_tokens: int,
+    output_tokens: int,
+    cached_input_tokens: int = 0,
+) -> float | None:
+    """List-price cost for one Fireworks run, or ``None`` if the model is unlisted.
+
+    **Token semantics differ from OpenAI's — do not reuse
+    ``estimate_openai_cost_usd`` here.** OpenAI's ``input_tokens`` is the FULL
+    prompt and *includes* the cached portion, so that function derives
+    ``uncached = input - cached``. opencode's event stream (the only agent that
+    talks to Fireworks today) reports ``input`` as the **fresh** count, with
+    cache reads carried *separately*.
+
+    Verified [DIRECT] against the exp-mu-kimi3-fireworks probe: opencode's own
+    reported total was 14,716,602 and ``input + cached + output`` =
+    228,393 + 14,381,056 + 107,153 = 14,716,602 exactly. Under OpenAI semantics
+    ``uncached`` would be 228,393 - 14,381,056 = **negative**, clamp to zero, and
+    silently drop the entire fresh-input charge.
+
+    This matters more than it looks: cache reads dominate these runs by ~60:1, so
+    getting the split wrong misprices the run rather than nudging it.
+    """
+    price = FIREWORKS_PRICES.get(normalize_fireworks_model(model))
+    if price is None:
+        return None
+    fresh = max(0, int(input_tokens or 0))
+    cached = max(0, int(cached_input_tokens or 0))
+    out = max(0, int(output_tokens or 0))
+    return (
+        fresh * price.input
+        + cached * price.cached_input
+        + out * price.output
+    ) / 1_000_000
+
+
 def normalize_model(model: str) -> str:
     """Strip provider prefixes and dated suffixes: ``openai/gpt-5-codex-2026-01-01``
     → ``gpt-5-codex``. Returns the input lowercased if nothing matches, so the

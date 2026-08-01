@@ -1330,7 +1330,7 @@ class TestLocalRunnerOpencodeHarness:
         """`-fast` must not apply Anthropic's 2x fast-mode billing to other providers.
 
         Fireworks' kimi-k3-fast is a +50% speed tier already priced into
-        FIREWORKS_PRICING; multiplying by FAST_MODE_COST_MULTIPLIER too would
+        pricing.FIREWORKS_PRICES; multiplying by FAST_MODE_COST_MULTIPLIER too would
         record 3x the true spend.
         """
         from retort.playpen.local_runner import _is_fast_mode_model
@@ -1341,7 +1341,11 @@ class TestLocalRunnerOpencodeHarness:
         assert not _is_fast_mode_model("accounts/fireworks/routers/kimi-k3-fast")
 
     def test_fireworks_cost_derived_from_tokens(self):
-        """opencode reports cost 0 for a custom provider, so cost is derived."""
+        """opencode reports cost 0 for a custom provider, so cost is derived.
+
+        Rates themselves are tested in test_pricing.py; this covers the runner's
+        adapter — usage-dict parsing and the None -> 0.0 sentinel translation.
+        """
         from retort.playpen.local_runner import _fireworks_cost
 
         usage = {
@@ -1355,8 +1359,14 @@ class TestLocalRunnerOpencodeHarness:
         # The fast router is exactly the +50% tier.
         fast = _fireworks_cost("accounts/fireworks/routers/kimi-k3-fast", usage)
         assert fast == pytest.approx(std * 1.5)
-        # An unpriced model records nothing rather than inventing a figure.
+        # An unpriced model records 0.0 (the runner's sentinel), not a guess.
         assert _fireworks_cost("accounts/fireworks/models/unknown", usage) == 0.0
+
+    def test_fireworks_cost_handles_missing_usage_keys(self):
+        """A usage dict with no token keys prices at 0, not a crash."""
+        from retort.playpen.local_runner import _fireworks_cost
+
+        assert _fireworks_cost("accounts/fireworks/models/kimi-k3", {}) == 0.0
 
     def test_opencode_db_path_beside_workspace(self, tmp_path):
         from retort.playpen.local_runner import LocalRunner
