@@ -1,0 +1,71 @@
+# experiment-mu-kimi3-fireworks — GATE PROBE: pin Kimi K3's serving layer.
+#
+# NOT a new model. OpenRouter's moonshotai/kimi-k3 resolves to canonical slug
+# kimi-k3-20260715 — the same and only snapshot the July runs used
+# (experiment-mu-kimi3-easy 2026-07-18, experiment-mu-kimi3-brazil 2026-07-18/19).
+# Fireworks registered its copy 2026-07-19. Same weights; the serving layer differs.
+#
+# Those July runs were UNPINNED: OpenRouter fans kimi-k3 across ~9 upstreams at
+# differing quantization (mxfp4 / fp8 / unreported), and opencode records no
+# upstreamProvider — so "7/9 at $3.08, 44 min, 2 wall-timeout crashes" on
+# brazil-bench is a mixture over an uncontrolled factor. Going direct to Fireworks
+# pins it.
+#
+# This is the 2-run PROBE (python only, 1 rep) that measures real cost / wall-time
+# / pass on a pinned stack before committing to the 18-run screen. Same task and
+# harness as experiment-mu-kimi3-brazil, so the comparison is direct.
+#
+# REQUIRES $FIREWORKS_API_KEY in the launch env (use `with-fireworks`); the runner
+# now fails up front rather than 401-ing into a content-free run.
+
+experiment:
+  name: exp-mu-kimi3-fireworks
+  visibility: private
+
+factors:
+  # These are the levels of the EVENTUAL screen. Both the design generator and
+  # `retort run` reject a single-level factor, so the probe narrows scope in
+  # design.csv (python rows only) rather than here — the CSV, not this list,
+  # decides what actually runs.
+  language:
+    levels: [python, typescript, csharp]
+  agent:
+    levels: [opencode, omp]
+  model:
+    # Same weights, two serving tiers. The -fast router is Fireworks' "Fast
+    # Serverless" (+50%: $4.50/$22.50 vs $3.00/$15.00), measured at 108.6 vs
+    # 58.7 tok/s on a trivial probe. H1: it converts the 60-min wall-timeout
+    # crashes seen on OpenRouter into completions.
+    levels:
+      - "fireworks/accounts/fireworks/models/kimi-k3"
+      - "fireworks/accounts/fireworks/routers/kimi-k3-fast"
+
+responses:
+  - code_quality
+  - test_coverage
+  - defect_rate
+  - build_time
+  - maintainability
+  - token_efficiency
+
+tasks:
+  - source: github://brazil-bench/benchmark-template/brazilian-soccer-mcp-guide.md
+
+playpen:
+  runner: local
+  replicates: 1
+  # Matches experiment-mu-kimi3-brazil's 60 min, so a crash here means the same
+  # thing it meant there. Deliberately NOT lowered for the faster tier: changing
+  # the wall alongside the serving tier would confound the two.
+  timeout_minutes: 60
+  max_turns: 100
+  local_agents:
+    opencode:
+      harness: opencode
+
+design:
+  screening_resolution: 3
+  significance_threshold: 0.10
+
+evaluation:
+  enabled: false

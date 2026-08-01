@@ -1,0 +1,3 @@
+run,language,model,agent,tooling
+0,python,fireworks/accounts/fireworks/models/kimi-k3,opencode,none
+1,python,fireworks/accounts/fireworks/routers/kimi-k3-fast,opencode,none

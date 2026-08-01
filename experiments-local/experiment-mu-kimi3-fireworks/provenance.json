@@ -1,0 +1,66 @@
+{
+  "agent_config": {
+    "hermes": {
+      "_config_version": null,
+      "context_engine": "compressor",
+      "context_length": null,
+      "context_length_top_level": null,
+      "context_length_unset_per_model": true,
+      "max_turns": null,
+      "model": "anthropic/claude-opus-4.6",
+      "plugins": null,
+      "provider_api": null
+    }
+  },
+  "harness": {
+    "local_agents": {
+      "opencode": {
+        "harness": "opencode",
+        "model": null
+      }
+    },
+    "max_turns": 100,
+    "no_write_abort_after": 3,
+    "playpen_root": "/Users/maui/.retort/work",
+    "replicates": 1,
+    "runner": "local",
+    "stack_presets": null,
+    "stall_minutes": 0,
+    "timeout_minutes": 60
+  },
+  "host": {
+    "cpu": "Apple M4 Max",
+    "iogpu_wired_limit_mb": "0",
+    "machine": "Mac16,6",
+    "platform": "macOS-26.5.2-arm64-arm-64bit",
+    "python": "3.12.12",
+    "ram_bytes": "68719476736"
+  },
+  "models": {
+    "accounts/fireworks/models/kimi-k3": {
+      "served_as": "accounts/fireworks/models/kimi-k3"
+    },
+    "accounts/fireworks/routers/kimi-k3-fast": {
+      "served_as": "accounts/fireworks/routers/kimi-k3-fast"
+    }
+  },
+  "retort": {
+    "branch": "main",
+    "commit": "bd74f586eebb73608942db40110f33ae5cea3346",
+    "dirty": true
+  },
+  "serving": {
+    "omlx": null
+  },
+  "stack_presets": null,
+  "tools": {
+    "cargo": "cargo 1.95.0 (f2d3ce0bd 2026-03-21)",
+    "claude": "2.1.220 (Claude Code)",
+    "go": "go version go1.26.5 darwin/arm64",
+    "hermes": "Hermes Agent v0.17.0 (2026.6.19) \u00b7 upstream 2213ea9f",
+    "llama_server": null,
+    "node": "v22.22.3",
+    "omlx": null,
+    "omp": "omp/16.5.0"
+  }
+}

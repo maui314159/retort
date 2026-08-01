@@ -1,0 +1,23 @@
+Both skills are done. Three files written into the run dir: `evaluation.md`, `findings.jsonl`, `assessment.json`.
+
+**evaluate-run — the run passes cleanly.**
+
+- **Requirements: 12/12 implemented** against the pinned `REQUIREMENTS.json` (brazil-bench). Nothing missing, nothing partial, nothing scored on a stub.
+- **Tests: 216 passed, 0 failed, 0 skipped**, `test_coverage=0.95`, `defect_rate=0.951`. I did not re-run the toolchain — those came from `scores.json` and `retort.db`, corroborated by `216 passed in 3.25s` in `_agent_stdout.log`.
+- **Architecture:** a genuinely well-factored package — `data` → `normalize` → `queries` (pure, dict-returning) → `formatting` → `tools_api` → FastMCP wiring, with 19 tools registered. It also went beyond spec: Série B/C, derby detection, stage filtering, and 36 pytest-bdd scenarios across 6 feature files.
+- **Cost:** 2,279 s, 14.7 M tokens, $6.61.
+
+I did re-run `ruff` read-only to explain the `code_quality=0.6667`: 21 diagnostics (14 E501, 7 F401), which floors the scorer's lint component at 0.0. All cosmetic — line length plus unused imports in tests. **The 0.667 is not a code-correctness signal.**
+
+**Six findings, one of which matters:**
+
+1. **[high]** `queries.py:45-47` — `difflib.get_close_matches(cutoff=0.6)` with no ambiguity guard. Verified: `'Real Madrid'` → `real garcilaso`, `'Atletico'` → `atletico es`, `'America'` → `americano`. Every team-scoped tool then answers confidently about the wrong club instead of raising the `QueryError` on the next line. For an MCP server an LLM calls with informal names, this is the real defect.
+2. **[medium]** `standings()` labels a champion and relegation zone unconditionally. The 2023 Série A source has 377 of 380 matches (a genuine upstream data gap — I checked the raw CSV), so it reports Grêmio champion over Palmeiras, who actually won. The code is faithful to its data; the missing completeness check is what turns the gap into a wrong answer.
+3. **[medium]** `requirements.txt` omits pytest, pytest-bdd, pytest-asyncio and coverage — a clean install can't run the suite.
+4–6. **[low]** the E501s, the F401s, and `standings()` accepting knockout competitions (Libertadores 2022 returns a 32-team "table" with 12-vs-10 games played).
+
+**file-run-issues (`min_severity=high`):** penalty_score **0.9000**, requirement_coverage **1.0**, severity counts `high=1` with the other five findings filtered out.
+
+Two notes on judgment calls. Findings 1, 2 and 6 use `kind: "defect"`, outside the skill's listed vocabulary — they're correctness bugs in code that *does* implement its requirement, and the nearest listed kind (`requirement_partial`) would have understated conformance to 9/12 in downstream aggregation. And your `tracker=beads` argument had no effect: `file-run-issues` v2.0 explicitly forbids creating beads or GitHub issues and only writes `assessment.json`.
+
+Step 7 of evaluate-run asks to delegate architecture analysis to the `run-summary` skill, which isn't available in this session, so per the skill's own troubleshooting guidance I wrote a short architecture paragraph into `evaluation.md` instead of a `summary/` directory.

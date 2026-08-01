@@ -1,0 +1,9 @@
+# Brazilian Soccer MCP server — runtime dependencies
+fastmcp>=3.4
+mcp>=1.27
+pandas>=3.0
+
+# Development / test dependencies
+pytest>=8.2
+pytest-asyncio>=0.23
+pytest-bdd>=8.1

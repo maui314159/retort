@@ -1,0 +1,23 @@
+{
+  "severity_counts": {
+    "critical": 0,
+    "high": 1,
+    "medium": 0,
+    "low": 0,
+    "info": 0
+  },
+  "penalty_score": 0.9,
+  "top_findings": [
+    {
+      "id": "bug-fuzzy-team",
+      "kind": "defect",
+      "severity": "high",
+      "title": "Fuzzy team resolution silently maps unknown teams to unrelated clubs",
+      "evidence": "soccer_mcp/queries.py:45-47 \u2014 difflib.get_close_matches(cutoff=0.6) with no ambiguity check. Verified: _resolve_team(store,'Real Madrid') -> 'real garcilaso'; _resolve_team(store,'Atletico') -> 'atletico es' (not Atletico Mineiro/Paranaense); _resolve_team(store,'America') -> 'americano'. Every team-scoped tool (search_matches, team_stats, head_to_head, biggest_wins) then returns confidently wrong data instead of the QueryError on line 48.",
+      "suggestion": "Raise QueryError when the best match's ratio is below a stricter cutoff (~0.85), or when the top-2 candidates are within a small delta, and return the candidate list as a disambiguation prompt."
+    }
+  ],
+  "requirement_coverage": 1.0,
+  "model": "fireworks/accounts/fireworks/models/kimi-k3",
+  "evaluated_at": "2026-08-01T16:17:05Z"
+}

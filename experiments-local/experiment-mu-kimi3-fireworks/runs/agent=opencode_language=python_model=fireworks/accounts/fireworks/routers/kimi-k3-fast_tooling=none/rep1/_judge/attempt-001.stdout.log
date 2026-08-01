@@ -1,0 +1,20 @@
+Both skills complete. Three files written into the run dir: `evaluation.md`, `findings.jsonl`, `assessment.json`.
+
+## evaluate-run
+
+**Status: ok — this run passes both gates.**
+
+- **Requirements: 12/12 implemented** against the pinned `REQUIREMENTS.json` (12-entry fixed checklist). Every capability is exercised end-to-end through a real FastMCP in-memory client in `tests/test_server.py`, not just at the query-engine layer — no requirement was scored on a stub.
+- **Tests: 168 passed / 0 failed / 0 skipped.** Zero `skip`/`xfail` markers anywhere. 145 unit+integration tests plus 23 pytest-bdd scenarios across 5 `.feature` files.
+- **Scores** read from `scores.json` (no toolchain re-run): `test_coverage=0.96`, `code_quality=0.667`, `defect_rate=0.921`, `maintainability=0.624`.
+- **Shape:** 1,932 source lines in 4 modules, 1,261 lines of tests, 6 dependencies, 16 MCP tools.
+
+**One real defect found and verified by direct reproduction** — `data_loader.py:449-450` registers FIFA club names into the same `TeamRegistry` as match teams, and `normalization.py:295-296` early-returns on an exact key hit. So `find_matches(team="Boavista")` resolves to key `boavista` and returns **0 matches**, while 16 matches exist under `boavista rj`; `"Boavista-RJ"` works fine. Same for `Arsenal` → `arsenal sarandi`. Affects 2 of 427 team keys — a robustness edge case, not a missing capability, which is why R3 stays marked implemented in the requirements table.
+
+Three low findings (style issues behind `code_quality=0.67`; relegation zone reported for incomplete seasons; substring-based nationality matching) and two info findings (silent dedup drops; above-spec scope).
+
+I did not invoke the `run-summary` sub-skill (it delegates to an agent, which you asked me not to do) — I wrote the architecture section inline instead and noted that in the report.
+
+## file-run-issues (min_severity=high)
+
+At `min_severity=high` **all 6 findings filter out**, so `assessment.json` records all-zero severity counts, `penalty_score = 1.0000`, `requirement_coverage = 1.0`. I added `min_severity` and `findings_total_unfiltered: 6` to the JSON so the filtering isn't invisible downstream. No tracker records were created — the v2.0 skill is aggregation-only despite the `tracker=beads` argument.
