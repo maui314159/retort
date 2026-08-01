@@ -106,13 +106,24 @@ def _hermes_config() -> dict[str, Any] | None:
     except Exception:  # noqa: BLE001
         return None
     prov = (cfg.get("providers") or {}).get("mlxlocal") or {}
+    # Hermes' `model:` was a plain string, then became a mapping
+    # ({default, provider, base_url}). Using the mapping as a dict key raised
+    # "unhashable type: 'dict'", and since one exception aborts the WHOLE
+    # manifest, provenance capture silently stopped writing for every run on a
+    # machine with the newer schema — the recording mechanism failing exactly the
+    # way it is meant to prevent. Normalise to the model id before any lookup.
     model = cfg.get("model")
+    if isinstance(model, dict):
+        model = model.get("default") or model.get("name") or model.get("id")
+    if not isinstance(model, str):
+        model = None
     # The PER-MODEL context_length is the one Hermes actually honours. A top-level
     # `context_length:` can read 262144 while the model entry is empty, in which case
     # Hermes silently probes down to its 128K fallback tier — and lcm then compacts at
     # ~85% of 128K (~109K), thrashing at half the context you think you configured.
     # Report both, and flag the disagreement, so provenance can never lie about it.
-    per_model = (prov.get("models") or {}).get(model, {}).get("context_length")
+    _models = prov.get("models") or {}
+    per_model = (_models.get(model) or {}).get("context_length") if model else None
     top_level = cfg.get("context_length")
     return {
         "model": model,

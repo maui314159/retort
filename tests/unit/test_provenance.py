@@ -88,3 +88,84 @@ def test_unknown_agents_falls_back_to_recording_everything():
     """Callers that cannot say which agents run must not lose information."""
     m = _capture({"qwen-local": _Agent("hermes", "moe")}, None)
     assert "hermes" in m["agent_config"]
+
+
+
+def _write_hermes_config(home: Path, body: str) -> None:
+    (home / ".hermes").mkdir(parents=True, exist_ok=True)
+    (home / ".hermes" / "config.yaml").write_text(body)
+
+
+def test_hermes_config_accepts_mapping_model(tmp_path, monkeypatch):
+    """A mapping-valued `model:` must not abort capture.
+
+    Hermes' `model:` was a plain string, then became a mapping
+    ({default, provider, base_url}). The code used it directly as a dict key,
+    raising "unhashable type: 'dict'" — which aborted the ENTIRE manifest, so
+    provenance silently stopped being written for every run on a machine with
+    the newer schema.
+    """
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
+    _write_hermes_config(
+        tmp_path,
+        "model:\n"
+        "  default: anthropic/claude-opus-4.6\n"
+        "  provider: auto\n"
+        "  base_url: https://openrouter.ai/api/v1\n"
+        "max_turns: 40\n",
+    )
+
+    cfg = pv._hermes_config()
+
+    assert cfg is not None
+    # The id is normalised out of the mapping, not left as a dict.
+    assert cfg["model"] == "anthropic/claude-opus-4.6"
+    assert cfg["max_turns"] == 40
+
+
+def test_hermes_config_string_model_still_reports_per_model_context(tmp_path, monkeypatch):
+    """The legacy string form keeps resolving the per-model context_length.
+
+    The per-model value is the one Hermes actually honours; a top-level
+    context_length can disagree, and provenance must report the effective one.
+    """
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
+    _write_hermes_config(
+        tmp_path,
+        "model: mlx-community/some-model\n"
+        "context_length: 262144\n"
+        "providers:\n"
+        "  mlxlocal:\n"
+        "    models:\n"
+        "      mlx-community/some-model:\n"
+        "        context_length: 131072\n",
+    )
+
+    cfg = pv._hermes_config()
+
+    assert cfg is not None
+    assert cfg["context_length"] == 131072          # effective
+    assert cfg["context_length_top_level"] == 262144  # what the file claims
+    assert cfg["context_length_unset_per_model"] is False
+
+
+def test_hermes_config_missing_per_model_context_is_flagged(tmp_path, monkeypatch):
+    """An unset per-model context is flagged, not silently reported as the top-level."""
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
+    _write_hermes_config(
+        tmp_path,
+        "model:\n  default: mlx-community/some-model\ncontext_length: 262144\n",
+    )
+
+    cfg = pv._hermes_config()
+
+    assert cfg is not None
+    assert cfg["context_length"] is None
+    assert cfg["context_length_unset_per_model"] is True
+
+
+def test_hermes_config_absent_returns_none(tmp_path, monkeypatch):
+    """No Hermes install is not an error — capture must still produce a manifest."""
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
+
+    assert pv._hermes_config() is None

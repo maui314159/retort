@@ -1275,6 +1275,89 @@ class TestLocalRunnerOpencodeHarness:
         assert perm["external_directory"] == {"*": "allow"}
         assert perm["read"] == "allow" and perm["bash"] == "allow"
 
+    def test_opencode_config_declares_openai_compatible_provider(self, tmp_path, monkeypatch):
+        """A non-native provider is declared as an OpenAI-compatible endpoint.
+
+        `--pure` disables the models.dev catalog, so a provider absent from
+        auth.json only works if the workspace config supplies its baseURL + key.
+        """
+        import json
+
+        from retort.playpen.local_runner import LocalRunner
+
+        monkeypatch.setenv("FIREWORKS_API_KEY", "fw-test-key")
+        runner = LocalRunner(work_dir=tmp_path, local_agents={"oc": self._profile()})
+        model = "fireworks/accounts/fireworks/models/kimi-k3"
+        stack = StackConfig(
+            language="python", agent="oc", framework="stdlib", extra={"model": model},
+        )
+        ws = tmp_path / "ws"
+        ws.mkdir()
+        runner._write_opencode_config(ws, stack)
+
+        raw = (ws / "opencode.json").read_text()
+        cfg = json.loads(raw)
+        fw = cfg["provider"]["fireworks"]
+        # Only the FIRST slash splits provider from model id — the rest is the id.
+        assert "accounts/fireworks/models/kimi-k3" in fw["models"]
+        assert fw["options"]["baseURL"] == "https://api.fireworks.ai/inference/v1"
+        # The key is an {env:} reference, never inlined: this file is archived and
+        # committed with the run, so an inlined key would be published.
+        assert fw["options"]["apiKey"] == "{env:FIREWORKS_API_KEY}"
+        assert "fw-test-key" not in raw
+
+    def test_opencode_config_errors_when_provider_key_missing(self, tmp_path, monkeypatch):
+        """A missing key fails up front, not as a content-free run.
+
+        An unresolved {env:} yields a 401 per turn, which looks exactly like a
+        model that produced no code — the harness-vs-model ambiguity this repo
+        keeps getting burned by.
+        """
+        from retort.playpen.local_runner import LocalRunner
+
+        monkeypatch.delenv("FIREWORKS_API_KEY", raising=False)
+        runner = LocalRunner(work_dir=tmp_path, local_agents={"oc": self._profile()})
+        stack = StackConfig(
+            language="python", agent="oc", framework="stdlib",
+            extra={"model": "fireworks/accounts/fireworks/models/kimi-k3"},
+        )
+        ws = tmp_path / "ws"
+        ws.mkdir()
+        with pytest.raises(RuntimeError, match="FIREWORKS_API_KEY"):
+            runner._write_opencode_config(ws, stack)
+
+    def test_fireworks_fast_router_is_not_claude_fast_mode(self):
+        """`-fast` must not apply Anthropic's 2x fast-mode billing to other providers.
+
+        Fireworks' kimi-k3-fast is a +50% speed tier already priced into
+        FIREWORKS_PRICING; multiplying by FAST_MODE_COST_MULTIPLIER too would
+        record 3x the true spend.
+        """
+        from retort.playpen.local_runner import _is_fast_mode_model
+
+        assert _is_fast_mode_model("opus-4.8-fast") is True
+        assert _is_fast_mode_model("claude-opus-4-8-fast") is True
+        assert not _is_fast_mode_model("fireworks/accounts/fireworks/routers/kimi-k3-fast")
+        assert not _is_fast_mode_model("accounts/fireworks/routers/kimi-k3-fast")
+
+    def test_fireworks_cost_derived_from_tokens(self):
+        """opencode reports cost 0 for a custom provider, so cost is derived."""
+        from retort.playpen.local_runner import _fireworks_cost
+
+        usage = {
+            "input_tokens": "1000000",
+            "cache_read_input_tokens": "200000",
+            "output_tokens": "100000",
+        }
+        # 1M fresh @ $3.00 + 200k cached @ $0.30 + 100k out @ $15.00
+        std = _fireworks_cost("accounts/fireworks/models/kimi-k3", usage)
+        assert std == pytest.approx(3.00 + 0.06 + 1.50)
+        # The fast router is exactly the +50% tier.
+        fast = _fireworks_cost("accounts/fireworks/routers/kimi-k3-fast", usage)
+        assert fast == pytest.approx(std * 1.5)
+        # An unpriced model records nothing rather than inventing a figure.
+        assert _fireworks_cost("accounts/fireworks/models/unknown", usage) == 0.0
+
     def test_opencode_db_path_beside_workspace(self, tmp_path):
         from retort.playpen.local_runner import LocalRunner
 

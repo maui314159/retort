@@ -2814,6 +2814,18 @@ def _store_run_result(
                     "upstream_provider",
                     "omp_cost_sum_all_turns",
                     "omp_assistant_turns",
+                    # WHICH serving stack answered, and how the cost was arrived
+                    # at. A model id alone doesn't say this: an aggregator can
+                    # route one id to several upstreams at differing
+                    # quantization, and a derived cost must be distinguishable
+                    # from a provider-reported one.
+                    "serving_provider",
+                    "serving_model_id",
+                    "serving_endpoint",
+                    "serving_upstream",
+                    "serving_upstream_attribution",
+                    "cost_source",
+                    "fast_mode_cost_multiplier",
                 )
                 if artifacts.metadata and k in artifacts.metadata
             }

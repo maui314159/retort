@@ -697,6 +697,38 @@ class LocalRunner:
                 metadata["total_cost_usd"] = str(cost_usd)
                 metadata["fast_mode_cost_multiplier"] = str(FAST_MODE_COST_MULTIPLIER)
 
+            if self._resolve_harness(stack) == "opencode":
+                _model = self._model_for(stack) or ""
+                provider_id, model_id = _split_opencode_model(_model)
+
+                # Record WHICH serving stack answered. opencode's event stream
+                # carries no `upstreamProvider` (omp's does), so an aggregator
+                # brokering many backends leaves the run stack-ambiguous unless
+                # we say so explicitly. The exp-mu-kimi3 runs (2026-07-18) are the
+                # cautionary case: bare `openrouter/moonshotai/kimi-k3` could land
+                # on any of ~9 upstreams at differing quantization (mxfp4/fp8) and
+                # nothing recorded which — so those results are a mixture over an
+                # uncontrolled factor and cannot be reattributed after the fact.
+                metadata["serving_provider"] = provider_id
+                metadata["serving_model_id"] = model_id
+                _endpoint = OPENAI_COMPATIBLE_PROVIDERS.get(provider_id)
+                if _endpoint is not None:
+                    metadata["serving_endpoint"] = _endpoint[0]
+                    metadata["serving_upstream"] = provider_id  # direct: no broker
+                else:
+                    # An aggregator: the upstream that actually served is unknown.
+                    # Flag it rather than let silence read as "controlled".
+                    metadata["serving_upstream"] = "unrecorded"
+                    metadata["serving_upstream_attribution"] = "unavailable:opencode"
+
+                # A model priced outside opencode's catalog reports cost 0 —
+                # derive it from tokens so cost/token_efficiency stay real.
+                if cost_usd == 0.0 and provider_id == "fireworks":
+                    cost_usd = _fireworks_cost(model_id, metadata)
+                    if cost_usd > 0.0:
+                        metadata["total_cost_usd"] = str(cost_usd)
+                        metadata["cost_source"] = "derived:fireworks_pricing"
+
             # For local models, compute hardware cost when agent doesn't report API cost.
             if cost_usd == 0.0 and self.local_inference_cost is not None and elapsed > 0:
                 cost_usd = self.local_inference_cost.cost_for_run(elapsed)
@@ -818,16 +850,38 @@ class LocalRunner:
         model = self._model_for(stack)
         if not model or model == "none":
             return
-        prefix = "openrouter/"
-        bare = model[len(prefix):] if model.startswith(prefix) else model
+        provider_id, bare = _split_opencode_model(model)
         permission: dict[str, object] = {
             t: "allow" for t in self._OPENCODE_PERMISSION_TOOLS
         }
         permission["external_directory"] = {"*": "allow"}
+        provider: dict[str, object] = {"models": {bare: {}}}
+        # A provider opencode does not know natively (i.e. not in auth.json) must
+        # be declared as an OpenAI-compatible endpoint, since `--pure` disables the
+        # models.dev catalog. The key is written as an opencode `{env:VAR}`
+        # reference, NEVER inlined: this file lands in the run workspace, which is
+        # archived and committed, so an inlined key would be published.
+        endpoint = OPENAI_COMPATIBLE_PROVIDERS.get(provider_id)
+        if endpoint is not None:
+            base_url, key_env = endpoint
+            # Fail here, not mid-run: `{env:VAR}` resolving to empty yields a 401
+            # per turn, which the agent surfaces as a content-free run — the same
+            # signature as a model that simply produced no code.
+            if not os.environ.get(key_env):
+                raise RuntimeError(
+                    f"Model {model!r} needs provider {provider_id!r}, but "
+                    f"${key_env} is unset in the run environment. Export it before "
+                    f"launching (e.g. `with-fireworks retort run ...`)."
+                )
+            provider["npm"] = "@ai-sdk/openai-compatible"
+            provider["options"] = {
+                "baseURL": base_url,
+                "apiKey": f"{{env:{key_env}}}",
+            }
         config = {
             "$schema": "https://opencode.ai/config.json",
             "permission": permission,
-            "provider": {"openrouter": {"models": {bare: {}}}},
+            "provider": {provider_id: provider},
         }
         (workspace / "opencode.json").write_text(json.dumps(config))
 
@@ -1378,10 +1432,24 @@ FAST_MODE_COST_MULTIPLIER = 2.0
 
 
 def _is_fast_mode_model(model: str) -> bool:
-    """True if a model factor selects Claude Code fast mode (a `-fast` suffix)."""
+    """True if a model factor selects Claude Code fast mode (a `-fast` suffix).
+
+    The suffix is scoped to **Claude Code** ids on purpose: other providers ship
+    their own "-fast" endpoints whose economics are unrelated to Anthropic's 2×
+    fast-mode billing. Fireworks' ``accounts/fireworks/routers/kimi-k3-fast`` is
+    the live example — it is a +50% speed tier already priced into
+    FIREWORKS_PRICING, so applying FAST_MODE_COST_MULTIPLIER on top would bill it
+    at 3× the true rate. A bare suffix test matched it; requiring a Claude id does
+    not. (The bug was dormant only because opencode reports cost 0 for a custom
+    provider, so the multiplier's ``cost_usd > 0`` guard never fired — deriving
+    Fireworks cost is exactly what would have armed it.)
+    """
     if not model:
         return False
-    return MODEL_ALIASES.get(model, model).endswith("-fast")
+    resolved = MODEL_ALIASES.get(model, model)
+    if not resolved.endswith("-fast"):
+        return False
+    return _harness_for_model(model) == "claude-code" and resolved.startswith("claude-")
 
 
 def _harness_for_model(model: str) -> str:
@@ -1685,6 +1753,68 @@ GEMINI_PRICING: dict[str, tuple[float, float]] = {
     "gemini-2.5-flash": (0.30, 2.50),
     "gemini-2.5-flash-lite": (0.10, 0.40),
 }
+
+# Providers opencode has no native entry for, declared as OpenAI-compatible
+# endpoints: provider id -> (base URL, env var holding the API key).
+OPENAI_COMPATIBLE_PROVIDERS: dict[str, tuple[str, str]] = {
+    "fireworks": ("https://api.fireworks.ai/inference/v1", "FIREWORKS_API_KEY"),
+}
+
+# USD per MILLION tokens (input, output) for direct-to-provider models whose
+# agent reports no dollar cost of its own. opencode prices a run from its own
+# catalog, but a custom OpenAI-compatible provider isn't in that catalog, so it
+# reports `cost: 0` — verified by probe. Without this table those runs would
+# record cost 0 and silently corrupt the cost/token-efficiency responses.
+#
+# Rates from the Fireworks model page (2026-08-01). The `-fast` router is the
+# +50% "Fast Serverless" speed tier (priority is +25%, US-only +10%); its
+# $4.50/$22.50 matches the premium Fireworks endpoint OpenRouter exposes,
+# confirming the two are the same tier.
+FIREWORKS_PRICING: dict[str, tuple[float, float]] = {
+    "accounts/fireworks/models/kimi-k3": (3.00, 15.00),
+    "accounts/fireworks/routers/kimi-k3-fast": (4.50, 22.50),
+}
+# Cached input is billed at $0.30/Mtok on kimi-k3 (10% of fresh input) rather
+# than the fresh-input rate, so cache reads are priced separately.
+FIREWORKS_CACHED_INPUT_PER_MTOK: dict[str, float] = {
+    "accounts/fireworks/models/kimi-k3": 0.30,
+    "accounts/fireworks/routers/kimi-k3-fast": 0.45,
+}
+
+
+def _split_opencode_model(model: str) -> tuple[str, str]:
+    """Split an opencode model level into ``(provider_id, model_id)``.
+
+    opencode addresses models as ``<provider>/<model>``, splitting on the FIRST
+    slash only — the remainder can itself contain slashes (``openrouter/z-ai/glm-5.2``,
+    ``fireworks/accounts/fireworks/models/kimi-k3``). A level with no slash is
+    treated as an OpenRouter model, matching the historical default.
+    """
+    if "/" not in model:
+        return "openrouter", model
+    provider_id, bare = model.split("/", 1)
+    return provider_id, bare
+
+
+def _fireworks_cost(model_id: str, metadata: dict[str, str]) -> float:
+    """Derive a Fireworks run's USD cost from token counts, or 0.0 if unpriced.
+
+    Returns 0.0 for an unknown model rather than guessing, so an unpriced model
+    falls through to the existing zero-cost path instead of recording a fiction.
+    """
+    rate = FIREWORKS_PRICING.get(model_id)
+    if rate is None:
+        return 0.0
+    input_per_mtok, output_per_mtok = rate
+    cached_per_mtok = FIREWORKS_CACHED_INPUT_PER_MTOK.get(model_id, input_per_mtok)
+    fresh_input = _parse_float(metadata.get("input_tokens"), 0.0)
+    cached_input = _parse_float(metadata.get("cache_read_input_tokens"), 0.0)
+    output = _parse_float(metadata.get("output_tokens"), 0.0)
+    return (
+        fresh_input * input_per_mtok
+        + cached_input * cached_per_mtok
+        + output * output_per_mtok
+    ) / 1_000_000
 
 
 def _parse_opencode_usage(stdout_text: str) -> tuple[int, dict[str, str]]:
