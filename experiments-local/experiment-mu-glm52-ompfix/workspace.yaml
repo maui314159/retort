@@ -44,6 +44,12 @@ playpen:
   runner: local
   replicates: 3
   timeout_minutes: 40
+  # Kill a run that makes NO progress (no agent output, no workspace file
+  # writes) for 25 min. The default is 0 = DISABLED; added 2026-08-02 after a
+  # kimi3-brazil csharp cell hung mid-stream and burned its entire 120-min wall
+  # producing nothing. timeout_minutes cannot tell a hang from slow work; this
+  # can. 25 matches the modal value across the repo's other workspaces.
+  stall_minutes: 25
   max_turns: 100
   local_agents:
     omp:

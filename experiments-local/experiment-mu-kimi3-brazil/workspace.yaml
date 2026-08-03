@@ -35,7 +35,35 @@ playpen:
   replicates: 3
   # 40 -> 60: kimi-k3's completions took 29-36 min; 6/9 first-pass cells hit
   # the 40-min wall mid-task (slow model, not a stall).
-  timeout_minutes: 60
+  # 60 -> 120 (2026-08-01): both remaining crashes (typescript, csharp) were read
+  # as WALL-TIMEOUT crashes, "not stalls". That was HALF WRONG, and the half that
+  # was wrong is corrected below — typescript was indeed slow-but-productive and
+  # completed in 36 min at the raised wall; csharp was a STALL and 120 just
+  # doubled the idle burn. 120 matches the wall exp-48 uses for brazil.
+  #
+  # CAVEAT, since it cannot be recovered from the data later: the 9 original
+  # cells ran at a 60-min wall; the two re-run cells run at 120. That is a stack
+  # difference between cells of the same experiment. It only ever converts a
+  # crash into a result — a cell that finished inside 60 min is unaffected — but
+  # any per-cell duration comparison should know the wall was not constant.
+  timeout_minutes: 120
+  # 0 (the DEFAULT) -> 25 (2026-08-02), after csharp rep2 burned the full 120-min
+  # wall having produced NOTHING. Diagnosed from the surviving workspace: 12 steps
+  # of real work in the first 16 min, then step 13 started, a todowrite fired at
+  # 09:33:56, and the opencode<->OpenRouter stream HUNG — 1h44m with zero events,
+  # zero stdout bytes and zero file writes, and not one level=ERROR line. Nothing
+  # distinguished it from slow work except the absence of progress, which is
+  # exactly what this guard measures and what timeout_minutes cannot see.
+  #
+  # stall_minutes defaults to 0 = DISABLED, so the guard that exists for this
+  # failure was silently off. 25 matches the modal value across the repo's other
+  # workspaces (21 of them). At 25 this run would have died ~09:59 instead of
+  # 11:17 and been LABELLED `stall` rather than misfiled as a timeout — the
+  # mislabelling is what produced the wrong 60->120 remedy above.
+  stall_minutes: 25
+  # NOTE: max_turns is NOT enforced for the opencode harness (no such flag in
+  # opencode 1.18.5) — these runs are bounded only by timeout_minutes and
+  # stall_minutes above. See PlaypenConfig.max_turns in src/retort/config/schema.py.
   max_turns: 100
   local_agents:
     omp:
