@@ -576,6 +576,55 @@ while exp-mu-glm53 runs; the bootstrap script (ECR repo, S3 bucket, Batch queue,
 reviewed by the user before anything is created; smokes run only after the live experiment's
 driver completes.
 
+## 0d. exp-mu-glm53-provider — serving provider as a stack factor  — QUEUED 2026-08-31
+
+Gated on exp-mu-glm53 landing. The z-ai provider pin (§0a) held the provider constant; this
+measures what the pin cost. Probed 2026-08-31 (single 400-token generation each, glm-5.3, fp8,
+default thinking): **Parasail ~159 tok/s vs Z.AI ~69**, Fireworks/SiliconFlow ~75, Novita ~62 —
+but Parasail has the worst 1-day uptime of the fp8 set (94.5%) and a 2.5s probe says nothing
+about sustained long-context agent load. Provider is a serving-layer stack dimension; measure it.
+
+**Design.** `provider {z-ai, parasail, fireworks} × glm-5.3 × brazil-bench × python × n=3` = 9
+runs, opencode harness, everything else per §0a. Implemented as three `local_agents` profiles
+differing only in `model_options.provider.order` (mechanism already built and pin-verified).
+Fireworks caveat: its endpoint does not declare quantization — record that; if it cannot be
+established, substitute SiliconFlow (declared fp8, 99.6% uptime, same probe speed).
+
+**Responses:** pass-proportion, wall-clock, billed cost, token totals. **Hypothesis:** provider
+moves duration (2x+) and possibly reliability (uptime → crashed cells), NOT correctness — code
+quality is the model's, not the provider's (the harness-dimension precedent). A correctness delta
+across fp8 providers of the same weights would be the surprising, publishable result.
+
+**Smokes:** per-arm pin verification (the §0a biconditional check), and confirm `allow_fallbacks:
+false` failure mode per provider (a Parasail outage must fail the cell loudly, not silently
+reroute). Budget ~$15–25.
+
+## 0e. exp-mu-glm53-thinking — what does GLM-5.3's thinking buy on a hard task?  — QUEUED 2026-08-31
+
+Gated on exp-mu-glm53 landing. 5.3 thinks by default as served, and the brazil cells' token burn
+(7–10M tokens in wall-crashed cells) is dominated by reasoning tokens — so thinking carries a
+2–3x cost/wall multiplier whose capability payoff is unmeasured. The direct analog of the codex
+`effort` factor.
+
+**Off-switch, verified at API level 2026-08-31:** OpenRouter `reasoning: {"max_tokens": 1}` →
+**reasoning_tokens=0** on z-ai/glm-5.3. `{"exclude": true}` is NOT an off-switch (still thinks,
+30 tokens billed, merely hidden); `{"effort":"none"}` and `{"enabled":false}` are rejected (400).
+
+**Design.** `thinking {default-on, off} × glm-5.3 × brazil-bench × python × n=3` = 6 runs,
+z-ai-pinned, opencode, everything else per §0a. The off arm rides opencode per-model
+`model_options` (`reasoning: {max_tokens: 1}` merged beside the provider pin).
+
+**REQUIRED SMOKE before the grid** (the §0a discipline — "I set it" is not "it took effect"):
+one real opencode run per arm, assert `reasoning` tokens **0 in the off arm and >0 in the on arm**
+from the step_finish usage. Also confirm max_tokens:1 does not degrade tool-calling on a
+multi-tool probe — a thinking-starved model that emits malformed tool calls would score a false
+zero (the omp lesson, again).
+
+**Hypotheses, pre-registered:** off-arm passes anyway → thinking is ~pure cost on this task
+(headline: 2–3x savings); off-arm fails or degrades → the reasoning spend is load-bearing and the
+cost is the price of the capability. Either outcome publishes. Watch the ceiling: if BOTH arms
+pass 3/3, brazil cannot rank them and the entry needs a harder cell, not a conclusion.
+
 ## 1. exp-54 — does a Codex judge agree with the Opus judge?  — SCOPED DOWN (token budget)
 
 `requirement_coverage` is an LLM's opinion, and PR #45 made the judge configurable — so it is a
