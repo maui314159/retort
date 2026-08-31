@@ -528,6 +528,54 @@ zero build work — then exp-mu-primeagent once the integration lands. A linking
 (`prime-agent × glm-5.3-flash`) is only meaningful after BOTH mains establish their factor
 separately; queue it as a follow-up, not part of either grid.
 
+## 0c. Methodology: SandboxRunner — ephemeral per-cell cloud environments (AWS Batch on Fargate)  — PLANNED 2026-08-31
+
+**Decision (user, 2026-08-31): AWS Batch on Fargate** (existing AWS account 047719634604; Azure
+"Data Integration" also available — the provision/execute/collect seam stays provider-neutral so an
+Azure Container Apps Jobs backend can follow if wanted). Motivation: API-model experiments (the
+exp-mu-glm53 shape — opencode x OpenRouter) are API-bound, yet the ONE-experiment-at-a-time rule
+serializes them because wall-clock is a first-class response on a shared machine. One cell = one
+ephemeral environment dissolves the contention constraint and the recurring environment-bug family
+(playpen-path refusals, global-config leakage, orphan contention). **Scope: API-model experiments
+only** — the local oMLX spine cannot move and is unaffected.
+
+**Prior art in-repo:** `playpen/docker_runner.py` is a 211-line isolation sketch (per-language
+images, mounted workspace) that never solved agent installation, auth, usage parsing, or in-env
+scoring. Superseded by this design rather than resurrected; its "subprocess over SDK" choice is
+kept (shell out to the `aws` CLI, no boto3 dependency).
+
+**Design.** `SandboxRunner` implements the `PlaypenRunner` protocol:
+- One cell = one Fargate task, submitted through an AWS Batch **array job** (a design grid IS an
+  array job). Queue + compute environment created once by a bootstrap script.
+- **Pinned per-language image** in ECR with the agent CLIs preinstalled. The **image digest and the
+  task's vCPU/memory spec are tuning parameters**: recorded in provenance, identical across all
+  arms of an experiment, never mixed within one.
+- Flow: runner tars the provisioned workspace -> S3; container entrypoint pulls it, runs the agent
+  headless (same command builders as local_runner), **runs the scorers in-container** (or
+  `build_time` stops being comparable), tars workspace + stdout/stderr + usage back to S3; runner
+  polls, pulls, and parses usage with the SAME parsers (one source of truth).
+- **Wall-clock is measured in-container** around the agent invocation (monotonic clock) —
+  provisioning and queue time are recorded separately, never folded into duration.
+- **Secrets:** OpenRouter/provider keys via Secrets Manager, injected as Batch job env from the
+  secret ARN. Never in the image, never in S3, never in provenance.
+
+**Smoke tests before any real grid (each pre-registered, $0 tokens except #2):**
+1. Echo cell — container writes a file, artifacts round-trip through S3 intact.
+2. Agent hello — opencode reaches OpenRouter from inside the container; usage parses; cost lands.
+3. Timing sanity — in-container monotonic duration recorded and plausible vs the job's own span.
+4. **Scorer parity** — one archived local workspace rescored in-container matches its local scores
+   (the scorer-environment confound check; a mismatch here poisons every cross-lane comparison).
+
+**Shakedown workload:** re-run a known cell (rest-api-crud x glm-5.3-flash, n=3) and compare
+pass-proportion against exp-mu-glm53-easy's local runs. Pass rates should agree; durations are
+EXPECTED to differ (different hardware) and are recorded, not compared. **Cross-lane rule from day
+one: never pool duration/build_time across runner lanes; lane is a provenance field.**
+
+**Sequencing:** code builds now in a worktree (`../retort-sandbox`, branch `feat/sandbox-runner`)
+while exp-mu-glm53 runs; the bootstrap script (ECR repo, S3 bucket, Batch queue, IAM roles) is
+reviewed by the user before anything is created; smokes run only after the live experiment's
+driver completes.
+
 ## 1. exp-54 — does a Codex judge agree with the Opus judge?  — SCOPED DOWN (token budget)
 
 `requirement_coverage` is an LLM's opinion, and PR #45 made the judge configurable — so it is a
