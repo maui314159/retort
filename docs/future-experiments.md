@@ -432,6 +432,102 @@ CLAUDE.md and this factor is a capability toggle, exactly the kind that has sile
 **Cost note from exp-61.** Budget wall-clock, not agent time. exp-61's two-cell smoke pair took ~50
 minutes for ~5 minutes of agent work — the Opus judge pass and the 42 GB stack reload dominate.
 
+## 0a. exp-mu-glm53 — GLM 5.3 and GLM 5.3-Flash vs the GLM 5.2 baseline  — PLANNED 2026-08-31
+
+Z.ai released open weights for the 5.3 generation (2026-08-25): **GLM-5.3-Flash is 320B total /
+18B active, MIT, FP8 weights 328 GB** — so, like GLM-5.2 (744B-A40B), **nothing in this line fits
+the 64 GB machine and both run via API** (OpenRouter lists `z-ai/glm-5.3-flash` across ~10
+providers at $0.075–0.15/M in). The weights release matters for license/reproducibility, not local
+serving; recorded here because the daily scan only flags 64GB-fittable models and would never
+surface these.
+
+**Question.** Does the 5.3 generation move hard-task pass-proportion or cost vs 5.2 — and does
+Flash hold near the full model at a fraction of the price (a possible new Pareto point for
+optimal-blog)?
+
+**Harness is FIXED at opencode** — the known-good GLM harness. The June omp×GLM runs were
+harness-confounded (omp <16.4.5 corrupted GLM tool-call args); never introduce a new model and a
+new harness in the same comparison. Pin and record the opencode version.
+
+**Design.** `model {glm-5.2 (control), glm-5.3, glm-5.3-flash} × task {brazil-bench,
+rest-api-crud} × n=3` = 18 runs, in `experiments-local/experiment-mu-glm53/`. The glm-5.2 control
+is RE-RUN contemporaneously, not borrowed from July — API endpoints drift and OpenRouter routing
+spans providers with different quantizations.
+
+**Smoke tests before the grid (each with a pass criterion, per the CLAUDE.md principle):**
+1. **The served model is the requested model** — check the response `model`/provider fields, and
+   **pin an OpenRouter provider (or record per-call which provider served)**; multi-provider
+   routing is both a quality and a cost confound (see the omp multi-upstream cost note).
+2. **GLM-5.3 tool-call integrity** — one agentic run per new model, inspect multi-argument tool
+   calls in the transcript for merged/swallowed args. The dialect may have changed 5.2→5.3, which
+   is exactly the omp-bug class; a broken dialect scores an indistinguishable false zero.
+3. **Reasoning/thinking default recorded** — 5.3 ships thinking modes; record which mode ran
+   (effective value, not the config's).
+4. **Cost reconciles** — self-reported vs OpenRouter `/generation` billed.
+
+**Hypotheses.** (H1) 5.3 ≥ 5.2 on brazil-bench. **Ceiling risk, stated up front:** opencode ×
+glm-5.2 was already 9/9 mechanical on brazil — if the control's spec gate also sits at 1.0, the
+capability comparison is uninformative (the exp-62 lesson) and the honest headline becomes cost
+and wall-clock, with a harder cell (funkygibbon large-repo arm) needed for a capability delta.
+(H2) flash lands within noise of full 5.3 at a much lower price → the interesting result.
+
+**After:** aggregate into `master-local.*` only, update write-ups, move this entry to
+past-experiments, re-commit `data/maui-experiments`.
+
+## 0b. exp-mu-primeagent — prime-agent 0.7.2 as a new agent-harness level  — PLANNED 2026-08-31
+
+`prime-agent` 0.7.2 is installed (`~/.local/bin`) — "AI coding assistant with an IPython tool",
+with `-p/--print`, `--mode json`, `--provider/--model/--api-key`, and purity flags (`-nc` no
+context files, `-ns` no skills, `-ne` no extensions, `-np` no prompt templates, `--no-session`).
+
+**Question.** Holding the model fixed, does prime-agent change pass-proportion, cost, wall-clock
+or turns vs opencode? Secondary interest: the IPython tool may collapse many shell/file turns
+into fewer code-execution turns → token efficiency.
+
+**Model is FIXED at glm-5.2 via OpenRouter** — the best-characterized API model on both existing
+harnesses, and it shares its control cells with exp-mu-glm53 (whichever experiment runs first
+provides the `opencode × glm-5.2` cells; record the reuse). Same rule as above, opposite
+direction: new harness on a trusted model, never both new at once.
+
+**Integration to build first** (an agent = a command branch + a usage parser + a profile,
+per local_runner.py):
+- add `"prime"` to the `LocalHarness` literal in `config/schema.py`;
+- command branch: `prime-agent -p --mode json --cwd <playpen> -nc -ns -ne -np --no-session`
+  plus provider/model flags; `_parse_prime_usage` from the `--mode json` shape (inspect it —
+  don't guess);
+- `playpen.local_agents` profile; record the prime-agent version in provenance (it is a level of
+  the agent factor);
+- cost via OpenRouter `/generation` reconcile.
+
+**Smoke tests before the grid (pass criteria pre-registered):**
+1. **File-write in the playpen** — the /var sensitive-path refusal produced a false zero once;
+   prove prime-agent's tools write where retort's playpen lives.
+2. **Purity flags actually suppress** — opencode's `--pure` still loaded global skills and
+   provenance never recorded it. Verify with `--verbose` startup / session log that no
+   ~/.claude or ~/.agents skills, extensions, or CLAUDE.md were loaded.
+3. **No hidden caps in plain `-p` mode** — the `--autonomous` options default to 12 turns /
+   80K tokens / 30 min. Confirm plain print mode has no such ceiling binding below retort's own
+   `max_turns`/`timeout_minutes`, or raise them; a binding cap measures the cap (exp-39, exp-62).
+4. **Model flag takes effect** — the JSON output names the served model.
+5. **Usage parser returns turns + tokens + cost** on a real run, reconciled against billed.
+6. **GLM tool-call integrity under prime-agent** — same dialect check as exp-mu-glm53; a
+   harness-side GLM dialect bug here would replay the June omp episode.
+
+**Design.** `agent {opencode (control), prime-agent} × task {brazil-bench, rest-api-crud} ×
+n=3` = 12 runs (6 if the opencode cells are inherited from exp-mu-glm53), in
+`experiments-local/experiment-mu-primeagent/`. Autonomous/gate mode stays OFF for the main run —
+it is a capability toggle (verify-on-stop's sibling) and a candidate **follow-up** factor, not
+part of the harness comparison.
+
+**Hypothesis.** Null on the easy task (ceiling); brazil-bench discriminates. Even a pass-rate
+null is publishable if turns/tokens/cost move — that is the pass-proportion-vs-efficiency
+decomposition the project exists for.
+
+**Sequencing (ONE experiment at a time):** run exp-mu-glm53 first — it is pure API spend with
+zero build work — then exp-mu-primeagent once the integration lands. A linking cell
+(`prime-agent × glm-5.3-flash`) is only meaningful after BOTH mains establish their factor
+separately; queue it as a follow-up, not part of either grid.
+
 ## 1. exp-54 — does a Codex judge agree with the Opus judge?  — SCOPED DOWN (token budget)
 
 `requirement_coverage` is an LLM's opinion, and PR #45 made the judge configurable — so it is a
