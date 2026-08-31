@@ -131,7 +131,18 @@ if ! aws batch describe-compute-environments --compute-environments "$NAME" --re
     --type MANAGED --state ENABLED --region "$REGION" \
     --compute-resources "{\"type\":\"FARGATE\",\"maxvCpus\":32,\"subnets\":${SUBNETS},\"securityGroupIds\":[\"${SG}\"]}"
   say "Waiting for compute environment to become VALID..."
-  [ "$MODE" = "--dry-run" ] || sleep 15
+  # A fixed sleep raced CreateJobQueue on first bootstrap (observed 2026-08-31:
+  # "Compute Environment ... is not valid"); poll until Batch reports VALID.
+  if [ "$MODE" != "--dry-run" ]; then
+    status=""
+    for _ in $(seq 1 60); do
+      status=$(aws batch describe-compute-environments --compute-environments "$NAME" \
+        --region "$REGION" --query 'computeEnvironments[0].status' --output text 2>/dev/null)
+      [ "$status" = "VALID" ] && break
+      sleep 5
+    done
+    [ "$status" = "VALID" ] || { echo "FATAL: compute environment never became VALID" >&2; exit 1; }
+  fi
 else say "Compute environment $NAME exists"; fi
 
 if ! aws batch describe-job-queues --job-queues "$NAME" --region "$REGION" \
