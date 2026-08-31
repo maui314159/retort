@@ -217,6 +217,22 @@ class LocalAgentConfig(BaseModel):
         ThinkingMode | None,
         Field(default=None, description="Default OMP thinking mode for this profile"),
     ]
+    model_options: Annotated[
+        dict[str, Any] | None,
+        Field(
+            default=None,
+            description=(
+                "Harness-specific per-model options merged into the model's "
+                "registration (opencode: the `options` object of every model "
+                "entry written to the per-workspace opencode.json — e.g. an "
+                "OpenRouter provider pin `{provider: {order: [z-ai], "
+                "allow_fallbacks: false}}`, so a multi-provider model is served "
+                "by ONE provider at a known quantization instead of whatever "
+                "the price-sorted default routes to; the serving provider is a "
+                "tuning parameter, and an unpinned one is set-but-unrecorded)."
+            ),
+        ),
+    ]
 
     @field_validator("thinking", mode="before")
     @classmethod

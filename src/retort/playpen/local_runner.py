@@ -617,6 +617,13 @@ class LocalRunner:
         if self._resolve_harness(stack) == "opencode":
             self._write_opencode_config(info.workspace, stack)
             env["OPENCODE_DB"] = str(self._opencode_db_path(info.workspace))
+            # Make the per-workspace config the AUTHORITATIVE config, not one
+            # merge layer among ~/.config/opencode/*. Without this the user's
+            # global config (plugins, provider overrides, default model) is
+            # merged into every run — unrecorded by provenance, and a git-
+            # sourced plugin in it hung `opencode run` at init for 120s+ (the
+            # whole grid would have stalled). Observed 2026-08-31 on 1.18.15.
+            env["OPENCODE_CONFIG"] = str(info.workspace / "opencode.json")
 
         hard_wall_secs = self.timeout_minutes * 60
         stall_secs = self.stall_minutes * 60  # 0 ⇒ stall guard disabled
@@ -830,10 +837,19 @@ class LocalRunner:
             t: "allow" for t in self._OPENCODE_PERMISSION_TOOLS
         }
         permission["external_directory"] = {"*": "allow"}
+        # Profile-level model options (e.g. an OpenRouter provider pin) go into
+        # the model entry's `options` object, which opencode forwards to the
+        # request. Verified biconditionally on 1.18.20: a bogus provider pin
+        # fails with "No endpoints found", the real one serves — so the pin is
+        # honoured, not silently dropped. (1.18.15 hung at init on ANY options
+        # key; the grid requires >= 1.18.20.)
+        profile = self.local_agents.get(stack.agent)
+        options = profile.model_options if profile is not None else None
+        entry: dict[str, object] = {"options": options} if options else {}
         config = {
             "$schema": "https://opencode.ai/config.json",
             "permission": permission,
-            "provider": {"openrouter": {"models": {bare: {}}}},
+            "provider": {"openrouter": {"models": {bare: entry}}},
         }
         (workspace / "opencode.json").write_text(json.dumps(config))
 

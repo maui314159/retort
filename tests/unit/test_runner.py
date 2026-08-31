@@ -1274,6 +1274,34 @@ class TestLocalRunnerOpencodeHarness:
         perm = cfg["permission"]
         assert perm["external_directory"] == {"*": "allow"}
         assert perm["read"] == "allow" and perm["bash"] == "allow"
+        # No profile model_options -> a bare entry, no options key (opencode
+        # 1.18.15 hung at init on ANY options object; only write one on purpose).
+        assert cfg["provider"]["openrouter"]["models"]["z-ai/glm-5.2"] == {}
+
+    def test_opencode_config_merges_profile_model_options(self, tmp_path):
+        import json
+
+        from retort.playpen.local_runner import LocalRunner
+
+        pin = {"provider": {"order": ["z-ai"], "allow_fallbacks": False}}
+        runner = LocalRunner(
+            work_dir=tmp_path,
+            local_agents={"oc": self._profile(model_options=pin)},
+        )
+        stack = StackConfig(
+            language="python", agent="oc", framework="stdlib",
+            extra={"model": "openrouter/z-ai/glm-5.3-flash"},
+        )
+        ws = tmp_path / "ws"
+        ws.mkdir()
+        runner._write_opencode_config(ws, stack)
+
+        cfg = json.loads((ws / "opencode.json").read_text())
+        entry = cfg["provider"]["openrouter"]["models"]["z-ai/glm-5.3-flash"]
+        # The profile's model_options land as the model entry's `options`
+        # object — the OpenRouter provider pin that keeps a multi-provider
+        # model on ONE provider/quantization for the whole grid.
+        assert entry["options"] == pin
 
     def test_opencode_db_path_beside_workspace(self, tmp_path):
         from retort.playpen.local_runner import LocalRunner
