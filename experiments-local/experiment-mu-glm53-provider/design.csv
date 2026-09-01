@@ -1,0 +1,4 @@
+run,language,model,agent,tooling
+0,python,openrouter/z-ai/glm-5.3,oc-zai,none
+1,python,openrouter/z-ai/glm-5.3,oc-parasail,none
+2,python,openrouter/z-ai/glm-5.3,oc-fireworks,none

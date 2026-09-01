@@ -1,0 +1,22 @@
+Client.listTools() called but server does not advertise tools capability - returning empty list
+Both skills are done. Summary:
+
+## Evaluation — `agent=oc-parasail / python / glm-5.3 / tooling=none`, rep1
+
+**Verdict: clean PASS.** This is a strong, complete implementation of the Brazilian Soccer MCP server.
+
+**Requirements: 12/12 implemented** (against the pinned `REQUIREMENTS.json`):
+- Hand-rolled MCP server over stdio JSON-RPC (`protocol.py`) exposing **12 tools** via a registry (`tools.py`) — initialize/ping/tools.list/tools.call/resources.*.
+- All **6 Kaggle CSVs** loaded and normalized across inconsistent team spellings (`repository.py`).
+- Match queries (team/home/away/either, date range, season, competition), team W/L/D records, player search by name/nationality/club with ratings, **standings computed from match results** (`points = 3·wins + draws`, not hardcoded), head-to-head, and aggregate stats (avg goals, biggest wins, home/away).
+
+**Tests: 125 functions across 9 modules, 0 skips**, `test_coverage=0.92`, `defect_rate=0.979` — build + tests executed and passed. Notably, `conftest.py` drives a *live `python server.py` subprocess* over stdio for genuine end-to-end MCP verification. Pure stdlib, zero dependencies.
+
+**Mechanical scores** (from `scores.json`): code_quality=0.667, maintainability=0.616 — advisory deductions on the large query modules (`queries.py` 861 lines), not gate-affecting.
+
+**Artifacts written to run_dir:**
+- `evaluation.md` — full report
+- `findings.jsonl` — 3 findings (2 info, 1 low; no requirement misses)
+- `assessment.json` — from file-run-issues at `min_severity=high`: **penalty_score=1.0, requirement_coverage=100% (12/12), 0 findings at/above high**
+
+Note: the `file-run-issues` skill (v2.0) aggregates into `assessment.json`; despite the `tracker=beads` argument, it does **not** create beads/GitHub issues — that's by design in the current skill version. No external tracker records were created.

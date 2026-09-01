@@ -1,0 +1,16 @@
+Both skills complete. Summary:
+
+## evaluate-run
+**Status: ok — clean pass.** GLM-5.2 (opencode/python) produced a complete Flask + SQLite book API.
+
+- **Requirements: 12/12 implemented**, 0 partial, 0 missing — all pinned `REQUIREMENTS.json` items verified against `app.py` with file:line evidence.
+- **Tests: 5 passed / 0 failed / 0 skipped.** Mechanical scores from `scores.json` (not re-run per skill): `test_coverage=0.95`, `defect_rate=1.0`, `code_quality=0.789`, `maintainability=0.976` — build + tests ran and passed.
+- Implementation is idiomatic: app factory, per-request connections, JSON error contract (incl. 404/405 handlers), partial-update PUT with validation, `?author=` filter, `/health`.
+- Wrote `evaluation.md` and `findings.jsonl` (3 findings: 1 low = connection-per-request/no pooling; 2 info = beyond-spec 405 handler + partial-update validation).
+
+## file-run-issues (min_severity=high)
+- All 3 findings are below `high`, so nothing survives the filter. Wrote `assessment.json`: severity counts all 0, **penalty_score = 1.0**, **requirement_coverage = 1.0**, model `openrouter/z-ai/glm-5.2`.
+
+Two notes:
+- **`tracker=beads` had no effect.** The installed `file-run-issues` SKILL.md is **v2.0**, which explicitly aggregates into `assessment.json` and states it does *not* create beads/GitHub/tracker issues. I recorded this in the assessment `note`. If you actually want beads issues filed, that needs a different (older/tracker-creating) skill version or a manual `bd` step — say the word and I'll do it.
+- `run-summary` wasn't invoked (not available as an installed skill this session); noted in `evaluation.md`. Given the single-module codebase, it adds little here.

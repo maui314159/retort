@@ -1,0 +1,23 @@
+Both skills complete. Summary:
+
+## evaluate-run → `evaluation.md` + `findings.jsonl`
+
+**Status: ok — a clean, complete run.** All **12/12** pinned requirements implemented and tested; **172 tests pass, 0 failed, 0 skipped**; coverage ~92% (local re-run) / **0.95** (scores.json), `defect_rate=1.0`.
+
+The GLM‑5.3 / opencode agent produced a well-layered `brasil_mcp` package (loaders → normalize/dates → store → queries → server/cli) exposing **14 MCP tools** (spec asked for 11 query capabilities). Standings are computed from match data (test asserts 2019 champion = Flamengo), player search returns real FIFA ratings (827 Brazilians, Neymar top), and head-to-head/aggregate stats are all present and exercised.
+
+**One thing worth flagging** (info-level, not a defect): `server.py` imports `from mcp.server.mcpserver import MCPServer`, which exists only in **mcp ≥ 2.1**. The code correctly declares `mcp>=2.1` in `pyproject.toml`/`requirements.txt`, and a clean install (mcp 2.1.1) passes everything. But the project's own `.venv` pins `mcp==1.27.2`, where `test_server.py` fails to import — so a naive re-run against the shared venv looks like a build failure. It isn't; it's environment version skew. I ground-truthed by building a throwaway venv with the declared dep and confirmed all 172 tests pass. The recorded `scores.json` (0.95 / defect_rate 1.0) is trustworthy.
+
+## file-run-issues → `assessment.json` (min_severity=high)
+
+```
+Severity counts: critical=0 high=0 medium=0 low=0 info=0
+Penalty score:   1.0000  (clean)
+Req coverage:    100.0%
+Model:           openrouter/z-ai/glm-5.3
+```
+The two findings are both `info`, so they're filtered out at `min_severity=high`, leaving a clean 1.0 penalty score.
+
+Note: the `file-run-issues` skill (v2.0) only writes `assessment.json` — despite the `tracker=beads` argument, its Constraints explicitly forbid creating beads/GitHub issues, so no tracker records were created.
+
+Two small caveats on the invocation itself: the deferred `ruflo`/`graphiti-pe` MCP servers timed out and `gitnexus` failed to connect, but none were needed here.

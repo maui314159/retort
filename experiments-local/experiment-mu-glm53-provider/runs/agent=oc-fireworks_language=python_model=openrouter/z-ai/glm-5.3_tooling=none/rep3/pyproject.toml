@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "brsoccer-mcp"
+version = "2.0.0"
+description = "MCP server for Brazilian soccer data (Brasileirao, Copa do Brasil, Libertadores, FIFA players)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "mcp>=2.0,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-cov",
+]
+
+[project.scripts]
+brsoccer-mcp = "brsoccer.mcp_server:main"
+
+[tool.setuptools]
+packages = ["brsoccer"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = [
+    "bdd: BDD scenario tests (Given/When/Then)",
+    "integration: end-to-end MCP protocol tests over stdio",
+    "performance: query latency guard tests",
+]

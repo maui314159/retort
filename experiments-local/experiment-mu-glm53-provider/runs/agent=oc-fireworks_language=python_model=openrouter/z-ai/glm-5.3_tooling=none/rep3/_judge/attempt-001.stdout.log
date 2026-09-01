@@ -1,0 +1,18 @@
+Both skills are complete. Summary:
+
+## evaluate-run → `evaluation.md` + `findings.jsonl`
+
+**Status: ok — a clean, strong run.** GLM‑5.3 (via opencode/OpenRouter, tooling=none) produced a real MCP server for the Brazilian‑soccer task:
+
+- **12/12 pinned requirements implemented**, 0 partial, 0 missing.
+- **134 tests pass, 0 skips** (`134 passed in 7.86s` from agent stdout); `test_coverage=0.94`, `defect_rate=0.994`, `code_quality=0.667` from `scores.json` (I read the stored scores rather than re‑running the toolchain).
+- Built on the real `mcp` SDK (`MCPServer`, 16 registered tools), all **6 provided CSVs loaded from `data/kaggle`** via stdlib csv (no external API), and an **end‑to‑end stdio protocol integration test** that spins up `server.py` as a subprocess and asserts live answers (2019 Brasileirão champion, Neymar rating).
+- No defects found — 3 informational findings only (extra tools beyond spec, graceful handling of the FIFA snapshot's missing clubs, full data coverage).
+
+This is one of the brazil arms the memory note flagged as at-risk for wall crashes in 5.3 — this rep3 completed cleanly (`succeeded: true`).
+
+## file-run-issues → `assessment.json`
+
+Aggregated at `min_severity=high` (per your arg): the 3 info findings fall below the threshold, so **0 findings retained**, `penalty_score=1.0000`, `requirement_coverage=100%`, model `openrouter/z-ai/glm-5.3`. Written atomically.
+
+Note: the v2.0 `file-run-issues` skill only produces `assessment.json` — it explicitly does **not** create beads/GitHub tracker records, so the `tracker=beads` argument has no effect (no bd issues were filed, and with zero high‑severity findings there'd be nothing to file regardless).

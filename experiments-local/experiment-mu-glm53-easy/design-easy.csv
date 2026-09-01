@@ -1,0 +1,4 @@
+run,language,model,agent,tooling
+0,python,openrouter/z-ai/glm-5.2,opencode,none
+1,python,openrouter/z-ai/glm-5.3,opencode,none
+2,python,openrouter/z-ai/glm-5.3-flash,opencode,none

@@ -1,0 +1,7 @@
+# Brazilian Soccer MCP server - runtime
+mcp>=2.1
+
+# Test dependencies
+pytest>=8
+pytest-bdd>=8
+pytest-asyncio>=1

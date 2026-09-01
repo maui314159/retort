@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "brazilian-soccer": {
+      "command": "python",
+      "args": ["-m", "brasil_mcp.server"],
+      "cwd": "/absolute/path/to/this/repository",
+      "env": {}
+    }
+  }
+}

@@ -1,0 +1,15 @@
+Both skills done.
+
+**evaluate-run** → `evaluation.md` + `findings.jsonl`
+- **Status: ok** — clean, spec-complete run.
+- **12/12 requirements implemented** (R1–R12), 0 partial/missing.
+- **18 tests, 0 skipped**; `test_coverage=0.92`, `defect_rate=1.0` (build + all tests passed — read from `scores.json`, not re-run).
+- Stdlib-only design (`http.server` + `sqlite3`), with a pure `BookAPI.dispatch` split from the HTTP handler for socket-free unit testing. SQLite persistence in `bookdb.py`.
+- Only non-blocking notes: `code_quality=0.67` (missing type hints, low), and two info items (exact-match author filter, SQLite confirmed).
+
+**file-run-issues** (tracker=beads, min_severity=high) → `assessment.json`
+- Per the current skill (v2.0), this aggregates findings into `assessment.json` — it does **not** create beads/GitHub issues.
+- At `min_severity=high`, all 3 findings (1 low + 2 info) filter out → **0 findings above high**.
+- `penalty_score=1.0`, `requirement_coverage=1.0`.
+
+No high-severity issues to file — this rep2 passes both the mechanical and conformance gates cleanly.

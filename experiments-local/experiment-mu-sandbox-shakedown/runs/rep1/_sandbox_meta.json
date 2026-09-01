@@ -1,0 +1,1 @@
+{"agent_exit": 0, "agent_seconds": 427.5, "image_digest": "sha256:f1b82a01d678ca9268665a817f885c30670dbc98eded80b55407e988dbbd78a6", "env_id": "retort-sbx-dbbe3eaafa91", "language": "python", "model": "openrouter/z-ai/glm-5.3-flash", "scored": true, "tests_passed": 22, "tests_total": 22, "coverage_pct": 91.18}

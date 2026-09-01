@@ -1,0 +1,18 @@
+Both skills complete. Here's the outcome.
+
+## `evaluate-run` — verdict: **PASS (12/12)**
+
+`agent=oc-think-on · python · openrouter/z-ai/glm-5.3 · tooling=none · rep1` on the Brazilian-soccer MCP task.
+
+- **Requirements:** 12/12 implemented against the pinned `REQUIREMENTS.json` — MCP server (15 tools), all 6 Kaggle CSVs loaded, match/team/player/competition queries, standings computed from results, head-to-head, aggregate stats.
+- **Tests:** 90 passed / 0 failed / **0 skipped**, coverage **94%**.
+- **Lint:** 14 style-only warnings (13× E501, 1× I001) → explains `code_quality=0.667`.
+
+### One thing worth flagging (a near-miss false-negative)
+The tests import `from mcp import Client, StdioServerParameters` and `mcp.server.mcpserver.MCPServer`. That looks like a hallucinated API and **collection-errors in the repo's shared `.venv`, which pins `mcp==1.27.2`**. It is *not* hallucinated: the code targets `mcp>=2.1,<3` per `requirements.txt`, and **mcp 2.1.1 is a real current release** exposing exactly those symbols (newer than my Jan-2026 cutoff). Re-running in a fresh venv with `mcp>=2.1,<3` reproduces **90 passed** — the stored scores are legitimate. Worth noting because anyone re-checking these GLM-5.3 brazil runs in the shared `.venv` would see a spurious collection error and could misread a genuine PASS as a failure.
+
+Wrote `evaluation.md` + `findings.jsonl` (4 findings: 2 low, 2 info).
+
+## `file-run-issues` — `assessment.json` written
+- `min_severity=high` filtered out all 4 findings (they're low/info) → `penalty_score=1.0`, `requirement_coverage=1.0`, empty `top_findings`.
+- Note on `tracker=beads`: this skill is **v2.0**, which only aggregates into `assessment.json` — it explicitly does **not** create beads/GitHub issues, so the `tracker` parameter has no effect. If you actually wanted beads issues filed, that's a different (older) capability and I can do it separately on request.

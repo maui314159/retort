@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "brazilian-soccer-mcp"
+version = "1.0.0"
+description = "MCP (Model Context Protocol) server and knowledge graph for Brazilian soccer data (Brasileirão, Copa do Brasil, Libertadores, FIFA players)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+keywords = ["mcp", "soccer", "brasileirao", "knowledge-graph", "llm"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Database",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
+# Zero runtime dependencies: the MCP stdio transport is implemented directly
+# on the standard library (json + sys), and CSVs are parsed with `csv`.
+dependencies = []
+
+[project.scripts]
+brazilian-soccer-mcp = "brazilian_soccer_mcp.server:main"
+brazilian-soccer-cli = "brazilian_soccer_mcp.cli:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-cov"]
+
+[tool.setuptools]
+packages = ["brazilian_soccer_mcp"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"

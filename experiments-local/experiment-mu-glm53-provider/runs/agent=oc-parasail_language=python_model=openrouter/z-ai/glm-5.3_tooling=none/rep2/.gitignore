@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Test / coverage artifacts
+.coverage
+coverage.xml
+.pytest_cache/
+htmlcov/
+
+# OS / editor
+.DS_Store

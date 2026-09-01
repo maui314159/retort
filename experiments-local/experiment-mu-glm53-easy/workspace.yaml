@@ -1,0 +1,79 @@
+# experiment-mu-glm53-easy — GLM 5.3 + 5.3-Flash vs 5.2, easy grid (rest-api-crud).
+#
+# Pre-registered in docs/future-experiments.md §0a (2026-08-31). Z.ai released
+# open weights for the 5.3 generation 2026-08-25; nothing in the line fits 64GB
+# (Flash is 320B-A18B, FP8 328GB), so all three models run via OpenRouter.
+# Harness FIXED at opencode (the known-good GLM harness — the June omp x GLM
+# runs were harness-confounded); model is the only variable. glm-5.2 control is
+# re-run contemporaneously, not borrowed from July (endpoint drift).
+#
+# PROVIDER PIN (smoke-verified 2026-08-31): every model is pinned to provider
+# z-ai (fp8, the first-party endpoint) via the profile's model_options -> the
+# per-workspace opencode.json. Unpinned, OpenRouter's price-sorted routing
+# spans ~20 providers including fp4 quants — a capability confound. The pin is
+# honoured biconditionally: a bogus provider fails "No endpoints found", z-ai
+# serves. REQUIRES opencode >= 1.18.20 (1.18.15 hung at init on ANY options
+# key); at launch: 1.18.20. Runner also sets OPENCODE_CONFIG so the global
+# ~/.config/opencode (plugins) can't leak in.
+#
+# Thinking: ON by default as served at z-ai (reasoning tokens observed in both
+# smoke runs); not overridden — recorded as the served default.
+#
+# Launch: experiments-local/experiment-mu-glm53-easy/../..? use run-driver.sh
+# in this dir (serial: this grid, then the brazil dir's).
+
+experiment:
+  name: exp-mu-glm53-easy
+  visibility: private
+
+factors:
+  language:
+    # design-easy.csv schedules only python (pre-registered 3 models x 2 tasks
+    # x n=3 = 18 runs); go is here because the factor registry needs >=2 levels
+    # and is the natural extension arm.
+    levels: [python, go]
+  agent:
+    # design schedules only opencode; omp is the registry-minimum second level
+    # (and the natural cross-harness extension arm).
+    levels: [opencode, omp]
+  model:
+    levels:
+      - "openrouter/z-ai/glm-5.2"
+      - "openrouter/z-ai/glm-5.3"
+      - "openrouter/z-ai/glm-5.3-flash"
+
+responses:
+  - code_quality
+  - test_coverage
+  - defect_rate
+  - build_time
+  - maintainability
+  - token_efficiency
+
+tasks:
+  - source: bundled://rest-api-crud
+
+playpen:
+  runner: local
+  replicates: 3
+  timeout_minutes: 30
+  # Kill a run making NO progress for 25 min (modal value across workspaces;
+  # the default 0 disables the guard and a hang then burns the whole wall).
+  stall_minutes: 25
+  max_turns: 60
+  local_agents:
+    opencode:
+      harness: opencode
+      model_options:
+        provider:
+          order: [z-ai]
+          allow_fallbacks: false
+    omp:
+      harness: omp
+
+design:
+  screening_resolution: 3
+  significance_threshold: 0.10
+
+evaluation:
+  enabled: false

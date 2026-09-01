@@ -1,0 +1,16 @@
+Both skills complete. Summary:
+
+## Evaluation — `oc-zai` / python / `glm-5.3` / rep3 (brazilian-soccer-mcp)
+
+**Verdict: clean PASS.** All 12 pinned requirements implemented; no high-severity issues.
+
+- **Gate (from `scores.json`, not re-run):** `test_coverage=0.9`, `defect_rate=1.0` → build + all tests passed at 90% line coverage. `code_quality=0.667`, `maintainability=0.579`.
+- **Tests:** 113 passed, 0 failed, **0 skipped** (`_agent_stdout.log`). 9 test modules spanning every query category, including real end-to-end MCP protocol tests (`ClientSession` over memory streams + a stdio subprocess boot).
+- **Requirements: 12/12 implemented.** A layered 4000-LOC package (`normalize → model → data_loader → queries → formatting → tools`) exposing 20 MCP tools. Real MCP server: the agent installed genuine `mcp 2.1.1` into its own venv, so `from mcp.server.mcpserver import MCPServer` resolves against a real SDK (this is a post-cutoff package — my retort `.venv` only has `mcp 1.27.2`, which is why the import fails there but passed at scoring).
+- **Beyond spec:** cross-file dedup with per-competition source priority, team-name normalization with state-suffix inference, knockout-bracket reconstruction, cup-final aggregate + penalty detection, derby detection, BDD harness.
+
+**Artifacts written to run_dir:** `evaluation.md`, `findings.jsonl` (3 findings — 1 low, 2 info; all cosmetic: coverage <100%, residual lint, moderate maintainability), and `assessment.json`.
+
+**`assessment.json` (min_severity=high):** severity counts all 0, **penalty_score 1.0000**, requirement_coverage 100% (12/12). No beads/GitHub issues were created — per the file-run-issues skill it only aggregates, and there were no high-severity findings to file anyway.
+
+Note: the `run-summary` architecture sub-skill isn't registered as invocable in this session, so I noted it unavailable in `evaluation.md` rather than spawning a heavy subagent for it; the module map is included inline instead.

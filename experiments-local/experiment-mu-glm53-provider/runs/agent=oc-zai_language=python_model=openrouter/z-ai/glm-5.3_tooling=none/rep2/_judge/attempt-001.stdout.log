@@ -1,0 +1,26 @@
+Both skills complete. Summary:
+
+## evaluate-run
+
+**PASS — clean spec conformance.** `agent=oc-zai · glm-5.3 · python · rep2`, brazilian-soccer-mcp task.
+
+- **Requirements: 12/12 implemented** against the pinned `REQUIREMENTS.json`. All match/team/player/competition/stats/head-to-head capabilities are backed by real query functions and MCP tools.
+- **Tests: 151 passed, 0 failed, 0 skipped** (`151 passed in 1.86s`); `test_coverage=0.92`, `defect_rate=0.965` from `scores.json` (read, not re-run).
+- **MCP is genuine, not hallucinated.** `server.py` imports `mcp.server.mcpserver.MCPServer` (`mcp>=2.0`). This looked suspect vs. the v1 SDK, but `_agent_stderr.log` shows the agent *introspected the actually-installed package* (`inspect.signature`, `getsource`) to confirm `.tool()/.list_tools()/.call_tool()/.run()` and `mcp.server.stdio` before using them — it grounded the API against the real v2 SDK present in the runner env.
+- **All 6 Kaggle CSVs are loaded** from `data/kaggle/`; no network/API-only paths.
+- **Only minor findings** (2 low, 2 info): `code_quality=0.67` lint, `maintainability=0.60` (961-line `query.py`), 0.92 coverage (not a defect), and an enhancement note (18 tools vs. 11 required capabilities).
+
+Wrote `evaluation.md` and `findings.jsonl`.
+
+## file-run-issues (tracker=beads, min_severity=high)
+
+Per the skill (v2.0), this aggregates into `assessment.json` — it does **not** create beads or GitHub issues, despite `tracker=beads`. At `min_severity=high` all 4 findings (low/info) are filtered out:
+
+- `penalty_score`: **1.0** (clean)
+- `severity_counts`: all zero
+- `requirement_coverage`: **1.0** (12/12)
+- `model`: `openrouter/z-ai/glm-5.3`
+
+Wrote `assessment.json` atomically.
+
+If you actually wanted beads issues filed, that's outside this skill's scope — say so and I can file them separately, but there are no high+ findings to file here anyway.

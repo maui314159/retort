@@ -1,0 +1,17 @@
+Client.listTools() called but server does not advertise tools capability - returning empty list
+Both skills complete. Summary:
+
+## evaluate-run
+**Status: ok — a clean, spec-complete run.** GLM-5.3 via opencode (Python/Flask+SQLite) implemented **all 12/12 pinned requirements**, verified against stored scores (`test_coverage=0.97`, `defect_rate=1.0`, `maintainability=1.0`) — I did not re-run the toolchain per the skill.
+
+- **Every endpoint present:** POST/GET/GET-by-id/PUT/DELETE `/books` + `/health`, JSON responses with correct status codes (201/200/404/400/204), title/author validation, SQLite persistence.
+- **Tests:** 19 functions across 6 classes, many parametrized (~40+ effective cases), **0 skips**, 97% coverage.
+- **Beyond spec:** partial+case-insensitive author filter with SQL-injection-safe escaped LIKE wildcards; `created_at`/`updated_at` columns; JSON error handlers.
+- **Only blemish:** `code_quality=0.62` traces to **6 ruff lint findings** (import order + one long line, 1 autofixable) — cosmetic.
+
+Wrote `evaluation.md`, `findings.jsonl` (3 findings: 1 low, 2 info), and `summary/index.md`.
+
+## file-run-issues (min_severity=high, tracker=beads)
+Aggregated to `assessment.json`: **penalty_score 1.0**, requirement_coverage **100%**, zero findings at ≥high severity (the 3 findings are all below the threshold).
+
+**One caveat worth flagging:** the current `file-run-issues` skill is v2.0, which only writes `assessment.json` and **explicitly does not create beads/GitHub tracker records**. So `tracker=beads` had no effect — no issues were filed, and there was nothing high-severity to file anyway. If you actually wanted beads issues opened, that skill version can't do it; let me know and I can file them directly with `bd`.

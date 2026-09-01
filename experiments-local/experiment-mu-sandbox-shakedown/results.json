@@ -1,0 +1,47 @@
+[
+  {
+    "rep": 1,
+    "exit_code": 0,
+    "agent_seconds": 427.5,
+    "queue_seconds": "50.0",
+    "tokens": 236173,
+    "cost_usd": "0.008336515000000001",
+    "tests_passed": "22",
+    "tests_total": "22",
+    "coverage_pct": "91.18",
+    "job_id": "615581f3-1245-496d-b602-6f43397adff2",
+    "image_digest": "sha256:f1b82a01d678ca9268665a817f885c30670dbc98eded80b55407e988dbbd78a6",
+    "vcpu": "2.0",
+    "memory_mb": "8192"
+  },
+  {
+    "rep": 2,
+    "exit_code": 0,
+    "agent_seconds": 296.7,
+    "queue_seconds": "52.9",
+    "tokens": 198083,
+    "cost_usd": "0.007093345",
+    "tests_passed": "7",
+    "tests_total": "7",
+    "coverage_pct": "95.72",
+    "job_id": "75079c19-2cfd-4547-8634-d22791340951",
+    "image_digest": "sha256:f1b82a01d678ca9268665a817f885c30670dbc98eded80b55407e988dbbd78a6",
+    "vcpu": "2.0",
+    "memory_mb": "8192"
+  },
+  {
+    "rep": 3,
+    "exit_code": 0,
+    "agent_seconds": 526.9,
+    "queue_seconds": "55.9",
+    "tokens": 469884,
+    "cost_usd": "0.01411101",
+    "tests_passed": "27",
+    "tests_total": "27",
+    "coverage_pct": "94.79",
+    "job_id": "5b4157cc-cb80-4d4f-a2ca-3680ebc62b22",
+    "image_digest": "sha256:f1b82a01d678ca9268665a817f885c30670dbc98eded80b55407e988dbbd78a6",
+    "vcpu": "2.0",
+    "memory_mb": "8192"
+  }
+]

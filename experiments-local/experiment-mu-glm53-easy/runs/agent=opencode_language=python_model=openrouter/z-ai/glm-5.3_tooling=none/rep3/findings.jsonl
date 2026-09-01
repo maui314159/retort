@@ -1,0 +1,1 @@
+{"id": "enh-1", "kind": "enhancement", "severity": "info", "title": "Validation and error handling exceed the spec", "evidence": "app.py:101 validate_book_payload rejects non-string title/isbn and non-int/boolean year; app.py:90 JSON error handlers return JSON 404/405/500", "suggestion": "None — beyond-spec robustness, noted for cross-run comparison"}

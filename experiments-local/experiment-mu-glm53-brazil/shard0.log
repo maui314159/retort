@@ -1,0 +1,28 @@
+Design matrix: 3 runs (loaded from experiments-local/experiment-mu-glm53-brazil/design-brazil.csv)
+Task: repo#brazilian-soccer-mcp-guide.md
+Replicates: 3 (9 total runs)
+  Requirements: copied pinned checklist from repo#brazilian-soccer-mcp-guide.md task.
+Disk preflight: 190 GB free — ok.
+Toolchain preflight (installing missing toolchains):
+  ✓ Python: present (python3)
+  ✓ Node.js (TypeScript): present (node)
+Local-agent preflight: 2 agent(s) OK.
+
+Stack provenance (recorded to provenance.json):
+  retort   : 3a276752d1 on main
+  host     : Mac16,6  wired_limit=0MB
+  agents   : opencode (opencode)
+  model    : z-ai/glm-5.2 rev=None quant=None size=None
+  model    : z-ai/glm-5.3 rev=None quant=None size=None
+  model    : z-ai/glm-5.3-flash rev=None quant=None size=None
+
+Starting experiment runs...
+  [3/3 rep 1/3] python/unknown/opencode — CRASH (2400.7s) [code_quality=0.00, test_coverage=0.00, defect_rate=0.00, maintainability=0.00, token_efficiency=0.00]
+    error: rce, str(m.date), f\"{m.home_goal}-{m.away_goal}\") for m in c]))\n    print(season, \"BR-only clusters:\", len(extra))\n    for p in extra[:5]:\n        print(\"  \", p[0], p[1])\nEOF" action.permiss
+  [1/3 rep 3/3] python/unknown/opencode — ok (447.2s) [code_quality=0.67, test_coverage=0.95, defect_rate=0.85, maintainability=0.65, token_efficiency=0.01] tokens=2,961,925 cost=$0.8448
+  [2/3 rep 3/3] python/unknown/opencode — CRASH (2400.6s) [code_quality=0.67, test_coverage=0.91, defect_rate=0.97, maintainability=0.58, token_efficiency=1.00]
+    error: tracking hash=02cf86f0cf94cd65518071061ae99f99cf258c24 cwd=/Users/maui/.retort/work/retort-local-bgij0ztn/retort-d0fbbb4f4ea5 git=/Users/maui/.local/share/opencode/snapshot/global/281163d6d104d21ae6b7
+  [3/3 rep 3/3] python/unknown/opencode — CRASH (2400.6s) [code_quality=0.67, test_coverage=0.83, defect_rate=0.94, maintainability=0.45, token_efficiency=1.00]
+    error: 2026-08-31T19:54:08.386Z level=INFO run=532d90f3 message=tracking hash=7b4216d1b6971aa8959354ee4fec96153284d05d cwd=/Users/maui/.retort/work/retort-local-bgij0ztn/retort-88bc3733b0e3 git=/Users/maui/.
+
+Done: 1 completed, 0 failed out of 9 (3 crashed — retried on --resume)

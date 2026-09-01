@@ -1,0 +1,21 @@
+Both skills complete. Summary:
+
+## evaluate-run
+
+**Status: clean PASS.** GLM-5.3 via opencode (thinking off) produced a strong Brazilian Soccer MCP server.
+
+- **Requirements: 12/12 implemented** against the pinned `REQUIREMENTS.json` — MCP server (14 FastMCP tools, stdio handshake verified in the agent log), all 6 CSVs loaded, match/team/player/competition/statistical queries, head-to-head, standings computed from matches, plus the spec's data-quality asks (name normalization, multi-format dates, UTF-8).
+- **Tests: 39 passed / 0 failed / 0 skipped** (`test_coverage=0.87`, `defect_rate=1.0` from `scores.json` — build + tests confirmed green; not re-run per skill guidance).
+- **Notable engineering:** handles the real overlapping-season trap (three files cover 2019 Brasileirão) via per-season best-source dedup, and two-tier team-name matching that keeps Atlético-MG distinct from Atlético-PR while letting bare "Palmeiras" match "Palmeiras-SP".
+- Wrote `evaluation.md` and `findings.jsonl` (3 findings: 1 low, 2 info — no medium+).
+
+## file-run-issues (min_severity=high)
+
+Aggregated `findings.jsonl` into `assessment.json`. At `min_severity=high` the low/info findings drop out, leaving a clean result:
+
+- Severity counts: all zero
+- Penalty score: **1.0000**
+- Req coverage: **100%**
+- Model: openrouter/z-ai/glm-5.3
+
+Note on `tracker=beads`: the installed `file-run-issues` skill is v2.0, which **only aggregates into `assessment.json` and explicitly does not create beads/GitHub issues** — so no beads issues were filed. Also, there was nothing at `high`+ severity to file regardless. If you actually want beads issues created for the low/info observations, that needs a different tool/flow than this skill provides — let me know.

@@ -1,0 +1,9 @@
+[
+  "test_app.py::test_create_and_get_book",
+  "test_app.py::test_create_book_requires_title_and_author",
+  "test_app.py::test_delete_book",
+  "test_app.py::test_get_unknown_book_returns_404",
+  "test_app.py::test_health",
+  "test_app.py::test_list_books_with_author_filter",
+  "test_app.py::test_update_book"
+]

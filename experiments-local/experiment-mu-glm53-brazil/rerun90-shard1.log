@@ -1,0 +1,27 @@
+Design matrix: 3 runs (loaded from experiments-local/experiment-mu-glm53-brazil/design-brazil.csv)
+Task: repo#brazilian-soccer-mcp-guide.md
+Replicates: 3 (9 total runs)
+Resume: 5 run(s) already recorded — will skip.
+Disk preflight: 167 GB free — ok.
+Toolchain preflight (installing missing toolchains):
+  ✓ Python: present (python3)
+  ✓ Node.js (TypeScript): present (node)
+Local-agent preflight: 2 agent(s) OK.
+
+Stack provenance (recorded to provenance.json):
+  retort   : fe9b6d9965 on main
+  host     : Mac16,6  wired_limit=0MB
+  agents   : opencode (opencode)
+  model    : z-ai/glm-5.2 rev=None quant=None size=None
+  model    : z-ai/glm-5.3 rev=None quant=None size=None
+  model    : z-ai/glm-5.3-flash rev=None quant=None size=None
+
+Starting experiment runs...
+  [2/3 rep 1/3] python/unknown/opencode — ok (3801.7s) [code_quality=0.67, test_coverage=0.95, defect_rate=1.00, maintainability=0.62, token_efficiency=0.00] tokens=33,260,672 cost=$9.6260
+  [1/3 rep 2/3] python/unknown/opencode — skip (resume)
+  [2/3 rep 2/3] python/unknown/opencode — skip (resume)
+  [3/3 rep 2/3] python/unknown/opencode — skip (resume)
+  [1/3 rep 3/3] python/unknown/opencode — skip (resume)
+  [3/3 rep 3/3] python/unknown/opencode [timeout=96m] — ok (4971.9s) [code_quality=0.67, test_coverage=0.91, defect_rate=1.00, maintainability=0.62, token_efficiency=0.00] tokens=29,454,050 cost=$0.5092
+
+Done: 2 completed, 0 failed out of 9 (4 skipped via resume)

@@ -1,0 +1,3 @@
+arm=on: PASS rc=0 reasoning=123 tools_completed=2 calc_py=True
+arm=off: PASS rc=0 reasoning=0 tools_completed=2 calc_py=True
+smoke-thinking overall: PASS

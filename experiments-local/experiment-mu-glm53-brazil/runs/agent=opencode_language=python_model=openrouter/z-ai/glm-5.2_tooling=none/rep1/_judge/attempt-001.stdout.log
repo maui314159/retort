@@ -1,0 +1,18 @@
+Both skills complete. Summary of what I found and wrote for `agent=opencode … model=openrouter/z-ai/glm-5.2 … rep1`:
+
+## evaluate-run → `evaluation.md` + `findings.jsonl`
+
+**Clean PASS.** All 12 pinned `REQUIREMENTS.json` items (R1–R12) are implemented and evidenced, and the run genuinely passes the gate:
+- **31 tests passed / 0 failed / 0 skipped** (from `_agent_stdout.log`), `test_coverage=0.87` in `scores.json` (⇒ suite executed and passed).
+- Real MCP server (`mcp_server.py`, 15 stdio tools), full query engine (`queries.py`: matches, teams, players, standings, head-to-head, aggregate stats), loader for all 6 Kaggle CSVs with team-name/date/accent normalization (`data_loader.py`). Live stdio smoke in the log returned `tools/list -> 15` and `champion 2019 -> Flamengo`.
+
+Only **3 info-level notes** (no correctness defects):
+1. Query API exceeds spec (15 tools).
+2. Server binds to `mcp.server.mcpserver.MCPServer` — present only in the run's mcp≥2.0 venv, absent from the repo `.venv`; verified live in-run, so a portability note, not an in-run failure.
+3. The agent relaxed its own player-by-club test from Flamengo → Real Madrid because the FIFA snapshot contains no Brazilian clubs (data limitation; club filtering itself is correct).
+
+## file-run-issues (min_severity=high) → `assessment.json`
+
+At the `high` threshold every finding is filtered out (all 3 are info): `penalty_score=1.0`, `requirement_coverage=1.0` (12/12), `model=openrouter/z-ai/glm-5.2`.
+
+One note on your invocation: `tracker=beads` had no effect. The installed `file-run-issues` skill is **v2.0**, which only aggregates findings into `assessment.json` and explicitly does **not** create beads or GitHub issues — so no tracker records were filed. If you actually want beads issues opened, that's a different (older/other) workflow than this skill provides; let me know and I can file them manually.

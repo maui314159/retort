@@ -1,0 +1,5 @@
+# Runtime dependencies: none — the API uses only the Python standard library
+# (http.server + sqlite3).
+#
+# Dependencies for running the test suite:
+pytest>=7.0

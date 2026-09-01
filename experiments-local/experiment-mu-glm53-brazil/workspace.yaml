@@ -1,0 +1,71 @@
+# experiment-mu-glm53-brazil — GLM 5.3 + 5.3-Flash vs 5.2, hard arm (brazil-bench).
+#
+# Pre-registered in docs/future-experiments.md §0a (2026-08-31). See the -easy
+# sibling's header for the full rationale (API-only serving, opencode-fixed
+# harness, contemporaneous 5.2 control, z-ai provider pin, thinking default).
+#
+# Baselines this arm compares against: experiment-opencode-glm52 (opencode,
+# 9/9 mechanical, ~$0.98/cell) and experiment-mu-glm52-ompfix (omp 16.5.0,
+# 7/9 spec gate). Ceiling risk pre-registered: if the contemporaneous 5.2
+# control sits at reqcov 1.0, the capability comparison is uninformative and
+# the honest headline is cost/wall-clock (Flash vs full).
+#
+# Same grid shape as -easy: 3 models x python x n=3 = 9 runs, opencode only.
+
+experiment:
+  name: exp-mu-glm53-brazil
+  visibility: private
+
+factors:
+  language:
+    # design-brazil.csv schedules only python; typescript is the registry-
+    # minimum second level (and the extension arm mirroring exp-17/ompfix).
+    levels: [python, typescript]
+  agent:
+    levels: [opencode, omp]
+  model:
+    levels:
+      - "openrouter/z-ai/glm-5.2"
+      - "openrouter/z-ai/glm-5.3"
+      - "openrouter/z-ai/glm-5.3-flash"
+
+responses:
+  - code_quality
+  - test_coverage
+  - defect_rate
+  - build_time
+  - maintainability
+  - token_efficiency
+
+tasks:
+  - source: github://brazil-bench/benchmark-template/brazilian-soccer-mcp-guide.md
+
+playpen:
+  runner: local
+  replicates: 3
+  # RAISED 40 -> 90 (2026-08-31) after the first pass: all four crashes were at
+  # exactly 2400s — glm-5.3/flash (thinking on, z-ai ~69 tok/s) blow the wall
+  # glm-5.2 clears by 25+ min. A ceiling binding in one arm measures the clock
+  # (exp-62). Shared by all arms; the completed 40-min glm-5.2 cells stand (the
+  # wall was not binding for them). Pre-registered reading: if 5.3 still
+  # crashes at 90, the finding is "exceeds practical wall at this provider",
+  # NOT "5.3 fails the task".
+  timeout_minutes: 90
+  stall_minutes: 25
+  max_turns: 100
+  local_agents:
+    opencode:
+      harness: opencode
+      model_options:
+        provider:
+          order: [z-ai]
+          allow_fallbacks: false
+    omp:
+      harness: omp
+
+design:
+  screening_resolution: 3
+  significance_threshold: 0.10
+
+evaluation:
+  enabled: false

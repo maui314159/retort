@@ -1,0 +1,7 @@
+{
+  "harness": "claude-code",
+  "model": "claude-opus-4-8",
+  "exit_code": 0,
+  "duration_seconds": 167.40945429203566,
+  "evaluated_at": "2026-09-01T15:18:09Z"
+}

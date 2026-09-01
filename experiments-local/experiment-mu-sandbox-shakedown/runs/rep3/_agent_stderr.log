@@ -1,0 +1,250 @@
+timestamp=2026-09-01T01:22:11.789Z level=INFO run=0a7d8d2e message="creating instance" directory=/workspace
+timestamp=2026-09-01T01:22:11.792Z level=INFO run=0a7d8d2e message=fromDirectory directory=/workspace
+timestamp=2026-09-01T01:22:11.977Z level=INFO run=0a7d8d2e message=bootstrapping directory=/workspace
+timestamp=2026-09-01T01:22:11.990Z level=INFO run=0a7d8d2e message=loading path=/home/retort/.config/opencode/config.json
+timestamp=2026-09-01T01:22:11.991Z level=INFO run=0a7d8d2e message=loading path=/home/retort/.config/opencode/opencode.json
+timestamp=2026-09-01T01:22:11.992Z level=INFO run=0a7d8d2e message=loading path=/home/retort/.config/opencode/opencode.jsonc
+timestamp=2026-09-01T01:22:11.992Z level=INFO run=0a7d8d2e message=loading path=/workspace/opencode.json
+timestamp=2026-09-01T01:22:12.006Z level=INFO run=0a7d8d2e message=loading path=/workspace/opencode.json
+timestamp=2026-09-01T01:22:12.348Z level=INFO run=0a7d8d2e message="all LSPs are disabled"
+timestamp=2026-09-01T01:22:12.350Z level=INFO run=0a7d8d2e message="all formatters are disabled"
+timestamp=2026-09-01T01:22:12.350Z level=INFO run=0a7d8d2e message=init
+timestamp=2026-09-01T01:22:12.685Z level=INFO run=0a7d8d2e message=created id=ses_fa570bfb2ffeDnSgXdchLkmauU slug=jolly-wolf version=1.18.20 projectID=global directory=/workspace path="" workspaceID=undefined parentID=undefined title="New session - 2026-09-01T01:22:12.685Z" agent=undefined model=undefined metadata=undefined permission="[{\"permission\":\"question\",\"pattern\":\"*\",\"action\":\"deny\"},{\"permission\":\"plan_enter\",\"pattern\":\"*\",\"action\":\"deny\"},{\"permission\":\"plan_exit\",\"pattern\":\"*\",\"action\":\"deny\"}]" cost=0 tokens.input=0 tokens.output=0 tokens.reasoning=0 tokens.cache.read=0 tokens.cache.write=0 time.created=1788225732685 time.updated=1788225732685
+timestamp=2026-09-01T01:22:12.717Z level=INFO run=0a7d8d2e message="event connected"
+timestamp=2026-09-01T01:22:13.783Z level=INFO run=0a7d8d2e message=loop session.id=ses_fa570bfb2ffeDnSgXdchLkmauU step=0
+timestamp=2026-09-01T01:22:13.854Z level=INFO run=0a7d8d2e message=stream providerID=openrouter modelID=google/gemini-3.7-flash session.id=ses_fa570bfb2ffeDnSgXdchLkmauU small=true agent=title mode=primary
+timestamp=2026-09-01T01:22:13.900Z level=INFO run=0a7d8d2e message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=google/gemini-3.7-flash
+timestamp=2026-09-01T01:22:14.010Z level=INFO run=0a7d8d2e message=initialized
+timestamp=2026-09-01T01:22:14.098Z level=INFO run=0a7d8d2e message=tracking hash=2a3e13013be251a21f32df1c3ef47cd629c69633 cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:22:14.108Z level=INFO run=0a7d8d2e message="shell tool using shell" shell=/usr/bin/bash
+timestamp=2026-09-01T01:22:14.121Z level=INFO run=0a7d8d2e message=init count=1
+timestamp=2026-09-01T01:22:14.276Z level=INFO run=0a7d8d2e message="watcher backend" directory=/workspace platform=linux backend=inotify
+timestamp=2026-09-01T01:22:14.277Z level=INFO run=0a7d8d2e message="project copy refresh started" projectID=global
+timestamp=2026-09-01T01:22:14.280Z level=INFO run=0a7d8d2e message="project copy refresh done" projectID=global updated=[] removed=[]
+timestamp=2026-09-01T01:22:14.951Z level=INFO run=0a7d8d2e message="booting location services" directory=/workspace workspaceID=undefined
+timestamp=2026-09-01T01:22:14.966Z level=INFO run=0a7d8d2e message=process session.id=ses_fa570bfb2ffeDnSgXdchLkmauU messageID=msg_05a8f449c001dWSkeMWJvbsbgz
+timestamp=2026-09-01T01:22:14.968Z level=INFO run=0a7d8d2e message=stream providerID=openrouter modelID=z-ai/glm-5.3-flash session.id=ses_fa570bfb2ffeDnSgXdchLkmauU small=false agent=build mode=primary
+timestamp=2026-09-01T01:22:14.972Z level=INFO run=0a7d8d2e message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.3-flash
+timestamp=2026-09-01T01:22:39.453Z level=INFO run=0a7d8d2e message=evaluated permission=read pattern=TASK.md action.permission=read action.action=allow action.pattern=*
+timestamp=2026-09-01T01:22:39.481Z level=INFO run=0a7d8d2e message="touching file" file=/workspace/TASK.md
+timestamp=2026-09-01T01:22:39.562Z level=INFO run=0a7d8d2e message=tracking hash=6af09bf471617df692d6d47bc30aff276e0a3cb8 cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:22:39.673Z level=INFO run=0a7d8d2e message=loop session.id=ses_fa570bfb2ffeDnSgXdchLkmauU step=1
+timestamp=2026-09-01T01:22:39.769Z level=INFO run=0a7d8d2e message=tracking hash=a2a23673d026b010fab6532243a3e9235eecb1fe cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:22:39.791Z level=INFO run=0a7d8d2e message=process session.id=ses_fa570bfb2ffeDnSgXdchLkmauU messageID=msg_05a8fa9bc001IsntJu3svd38F4
+timestamp=2026-09-01T01:22:39.793Z level=INFO run=0a7d8d2e message=stream providerID=openrouter modelID=z-ai/glm-5.3-flash session.id=ses_fa570bfb2ffeDnSgXdchLkmauU small=false agent=build mode=primary
+timestamp=2026-09-01T01:22:39.806Z level=INFO run=0a7d8d2e message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.3-flash
+timestamp=2026-09-01T01:22:42.949Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="ls -la /workspace" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:22:42.950Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="python3 --version" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:22:42.950Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="pip list" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:22:42.950Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="grep -i -E \"flask|fastapi|django|uvicorn|pytest\"" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:22:42.950Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern=true action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:22:43.452Z level=INFO run=0a7d8d2e message=tracking hash=fda1a55c5adb8d7cd8fd6eead35d6774aa4dba73 cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:22:43.539Z level=INFO run=0a7d8d2e message=loop session.id=ses_fa570bfb2ffeDnSgXdchLkmauU step=2
+timestamp=2026-09-01T01:22:43.615Z level=INFO run=0a7d8d2e message=tracking hash=aa76466f979e2e786a44cf5d3cb3c9935c4cc39e cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:22:43.635Z level=INFO run=0a7d8d2e message=process session.id=ses_fa570bfb2ffeDnSgXdchLkmauU messageID=msg_05a8fb8d6001ggAX8OVw8iHuyI
+timestamp=2026-09-01T01:22:43.635Z level=INFO run=0a7d8d2e message=stream providerID=openrouter modelID=z-ai/glm-5.3-flash session.id=ses_fa570bfb2ffeDnSgXdchLkmauU small=false agent=build mode=primary
+timestamp=2026-09-01T01:22:43.638Z level=INFO run=0a7d8d2e message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.3-flash
+timestamp=2026-09-01T01:22:46.222Z level=INFO run=0a7d8d2e message=evaluated permission=read pattern=stack.json action.permission=read action.action=allow action.pattern=*
+timestamp=2026-09-01T01:22:46.230Z level=INFO run=0a7d8d2e message="touching file" file=/workspace/stack.json
+timestamp=2026-09-01T01:22:46.618Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="pip install flask 2>&1" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:22:46.618Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="tail -2" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:22:48.157Z level=INFO run=0a7d8d2e message=tracking hash=e480aec32e887988f78172c9e4f819055b9f3813 cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:22:48.220Z level=INFO run=0a7d8d2e message=loop session.id=ses_fa570bfb2ffeDnSgXdchLkmauU step=3
+timestamp=2026-09-01T01:22:48.300Z level=INFO run=0a7d8d2e message=tracking hash=8ab3eb48c1e4bf09487f3b5904c28068ee81fdbc cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:22:48.322Z level=INFO run=0a7d8d2e message=process session.id=ses_fa570bfb2ffeDnSgXdchLkmauU messageID=msg_05a8fcb1f001PgXszm8hkAS0G2
+timestamp=2026-09-01T01:22:48.324Z level=INFO run=0a7d8d2e message=stream providerID=openrouter modelID=z-ai/glm-5.3-flash session.id=ses_fa570bfb2ffeDnSgXdchLkmauU small=false agent=build mode=primary
+timestamp=2026-09-01T01:22:48.327Z level=INFO run=0a7d8d2e message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.3-flash
+timestamp=2026-09-01T01:23:12.598Z level=INFO run=0a7d8d2e message=cleanup prune=7.days
+timestamp=2026-09-01T01:27:48.687Z level=INFO run=0a7d8d2e message=evaluated permission=todowrite pattern=* action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-01T01:27:48.792Z level=INFO run=0a7d8d2e message=tracking hash=401b45ed7d36ac8db499c07e2877d7ac9d0281aa cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:27:48.871Z level=INFO run=0a7d8d2e message=loop session.id=ses_fa570bfb2ffeDnSgXdchLkmauU step=4
+timestamp=2026-09-01T01:27:48.953Z level=INFO run=0a7d8d2e message=tracking hash=b9db5271f35504d4f6f9c6c6ee8ac7438422bee8 cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:27:48.972Z level=INFO run=0a7d8d2e message=process session.id=ses_fa570bfb2ffeDnSgXdchLkmauU messageID=msg_05a94618d001uO0AQANKliwNyS
+timestamp=2026-09-01T01:27:48.973Z level=INFO run=0a7d8d2e message=stream providerID=openrouter modelID=z-ai/glm-5.3-flash session.id=ses_fa570bfb2ffeDnSgXdchLkmauU small=false agent=build mode=primary
+timestamp=2026-09-01T01:27:48.985Z level=INFO run=0a7d8d2e message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.3-flash
+timestamp=2026-09-01T01:28:27.002Z level=INFO run=0a7d8d2e message=evaluated permission=edit pattern=app.py action.permission=edit action.action=allow action.pattern=*
+timestamp=2026-09-01T01:28:27.005Z level=INFO run=0a7d8d2e message=formatting file=/workspace/app.py
+timestamp=2026-09-01T01:28:27.006Z level=INFO run=0a7d8d2e message="touching file" file=/workspace/app.py
+timestamp=2026-09-01T01:28:27.079Z level=INFO run=0a7d8d2e message=tracking hash=f372072ecfd3a39e67b3fb9e3c0043ce41004b75 cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:28:27.158Z level=INFO run=0a7d8d2e message=loop session.id=ses_fa570bfb2ffeDnSgXdchLkmauU step=5
+timestamp=2026-09-01T01:28:27.244Z level=INFO run=0a7d8d2e message=tracking hash=67823c8ae72c829932b3f0868e9ee7fc381118c2 cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:28:27.251Z level=INFO run=0a7d8d2e message=process session.id=ses_fa570bfb2ffeDnSgXdchLkmauU messageID=msg_05a94f71b001GcO2UZ3qtnB6Yp
+timestamp=2026-09-01T01:28:27.252Z level=INFO run=0a7d8d2e message=stream providerID=openrouter modelID=z-ai/glm-5.3-flash session.id=ses_fa570bfb2ffeDnSgXdchLkmauU small=false agent=build mode=primary
+timestamp=2026-09-01T01:28:27.265Z level=INFO run=0a7d8d2e message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.3-flash
+timestamp=2026-09-01T01:28:29.709Z level=INFO run=0a7d8d2e message=evaluated permission=edit pattern=conftest.py action.permission=edit action.action=allow action.pattern=*
+timestamp=2026-09-01T01:28:29.710Z level=INFO run=0a7d8d2e message=formatting file=/workspace/conftest.py
+timestamp=2026-09-01T01:28:29.710Z level=INFO run=0a7d8d2e message="touching file" file=/workspace/conftest.py
+timestamp=2026-09-01T01:29:04.978Z level=INFO run=0a7d8d2e message=evaluated permission=edit pattern=tests/test_app.py action.permission=edit action.action=allow action.pattern=*
+timestamp=2026-09-01T01:29:04.990Z level=INFO run=0a7d8d2e message=formatting file=/workspace/tests/test_app.py
+timestamp=2026-09-01T01:29:04.991Z level=INFO run=0a7d8d2e message="touching file" file=/workspace/tests/test_app.py
+timestamp=2026-09-01T01:29:05.051Z level=INFO run=0a7d8d2e message=tracking hash=0b497b72d29214379a12f585f1545c5e69c10952 cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:29:05.143Z level=INFO run=0a7d8d2e message=loop session.id=ses_fa570bfb2ffeDnSgXdchLkmauU step=6
+timestamp=2026-09-01T01:29:05.219Z level=INFO run=0a7d8d2e message=tracking hash=a9c23c688c23e89e08e2df8e26b0a2bb6b394e93 cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:29:05.241Z level=INFO run=0a7d8d2e message=process session.id=ses_fa570bfb2ffeDnSgXdchLkmauU messageID=msg_05a958b83001yg6Lzj336vxw7w
+timestamp=2026-09-01T01:29:05.243Z level=INFO run=0a7d8d2e message=stream providerID=openrouter modelID=z-ai/glm-5.3-flash session.id=ses_fa570bfb2ffeDnSgXdchLkmauU small=false agent=build mode=primary
+timestamp=2026-09-01T01:29:05.249Z level=INFO run=0a7d8d2e message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.3-flash
+timestamp=2026-09-01T01:29:08.294Z level=INFO run=0a7d8d2e message=evaluated permission=todowrite pattern=* action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-01T01:29:08.378Z level=INFO run=0a7d8d2e message=tracking hash=4f757e465b5f669caac3eb97c5ce57af65ff3143 cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:29:08.462Z level=INFO run=0a7d8d2e message=loop session.id=ses_fa570bfb2ffeDnSgXdchLkmauU step=7
+timestamp=2026-09-01T01:29:08.551Z level=INFO run=0a7d8d2e message=tracking hash=644b0d709b1c368e7f399e8b8add7f7c1e1d51bb cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:29:08.571Z level=INFO run=0a7d8d2e message=process session.id=ses_fa570bfb2ffeDnSgXdchLkmauU messageID=msg_05a959873001GSgzen5HNmiRMx
+timestamp=2026-09-01T01:29:08.572Z level=INFO run=0a7d8d2e message=stream providerID=openrouter modelID=z-ai/glm-5.3-flash session.id=ses_fa570bfb2ffeDnSgXdchLkmauU small=false agent=build mode=primary
+timestamp=2026-09-01T01:29:08.585Z level=INFO run=0a7d8d2e message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.3-flash
+timestamp=2026-09-01T01:29:26.570Z level=INFO run=0a7d8d2e message=evaluated permission=edit pattern=README.md action.permission=edit action.action=allow action.pattern=*
+timestamp=2026-09-01T01:29:26.571Z level=INFO run=0a7d8d2e message=formatting file=/workspace/README.md
+timestamp=2026-09-01T01:29:26.571Z level=INFO run=0a7d8d2e message="touching file" file=/workspace/README.md
+timestamp=2026-09-01T01:29:27.159Z level=INFO run=0a7d8d2e message=evaluated permission=edit pattern=.gitignore action.permission=edit action.action=allow action.pattern=*
+timestamp=2026-09-01T01:29:27.160Z level=INFO run=0a7d8d2e message=formatting file=/workspace/.gitignore
+timestamp=2026-09-01T01:29:27.160Z level=INFO run=0a7d8d2e message="touching file" file=/workspace/.gitignore
+timestamp=2026-09-01T01:29:27.281Z level=INFO run=0a7d8d2e message=tracking hash=e870a110d7c6d40da8cbbfcba2fec594f1f6b823 cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:29:27.353Z level=INFO run=0a7d8d2e message=loop session.id=ses_fa570bfb2ffeDnSgXdchLkmauU step=8
+timestamp=2026-09-01T01:29:27.438Z level=INFO run=0a7d8d2e message=tracking hash=2998bd2b3db9acefb464e4e0ef5a511570a01d93 cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:29:27.455Z level=INFO run=0a7d8d2e message=process session.id=ses_fa570bfb2ffeDnSgXdchLkmauU messageID=msg_05a95e23d001rArKo2Cqv2FEIz
+timestamp=2026-09-01T01:29:27.456Z level=INFO run=0a7d8d2e message=stream providerID=openrouter modelID=z-ai/glm-5.3-flash session.id=ses_fa570bfb2ffeDnSgXdchLkmauU small=false agent=build mode=primary
+timestamp=2026-09-01T01:29:27.458Z level=INFO run=0a7d8d2e message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.3-flash
+timestamp=2026-09-01T01:29:40.482Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="python -m pytest tests -v 2>&1" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:29:40.482Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="tail -35" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:29:41.640Z level=INFO run=0a7d8d2e message=tracking hash=ee513e7248ceae69688ee44dcc7fd33c154c3c53 cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:29:41.714Z level=INFO run=0a7d8d2e message=loop session.id=ses_fa570bfb2ffeDnSgXdchLkmauU step=9
+timestamp=2026-09-01T01:29:41.790Z level=INFO run=0a7d8d2e message=tracking hash=84fddff4927726926c097f41d4394a94bced39f8 cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:29:41.807Z level=INFO run=0a7d8d2e message=process session.id=ses_fa570bfb2ffeDnSgXdchLkmauU messageID=msg_05a961a56001F4VQrsNEYqmEyo
+timestamp=2026-09-01T01:29:41.808Z level=INFO run=0a7d8d2e message=stream providerID=openrouter modelID=z-ai/glm-5.3-flash session.id=ses_fa570bfb2ffeDnSgXdchLkmauU small=false agent=build mode=primary
+timestamp=2026-09-01T01:29:41.810Z level=INFO run=0a7d8d2e message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.3-flash
+timestamp=2026-09-01T01:29:51.804Z level=INFO run=0a7d8d2e message=evaluated permission=edit pattern=tests/test_app.py action.permission=edit action.action=allow action.pattern=*
+timestamp=2026-09-01T01:29:51.805Z level=INFO run=0a7d8d2e message=formatting file=/workspace/tests/test_app.py
+timestamp=2026-09-01T01:29:51.811Z level=INFO run=0a7d8d2e message="touching file" file=/workspace/tests/test_app.py
+timestamp=2026-09-01T01:29:51.908Z level=INFO run=0a7d8d2e message=tracking hash=b0e231228df12e8290019241150162a91476522e cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:29:51.985Z level=INFO run=0a7d8d2e message=loop session.id=ses_fa570bfb2ffeDnSgXdchLkmauU step=10
+timestamp=2026-09-01T01:29:52.066Z level=INFO run=0a7d8d2e message=tracking hash=7d9fdedb32775e8a938270cda780c10c595b2193 cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:29:52.085Z level=INFO run=0a7d8d2e message=process session.id=ses_fa570bfb2ffeDnSgXdchLkmauU messageID=msg_05a964278001aK3R7hGKs5AJOV
+timestamp=2026-09-01T01:29:52.087Z level=INFO run=0a7d8d2e message=stream providerID=openrouter modelID=z-ai/glm-5.3-flash session.id=ses_fa570bfb2ffeDnSgXdchLkmauU small=false agent=build mode=primary
+timestamp=2026-09-01T01:29:52.089Z level=INFO run=0a7d8d2e message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.3-flash
+timestamp=2026-09-01T01:29:53.895Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="python -m pytest tests -v 2>&1" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:29:53.895Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="tail -12" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:29:53.895Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="python -m unittest discover -v" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:29:53.895Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="tail -4" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:29:55.150Z level=INFO run=0a7d8d2e message=tracking hash=e6372ae34fcfcfce31a2dc6270878fde7abc88f1 cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:29:55.220Z level=INFO run=0a7d8d2e message=loop session.id=ses_fa570bfb2ffeDnSgXdchLkmauU step=11
+timestamp=2026-09-01T01:29:55.294Z level=INFO run=0a7d8d2e message=tracking hash=7876389579a71671098c21d62fa1003efd5a48c0 cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:29:55.302Z level=INFO run=0a7d8d2e message=process session.id=ses_fa570bfb2ffeDnSgXdchLkmauU messageID=msg_05a964f19001MHFq5Rvl2IvTAY
+timestamp=2026-09-01T01:29:55.303Z level=INFO run=0a7d8d2e message=stream providerID=openrouter modelID=z-ai/glm-5.3-flash session.id=ses_fa570bfb2ffeDnSgXdchLkmauU small=false agent=build mode=primary
+timestamp=2026-09-01T01:29:55.316Z level=INFO run=0a7d8d2e message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.3-flash
+timestamp=2026-09-01T01:30:05.798Z level=INFO run=0a7d8d2e message=evaluated permission=edit pattern=tests/__init__.py action.permission=edit action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:05.799Z level=INFO run=0a7d8d2e message=formatting file=/workspace/tests/__init__.py
+timestamp=2026-09-01T01:30:05.800Z level=INFO run=0a7d8d2e message="touching file" file=/workspace/tests/__init__.py
+timestamp=2026-09-01T01:30:05.927Z level=INFO run=0a7d8d2e message=tracking hash=fb66a2817169943f3c694843d670da4ab067705c cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:30:05.998Z level=INFO run=0a7d8d2e message=loop session.id=ses_fa570bfb2ffeDnSgXdchLkmauU step=12
+timestamp=2026-09-01T01:30:06.073Z level=INFO run=0a7d8d2e message=tracking hash=ca6b68617552550a2cc3bb21e394eaef119d7617 cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:30:06.092Z level=INFO run=0a7d8d2e message=process session.id=ses_fa570bfb2ffeDnSgXdchLkmauU messageID=msg_05a967933001mnnWPgrlOoxbbY
+timestamp=2026-09-01T01:30:06.093Z level=INFO run=0a7d8d2e message=stream providerID=openrouter modelID=z-ai/glm-5.3-flash session.id=ses_fa570bfb2ffeDnSgXdchLkmauU small=false agent=build mode=primary
+timestamp=2026-09-01T01:30:06.094Z level=INFO run=0a7d8d2e message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.3-flash
+timestamp=2026-09-01T01:30:08.131Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="python -m pytest tests -q 2>&1" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:08.131Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="tail -2" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:08.131Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="python -m unittest discover -v" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:08.131Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="tail -3" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:10.114Z level=INFO run=0a7d8d2e message=tracking hash=59e5b8025a80dcbdab46063c1218d7db2d12fcbe cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:30:10.187Z level=INFO run=0a7d8d2e message=loop session.id=ses_fa570bfb2ffeDnSgXdchLkmauU step=13
+timestamp=2026-09-01T01:30:10.264Z level=INFO run=0a7d8d2e message=tracking hash=c97e5b90bb2a620ba39d5f11379cff6d59510150 cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:30:10.280Z level=INFO run=0a7d8d2e message=process session.id=ses_fa570bfb2ffeDnSgXdchLkmauU messageID=msg_05a968990001XydBS9b9xhod74
+timestamp=2026-09-01T01:30:10.281Z level=INFO run=0a7d8d2e message=stream providerID=openrouter modelID=z-ai/glm-5.3-flash session.id=ses_fa570bfb2ffeDnSgXdchLkmauU small=false agent=build mode=primary
+timestamp=2026-09-01T01:30:10.283Z level=INFO run=0a7d8d2e message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.3-flash
+timestamp=2026-09-01T01:30:22.353Z level=INFO run=0a7d8d2e message="resolved path" arg=/tmp/opencode/smoke.db resolved=/tmp/opencode/smoke.db
+timestamp=2026-09-01T01:30:22.369Z level=INFO run=0a7d8d2e message=evaluated permission=external_directory pattern=/tmp/opencode/* action.permission=external_directory action.pattern=* action.action=allow
+timestamp=2026-09-01T01:30:22.370Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="rm -f /tmp/opencode/smoke.db" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:22.370Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="BOOKS_DB=/tmp/opencode/smoke.db PORT=8123 python app.py" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:22.370Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="sleep 1" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:22.370Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="echo \"--- health:\"" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:22.370Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="curl -s -w \" [%{http_code}]\" http://localhost:8123/health" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:22.370Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern=echo action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:22.370Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="echo \"--- create:\"" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:22.370Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="curl -s -w \" [%{http_code}]\" -X POST http://localhost:8123/books -H \"Content-Type: application/json\" -d '{\"title\":\"Dune\",\"author\":\"Frank Herbert\",\"year\":1965,\"isbn\":\"978-0441172719\"}'" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:22.371Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="echo \"--- invalid create:\"" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:22.371Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="curl -s -w \" [%{http_code}]\" -X POST http://localhost:8123/books -H \"Content-Type: application/json\" -d '{\"title\":\"No Author\"}'" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:22.371Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="echo \"--- list+filter:\"" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:22.371Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="curl -s -w \" [%{http_code}]\" \"http://localhost:8123/books?author=Frank%20Herbert\"" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:22.371Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="echo \"--- get 1:\"" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:22.371Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="curl -s -w \" [%{http_code}]\" http://localhost:8123/books/1" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:22.371Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="echo \"--- get 99:\"" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:22.371Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="curl -s -w \" [%{http_code}]\" http://localhost:8123/books/99" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:22.371Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="echo \"--- update:\"" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:22.372Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="curl -s -w \" [%{http_code}]\" -X PUT http://localhost:8123/books/1 -H \"Content-Type: application/json\" -d '{\"title\":\"Dune Messiah\",\"author\":\"Frank Herbert\",\"year\":1969}'" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:22.372Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="echo \"--- delete:\"" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:22.372Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="curl -s -w \" [%{http_code}]\" -X DELETE http://localhost:8123/books/1" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:22.372Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="echo \"--- get deleted:\"" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:22.372Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="echo \"--- 405:\"" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:22.372Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="curl -s -w \" [%{http_code}]\" -X DELETE http://localhost:8123/books" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:22.372Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="kill $SERVER_PID" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:22.372Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="wait $SERVER_PID 2>/dev/null" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:22.372Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern=true action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:23.601Z level=INFO run=0a7d8d2e message=tracking hash=f43cf49ea4c23c33d7a45fa52240d9a6a2150194 cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:30:23.678Z level=INFO run=0a7d8d2e message=loop session.id=ses_fa570bfb2ffeDnSgXdchLkmauU step=14
+timestamp=2026-09-01T01:30:23.759Z level=INFO run=0a7d8d2e message=tracking hash=7fd942a853f9148a9ac66997aca540f1891be31e cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:30:23.779Z level=INFO run=0a7d8d2e message=process session.id=ses_fa570bfb2ffeDnSgXdchLkmauU messageID=msg_05a96be43001KXnqduY47JqIMJ
+timestamp=2026-09-01T01:30:23.780Z level=INFO run=0a7d8d2e message=stream providerID=openrouter modelID=z-ai/glm-5.3-flash session.id=ses_fa570bfb2ffeDnSgXdchLkmauU small=false agent=build mode=primary
+timestamp=2026-09-01T01:30:23.792Z level=INFO run=0a7d8d2e message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.3-flash
+timestamp=2026-09-01T01:30:29.283Z level=INFO run=0a7d8d2e message="resolved path" arg=/tmp/opencode/probe resolved=/tmp/opencode/probe
+timestamp=2026-09-01T01:30:29.291Z level=INFO run=0a7d8d2e message=evaluated permission=external_directory pattern=/tmp/opencode/* action.permission=external_directory action.pattern=* action.action=allow
+timestamp=2026-09-01T01:30:29.291Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="ls -ld /tmp/opencode 2>&1" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:29.291Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="touch /tmp/opencode/probe" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:29.291Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="echo writable" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:29.291Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="echo NOT-writable" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:29.375Z level=INFO run=0a7d8d2e message=tracking hash=bed04183f8dfbc712ee5eae12047fce3b22c373a cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:30:29.456Z level=INFO run=0a7d8d2e message=loop session.id=ses_fa570bfb2ffeDnSgXdchLkmauU step=15
+timestamp=2026-09-01T01:30:29.533Z level=INFO run=0a7d8d2e message=tracking hash=2b62865c50f84a53b4e94ab69abee204361cba6e cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:30:29.540Z level=INFO run=0a7d8d2e message=process session.id=ses_fa570bfb2ffeDnSgXdchLkmauU messageID=msg_05a96d4d6001eitL5SjNuBOPxC
+timestamp=2026-09-01T01:30:29.541Z level=INFO run=0a7d8d2e message=stream providerID=openrouter modelID=z-ai/glm-5.3-flash session.id=ses_fa570bfb2ffeDnSgXdchLkmauU small=false agent=build mode=primary
+timestamp=2026-09-01T01:30:29.554Z level=INFO run=0a7d8d2e message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.3-flash
+timestamp=2026-09-01T01:30:39.060Z level=INFO run=0a7d8d2e message="resolved path" arg="\"$SMOKE_DIR\"" resolved=undefined
+timestamp=2026-09-01T01:30:39.061Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="mktemp -d" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:39.061Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="BOOKS_DB=\"$SMOKE_DIR/smoke.db\" PORT=8123 python app.py" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:39.061Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="sleep 1" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:39.061Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="echo \"--- health:\"" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:39.062Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="curl -s -w \" [%{http_code}]\" http://localhost:8123/health" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:39.062Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern=echo action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:39.062Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="echo \"--- create:\"" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:39.062Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="curl -s -w \" [%{http_code}]\" -X POST http://localhost:8123/books -H \"Content-Type: application/json\" -d '{\"title\":\"Dune\",\"author\":\"Frank Herbert\",\"year\":1965,\"isbn\":\"978-0441172719\"}'" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:39.062Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="echo \"--- invalid create:\"" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:39.063Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="curl -s -w \" [%{http_code}]\" -X POST http://localhost:8123/books -H \"Content-Type: application/json\" -d '{\"title\":\"No Author\"}'" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:39.063Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="echo \"--- list+filter:\"" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:39.063Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="curl -s -w \" [%{http_code}]\" \"http://localhost:8123/books?author=Frank%20Herbert\"" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:39.063Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="echo \"--- get 1:\"" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:39.063Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="curl -s -w \" [%{http_code}]\" http://localhost:8123/books/1" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:39.063Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="echo \"--- get 99:\"" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:39.063Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="curl -s -w \" [%{http_code}]\" http://localhost:8123/books/99" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:39.063Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="echo \"--- update:\"" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:39.063Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="curl -s -w \" [%{http_code}]\" -X PUT http://localhost:8123/books/1 -H \"Content-Type: application/json\" -d '{\"title\":\"Dune Messiah\",\"author\":\"Frank Herbert\",\"year\":1969}'" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:39.063Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="echo \"--- delete:\"" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:39.064Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="curl -s -w \" [%{http_code}]\" -X DELETE http://localhost:8123/books/1" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:39.064Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="echo \"--- get deleted:\"" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:39.064Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="echo \"--- 405:\"" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:39.064Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="curl -s -w \" [%{http_code}]\" -X DELETE http://localhost:8123/books" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:39.064Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="kill $SERVER_PID" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:39.064Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="wait $SERVER_PID 2>/dev/null" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:39.064Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="rm -rf \"$SMOKE_DIR\"" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:39.064Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern=true action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:40.355Z level=INFO run=0a7d8d2e message=tracking hash=73f31f79de51f32a7254eeadc579972471712bfe cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:30:40.441Z level=INFO run=0a7d8d2e message=loop session.id=ses_fa570bfb2ffeDnSgXdchLkmauU step=16
+timestamp=2026-09-01T01:30:40.514Z level=INFO run=0a7d8d2e message=tracking hash=6d6873fc300464ff2e60f84de6d3d98827e1a9a0 cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:30:40.534Z level=INFO run=0a7d8d2e message=process session.id=ses_fa570bfb2ffeDnSgXdchLkmauU messageID=msg_05a96ffbf001GhKFct5FH4MhID
+timestamp=2026-09-01T01:30:40.535Z level=INFO run=0a7d8d2e message=stream providerID=openrouter modelID=z-ai/glm-5.3-flash session.id=ses_fa570bfb2ffeDnSgXdchLkmauU small=false agent=build mode=primary
+timestamp=2026-09-01T01:30:40.547Z level=INFO run=0a7d8d2e message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.3-flash
+timestamp=2026-09-01T01:30:44.887Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="ls -A . tests" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:44.887Z level=INFO run=0a7d8d2e message=evaluated permission=bash pattern="git status --short" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:44.985Z level=INFO run=0a7d8d2e message=tracking hash=ea52e69a5fb6fed356b1af8b16a634010143072f cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:30:45.060Z level=INFO run=0a7d8d2e message=loop session.id=ses_fa570bfb2ffeDnSgXdchLkmauU step=17
+timestamp=2026-09-01T01:30:45.134Z level=INFO run=0a7d8d2e message=tracking hash=641b64af2e62cdd0f3dc9f1e164b53a2754d3d15 cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:30:45.143Z level=INFO run=0a7d8d2e message=process session.id=ses_fa570bfb2ffeDnSgXdchLkmauU messageID=msg_05a9711c9001qquvxjonuzPFiv
+timestamp=2026-09-01T01:30:45.144Z level=INFO run=0a7d8d2e message=stream providerID=openrouter modelID=z-ai/glm-5.3-flash session.id=ses_fa570bfb2ffeDnSgXdchLkmauU small=false agent=build mode=primary
+timestamp=2026-09-01T01:30:45.157Z level=INFO run=0a7d8d2e message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.3-flash
+timestamp=2026-09-01T01:30:48.460Z level=INFO run=0a7d8d2e message=evaluated permission=todowrite pattern=* action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-01T01:30:48.540Z level=INFO run=0a7d8d2e message=tracking hash=1885ee877123cf87541b613e65130bc1dd3e8cd4 cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:30:48.614Z level=INFO run=0a7d8d2e message=loop session.id=ses_fa570bfb2ffeDnSgXdchLkmauU step=18
+timestamp=2026-09-01T01:30:48.691Z level=INFO run=0a7d8d2e message=tracking hash=a8e51da8b4c402dbeb9b0bfd1c7f0b438b2d6f93 cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:30:48.697Z level=INFO run=0a7d8d2e message=process session.id=ses_fa570bfb2ffeDnSgXdchLkmauU messageID=msg_05a971fab001D55dZP0Vb5zLc7
+timestamp=2026-09-01T01:30:48.698Z level=INFO run=0a7d8d2e message=stream providerID=openrouter modelID=z-ai/glm-5.3-flash session.id=ses_fa570bfb2ffeDnSgXdchLkmauU small=false agent=build mode=primary
+timestamp=2026-09-01T01:30:48.711Z level=INFO run=0a7d8d2e message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openrouter llm.model=z-ai/glm-5.3-flash
+timestamp=2026-09-01T01:30:57.108Z level=INFO run=0a7d8d2e message=tracking hash=1bf82b83cf4628d08b88a69486c3870d3fb6f71f cwd=/workspace git=/home/retort/.local/share/opencode/snapshot/global/8af22c44f40455ccc731201a5e49607eaac89fef
+timestamp=2026-09-01T01:30:57.180Z level=INFO run=0a7d8d2e message=loop session.id=ses_fa570bfb2ffeDnSgXdchLkmauU step=19
+timestamp=2026-09-01T01:30:57.185Z level=INFO run=0a7d8d2e message="exiting loop" session.id=ses_fa570bfb2ffeDnSgXdchLkmauU
+timestamp=2026-09-01T01:30:57.195Z level=INFO run=0a7d8d2e message="disposing instance" directory=/workspace
+timestamp=2026-09-01T01:30:57.236Z level=INFO run=0a7d8d2e message=loading path=/workspace/opencode.json

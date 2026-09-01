@@ -1,0 +1,62 @@
+# experiment-mu-glm53-provider — serving provider as a stack factor (§0d).
+# Pre-registered docs/future-experiments.md 0d (2026-08-31). One variable:
+# which OpenRouter provider serves z-ai/glm-5.3 (fp8, tool-capable), pinned
+# per-arm via profile model_options. Probe 2026-08-31: parasail ~159 tok/s,
+# fireworks ~75, z-ai ~69. z-ai arm doubles as the exp-mu-glm53-brazil link.
+# Motivating observation, recorded: 5 of 7 long z-ai-pinned brazil cells on
+# 2026-08-31 evening died as stall-hangs (request out, no bytes back) while
+# short probes + published uptime stayed clean — long-stream reliability is
+# invisible to uptime and is precisely what this experiment measures.
+# Fireworks caveat (0d): endpoint does not declare quantization — recorded.
+
+experiment:
+  name: exp-mu-glm53-provider
+  visibility: private
+
+factors:
+  language:
+    levels: [python, typescript]   # design schedules python only
+  agent:
+    levels: [oc-zai, oc-parasail, oc-fireworks]
+  model:
+    levels:
+      - "openrouter/z-ai/glm-5.3"
+      - "openrouter/z-ai/glm-5.2"  # registry-minimum second level, unscheduled
+
+responses:
+  - code_quality
+  - test_coverage
+  - defect_rate
+  - build_time
+  - maintainability
+  - token_efficiency
+
+tasks:
+  - source: github://brazil-bench/benchmark-template/brazilian-soccer-mcp-guide.md
+
+playpen:
+  runner: local
+  replicates: 3
+  timeout_minutes: 90
+  stall_minutes: 25
+  max_turns: 100
+  local_agents:
+    oc-zai:
+      harness: opencode
+      model_options:
+        provider: { order: [z-ai], allow_fallbacks: false }
+    oc-parasail:
+      harness: opencode
+      model_options:
+        provider: { order: [parasail], allow_fallbacks: false }
+    oc-fireworks:
+      harness: opencode
+      model_options:
+        provider: { order: [fireworks], allow_fallbacks: false }
+
+design:
+  screening_resolution: 3
+  significance_threshold: 0.10
+
+evaluation:
+  enabled: false

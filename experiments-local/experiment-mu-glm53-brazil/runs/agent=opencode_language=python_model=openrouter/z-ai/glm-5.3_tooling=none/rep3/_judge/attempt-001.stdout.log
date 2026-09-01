@@ -1,0 +1,19 @@
+Client.listTools() called but server does not advertise tools capability - returning empty list
+Both skills complete.
+
+## Results
+
+**`evaluate-run`** → wrote `evaluation.md` + `findings.jsonl`
+
+This is a clean **PASS**. GLM-5.3 (opencode, python, tooling=none) produced a thorough, well-structured Brazilian Soccer MCP server.
+
+- **Requirements: 12/12 implemented** against the pinned `REQUIREMENTS.json` — every one backed by concrete `file:line` evidence (all 6 Kaggle CSVs loaded, standings computed from matches, head-to-head, player nationality/club filtering with ratings, aggregate stats, etc.).
+- **Mechanical scores** (from `scores.json`, not re-run): `test_coverage=0.94`, `defect_rate=0.989` — build + all tests passed. 118 test functions across 8 files, **0 skips**.
+- **Architecture:** clean layering — `dataset.py` (CSV ingest + normalization) → `service.py` (pure query functions) → `server.py` (17 FastMCP tools). 2843 source LOC / 1349 test LOC, single runtime dep (`mcp>=1.2.0`).
+- **3 findings, all minor:** lint `code_quality=0.68` (low), `maintainability=0.58`/large `service.py` (low), 94%-not-100% coverage from mcp-version import fallbacks (info). No critical/high/medium.
+
+**`file-run-issues`** (min_severity=high, tracker=beads) → wrote `assessment.json`
+
+At `min_severity=high` all three low/info findings are filtered out → `severity_counts` all zero, **penalty_score 1.0**, empty `top_findings`, `requirement_coverage 1.0`.
+
+Note: `tracker=beads` had **no effect** — the `file-run-issues` skill is v2.0, which only aggregates into `assessment.json` and explicitly does *not* create beads or GitHub issues. If you actually wanted beads issues filed, that's a different (older) workflow — let me know and I can file the findings via `bd` manually, though at `high` there's nothing to file anyway.

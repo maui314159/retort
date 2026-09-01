@@ -1,0 +1,18 @@
+Both skills complete. Summary:
+
+## evaluate-run
+
+**PASS.** This `opencode × python × glm-5.3-flash` rep2 is a clean, complete run.
+
+- **Requirements: 12/12 implemented** against the pinned `REQUIREMENTS.json` — MCP server (12 tools via `create_app`), all six Kaggle CSVs loaded, match/team/player/competition/statistical queries, standings computed from results, and head-to-head all present with test evidence.
+- **Tests: 135 passed / 0 failed / 0 skipped** (from the agent's final `pytest` run in `_agent_stdout.log`). Test suite is substantive — 4 unit modules + 5 pytest-bdd feature suites exercising real query results, not stubs.
+- **Scores (retort.db, completed):** `test_coverage=0.96`, `code_quality=0.667`, `defect_rate=0.940`, `maintainability=0.524`. 2208 LOC source / 940 LOC tests.
+- Wrote `evaluation.md` and `findings.jsonl` (4 findings, all **info** — no defects; the only substantive one is a minor coverage gap on `search_players`'s club filter). No mechanical or harness anomalies — this is a genuine capability PASS, not a false one.
+
+The high cost (2960s, 23.1M tokens, `token_efficiency=0.0022`) is an agent-loop metric, not a code defect.
+
+## file-run-issues (tracker=beads, min_severity=high)
+
+Wrote `assessment.json`: at `min_severity=high` all four info findings are filtered out → **no findings ≥ high**, `penalty_score=1.0`, `requirement_coverage=1.0`. Per the skill, this aggregation does **not** create beads/GitHub tracker records — there was nothing at high severity to surface regardless.
+
+One note on context: the memory index's `exp-mu-glm53-status` flagged brazil wall-crashes in the 5.3 arms. This rep2 is not one of them — it ran to completion (~49 min) and passed cleanly, consistent with the "raise wall to 90, rerun" fix having taken effect for this cell.

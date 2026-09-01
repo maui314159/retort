@@ -1,0 +1,2 @@
+[console_scripts]
+brsoccer-mcp = brsoccer.mcp_server:main

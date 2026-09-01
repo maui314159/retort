@@ -1,0 +1,56 @@
+# experiment-mu-glm53-thinking — what does GLM-5.3's thinking buy? (§0e)
+# Pre-registered docs/future-experiments.md 0e (2026-08-31). One variable:
+# thinking default-on vs off (OpenRouter `reasoning: {max_tokens: 1}` ->
+# reasoning_tokens=0, verified at API level 2026-08-31). Both arms z-ai-pinned.
+# REQUIRED smoke (smoke-thinking.sh) must pass BEFORE the grid: off arm shows
+# reasoning=0 in real opencode step_finish usage, on arm >0, and the off arm's
+# tool calls stay well-formed.
+
+experiment:
+  name: exp-mu-glm53-thinking
+  visibility: private
+
+factors:
+  language:
+    levels: [python, typescript]   # design schedules python only
+  agent:
+    levels: [oc-think-on, oc-think-off]
+  model:
+    levels:
+      - "openrouter/z-ai/glm-5.3"
+      - "openrouter/z-ai/glm-5.2"  # registry-minimum second level, unscheduled
+
+responses:
+  - code_quality
+  - test_coverage
+  - defect_rate
+  - build_time
+  - maintainability
+  - token_efficiency
+
+tasks:
+  - source: github://brazil-bench/benchmark-template/brazilian-soccer-mcp-guide.md
+
+playpen:
+  runner: local
+  replicates: 3
+  timeout_minutes: 90
+  stall_minutes: 25
+  max_turns: 100
+  local_agents:
+    oc-think-on:
+      harness: opencode
+      model_options:
+        provider: { order: [parasail], allow_fallbacks: false }
+    oc-think-off:
+      harness: opencode
+      model_options:
+        provider: { order: [parasail], allow_fallbacks: false }
+        reasoning: { max_tokens: 1 }
+
+design:
+  screening_resolution: 3
+  significance_threshold: 0.10
+
+evaluation:
+  enabled: false

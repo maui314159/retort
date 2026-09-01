@@ -1,0 +1,26 @@
+Both skills complete. Summary:
+
+## `evaluate-run` → `evaluation.md` + `findings.jsonl`
+
+**GLM-5.3 / opencode / python / rep2 — PASS, and a strong run.**
+
+- **Requirements: 12/12 implemented** against the pinned `REQUIREMENTS.json`. Every capability (match/team/player/competition/standings/head-to-head/stats) has concrete code + test evidence.
+- **Tests: 116 passed / 0 failed / 0 skipped.** Mechanical gate passed: `test_coverage=0.93`, `defect_rate=1.0` (retort.db run id 7). No skips inflating the pass rate.
+- **Quality signals softer:** `code_quality=0.6667`, `maintainability=0.6420` — `service.py` is a 966-line god module and there are lint warnings.
+- **Cost was high:** 2192s wall, 19.0M tokens, $5.64.
+
+Scores were **read from retort.db, not recomputed** (per skill guidance).
+
+Five findings recorded, none above `low`:
+- [medium] code_quality below clean
+- [low] god-module maintainability; [low] `server.py` uses the mcp≥2.0-only `mcp.server.mcpserver` / private `_lowlevel_server` API (imports only under the run's own venv — it fails against retort's mcp<2)
+- [info] season-from-date heuristic; [info] 15 tools (spec's 11 + extras)
+
+## `file-run-issues` (min_severity=high) → `assessment.json`
+
+At the **high** threshold, nothing survives filtering:
+- Severity counts (≥high): all zero → **penalty_score 1.0**
+- **requirement_coverage 100%** (12/12)
+- No tracker records created — skill v2.0 only aggregates into `assessment.json`; the `tracker=beads` parameter has no effect (the skill explicitly does not file beads/GitHub issues).
+
+One thing worth flagging beyond the skills: this run's `requirement_coverage` isn't yet in `retort.db` — `retort reevaluate` hasn't run on it. My 12/12 is a from-source assessment, not the LLM-judged conformance gate.

@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "brazilian-soccer-mcp"
+version = "1.0.0"
+description = "MCP server providing a knowledge graph interface for Brazilian soccer data"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["mcp>=2.1.0"]
+
+[project.scripts]
+brazilian-soccer-mcp = "brazilian_soccer_mcp.server:main"
+
+[tool.setuptools]
+packages = ["brazilian_soccer_mcp"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-ra -q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP"]
+ignore = ["E501", "E701", "E702"]  # allow compact single-line stat counting

@@ -1,0 +1,3 @@
+[console_scripts]
+brasil-soccer = brasil_mcp.cli:main
+brasil-soccer-mcp = brasil_mcp.server:main

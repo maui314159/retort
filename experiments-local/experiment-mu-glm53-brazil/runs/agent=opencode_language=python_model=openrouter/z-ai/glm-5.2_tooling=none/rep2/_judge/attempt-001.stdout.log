@@ -1,0 +1,22 @@
+Client.listTools() called but server does not advertise tools capability - returning empty list
+Both skills are complete. Summary:
+
+## `evaluate-run` → PASS
+
+The run is a **clean pass**. GLM-5.2 via opencode built a complete Brazilian Soccer MCP server:
+
+- **12/12 pinned requirements implemented** — real `MCPServer` over stdio with 16 tools, all 6 Kaggle CSVs loaded via stdlib `csv` (no pandas, single `mcp` dep), and every capability category covered (match/team/player/competition/stats queries + head-to-head + computed standings).
+- **60 tests pass, 0 skipped** (`defect_rate=1.0`, `test_coverage=0.89`). Notably the server tests spawn the *real* server as a subprocess and drive it through an `mcp` `ClientSession`, so the protocol surface is genuinely exercised, not mocked.
+- Cost $2.59, 10.4M tokens, 843s wall.
+
+Wrote `evaluation.md` and `findings.jsonl` (4 findings, none high/critical). The only real defect is lint: `code_quality=0.667` — ruff finds 99 errors (76 auto-fixable import-order/unused-import/compound-statement noise), and the README's "ruff is clean" claim doesn't hold under the scorer's config.
+
+## `file-run-issues` (tracker=beads, min_severity=high) → `assessment.json`
+
+Note: the installed `file-run-issues` skill is **v2.0**, which explicitly *aggregates into `assessment.json`* and does **not** create beads/GitHub tracker records — so despite `tracker=beads`, no bead was filed (the skill forbids it). At `min_severity=high`, all four findings (1 medium, 1 low, 2 info) are filtered out:
+
+- **penalty_score: 1.0000** (no findings at/above high)
+- **requirement_coverage: 100%** (12/12)
+- severity_counts all zero; empty top_findings
+
+If you actually want beads issues filed for the sub-high lint findings, that's a separate step from this skill — say the word and I'll create them against the medium/low items.

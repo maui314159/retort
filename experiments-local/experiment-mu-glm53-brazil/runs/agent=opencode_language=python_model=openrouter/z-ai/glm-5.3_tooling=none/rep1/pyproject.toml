@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "brasil-mcp"
+version = "1.0.0"
+description = "MCP server providing a knowledge-graph interface for Brazilian soccer data"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = ["mcp>=2.1"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-cov"]
+
+[project.scripts]
+brasil-soccer-mcp = "brasil_mcp.server:main"
+brasil-soccer = "brasil_mcp.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

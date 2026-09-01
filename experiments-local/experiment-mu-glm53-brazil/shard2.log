@@ -1,0 +1,20 @@
+Design matrix: 3 runs (loaded from experiments-local/experiment-mu-glm53-brazil/design-brazil.csv)
+Task: repo#brazilian-soccer-mcp-guide.md
+Replicates: 3 (9 total runs)
+Disk preflight: 190 GB free — ok.
+Toolchain preflight (installing missing toolchains):
+  ✓ Python: present (python3)
+  ✓ Node.js (TypeScript): present (node)
+Local-agent preflight: 2 agent(s) OK.
+
+Stack provenance (recorded to provenance.json):
+  retort   : 3a276752d1 on main
+  host     : Mac16,6  wired_limit=0MB
+  agents   : opencode (opencode)
+  model    : z-ai/glm-5.2 rev=None quant=None size=None
+  model    : z-ai/glm-5.3 rev=None quant=None size=None
+  model    : z-ai/glm-5.3-flash rev=None quant=None size=None
+
+Starting experiment runs...
+
+Done: 0 completed, 0 failed out of 9

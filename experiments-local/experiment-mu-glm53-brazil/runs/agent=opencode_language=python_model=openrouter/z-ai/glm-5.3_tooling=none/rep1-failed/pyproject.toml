@@ -1,0 +1,31 @@
+[project]
+name = "brazilian-soccer-mcp"
+version = "1.0.0"
+description = "MCP server exposing a knowledge base over Brazilian soccer datasets (Brasileirão, Copa do Brasil, Copa Libertadores, FIFA players)"
+requires-python = ">=3.12"
+dependencies = [
+    "mcp>=2.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["soccer_mcp"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = [
+    "anyio: asynchronous tests (anyio backend)",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]

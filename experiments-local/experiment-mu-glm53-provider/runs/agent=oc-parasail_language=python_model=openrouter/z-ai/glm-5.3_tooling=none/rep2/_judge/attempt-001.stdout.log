@@ -1,0 +1,16 @@
+Both skills complete. Here's the result.
+
+## Evaluation — `oc-parasail` × python × `openrouter/z-ai/glm-5.3` · rep 2 (brazil-bench)
+
+**Status: clean PASS — spec-complete.** This is one of the strong GLM-5.3 brazil runs (the ones that earlier wall-crashed and were rerun at the raised wall).
+
+**Requirements: 12/12 implemented, 0 partial, 0 missing.** A full MCP server (`server.py`, 20 `@server.tool()` handlers over stdio transport) backed by a real query engine (`soccer_mcp/engine.py`, 1237 LOC). All five match CSVs + FIFA player data loaded and normalized (club-name canonicalization across datasets). Standings are genuinely computed from match results with CBF tie-breakers (R9), team stats aggregate real W/L/D + goals (R6), head-to-head (R11), player search/filter by name/nationality/club/rating (R7/R8), plus beyond-spec breadth (knowledge-graph tools, derbies, goal averages, biggest wins).
+
+**Mechanical (from `scores.json`, not re-run):** test_coverage=0.97, defect_rate=1.0 → build + tests executed and passed. code_quality=0.67 (lint warnings), maintainability=0.63. **120 test functions + 35 BDD scenarios, zero skips/xfail.**
+
+**Artifacts written to run_dir:**
+- `evaluation.md` — full report with the 12-requirement evidence table
+- `findings.jsonl` — 3 findings, all **info-level** (lint below ceiling, 0.97 coverage, beyond-spec enhancement)
+- `assessment.json` — at `min_severity=high`: **0 findings above threshold, penalty_score=1.0, requirement_coverage=100% (12/12)**
+
+Per the tracker=beads/min_severity=high request: nothing reaches the high bar, so **no issues to file** — the run is clean at that severity. (The file-run-issues skill aggregates into `assessment.json`; it does not create beads/GitHub records itself.)

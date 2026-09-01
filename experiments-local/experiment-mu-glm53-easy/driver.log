@@ -1,0 +1,10 @@
+exp-mu-glm53 launch 2026-08-31 13:18:36, opencode 1.18.20, retort 6fefff71
+  experiments-local/experiment-mu-glm53-easy shard 0/3 -> pid 43848
+  experiments-local/experiment-mu-glm53-easy shard 1/3 -> pid 44254
+  experiments-local/experiment-mu-glm53-easy shard 2/3 -> pid 44255
+  experiments-local/experiment-mu-glm53-easy done rc=0 13:48:07
+  experiments-local/experiment-mu-glm53-brazil shard 0/3 -> pid 62951
+  experiments-local/experiment-mu-glm53-brazil shard 1/3 -> pid 63465
+  experiments-local/experiment-mu-glm53-brazil shard 2/3 -> pid 63466
+  experiments-local/experiment-mu-glm53-brazil done rc=0 16:25:05
+exp-mu-glm53 driver COMPLETE 2026-08-31 16:25:05
