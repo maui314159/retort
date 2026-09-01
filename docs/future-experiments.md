@@ -486,7 +486,7 @@ zero build work — then exp-mu-primeagent once the integration lands. A linking
 (`prime-agent × glm-5.3-flash`) is only meaningful after BOTH mains establish their factor
 separately; queue it as a follow-up, not part of either grid.
 
-## 0c. Methodology: SandboxRunner — ephemeral per-cell cloud environments (AWS Batch on Fargate)  — PLANNED 2026-08-31
+## 0c. Methodology: SandboxRunner — ephemeral per-cell cloud environments (AWS Batch on Fargate)  — IN USE 2026-09-01 (merged to main)
 
 **Decision (user, 2026-08-31): AWS Batch on Fargate** (existing AWS account 047719634604; Azure
 "Data Integration" also available — the provision/execute/collect seam stays provider-neutral so an
@@ -533,6 +533,18 @@ one: never pool duration/build_time across runner lanes; lane is a provenance fi
 while exp-mu-glm53 runs; the bootstrap script (ECR repo, S3 bucket, Batch queue, IAM roles) is
 reviewed by the user before anything is created; smokes run only after the live experiment's
 driver completes.
+
+**STATUS 2026-09-01 — merged to main and validated end-to-end.** All four §0c smokes passed
+(echo round-trip; agent hello with secret-hygiene grep; timing separation; scorer parity), plus:
+a real `retort run --config` drive on Fargate with zero host-side fixes needed (2/2 cells judged
+reqcov 1.0 by opus-4.8), the in-container stall watchdog live-verified (60s window, kill at
+60.1s, kill_reason=stall surfaced like the local guard), full scorer suite in-container at
+metric-level parity on python/go/typescript, and shard/resume semantics proven over Batch with
+zero duplicate submissions. Shakedown agreed with the local lane 3/3. Parity checking caught
+three would-be false-zero bugs before they could touch a result. Remaining before broader use:
+non-opencode harnesses (prime-agent next, needs a key-attribution decision; claude-code needs an
+API-key billing decision), live-triggered second chance on Fargate. Cross-lane rule stands:
+durations never pool across lanes.
 
 ## 1. exp-54 — does a Codex judge agree with the Opus judge?  — SCOPED DOWN (token budget)
 
