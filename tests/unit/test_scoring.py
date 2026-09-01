@@ -1351,3 +1351,46 @@ def test_runtime_uses_median_not_mean(monkeypatch, tmp_path):
     res = rt.measure(tmp_path, "brazil-soccer-mcp", "go")
     assert res.steady_median_ms == 10.0      # median ignores the 900 ms stall
     assert res.steady_max_ms == 900.0        # but it stays visible
+
+
+class TestUndecodableSourceFiles:
+    """A single undecodable file (AppleDouble ``._x.py`` sidecar, binary blob
+    with a source extension) must be SKIPPED, not crash the scorer into a 0.0
+    for the whole run — a macOS-shell-tar'd workspace scored on Linux hit
+    exactly this (found during the §0c sandbox scorer-parity check)."""
+
+    @staticmethod
+    def _seed(tmp_path):
+        (tmp_path / "app.py").write_text(
+            "def a():\n    return 1\n\n"
+            "def b():\n    return 2\n"
+        )
+        (tmp_path / "test_app.py").write_text(
+            "def test_a():\n    assert True\n"
+        )
+        # AppleDouble resource-fork sidecar: .py name, not UTF-8 decodable.
+        (tmp_path / "._app.py").write_bytes(
+            b"\x00\x05\x16\x07\x00\x02\x00\x00Mac OS X\xff\xfe\x80\x00"
+        )
+
+    def test_maintainability_skips_undecodable(self, python_stack, tmp_path):
+        self._seed(tmp_path)
+        artifacts = RunArtifacts(
+            output_dir=tmp_path, stdout="", exit_code=0, duration_seconds=1.0,
+        )
+        assert MaintainabilityScorer().score(artifacts, python_stack) > 0.0
+
+    def test_defect_rate_skips_undecodable(self, python_stack, tmp_path):
+        from retort.scoring.scorers.defect_rate import DefectRateScorer
+
+        self._seed(tmp_path)
+        artifacts = RunArtifacts(
+            output_dir=tmp_path, stdout="", exit_code=0, duration_seconds=1.0,
+        )
+        # No crash and a real (non-exception-path) score; exact value depends
+        # on tool availability — the assertion is "did not false-zero on the
+        # sidecar", i.e. the same score as without it.
+        with_sidecar = DefectRateScorer().score(artifacts, python_stack)
+        (tmp_path / "._app.py").unlink()
+        without = DefectRateScorer().score(artifacts, python_stack)
+        assert with_sidecar == without

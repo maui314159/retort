@@ -39,6 +39,14 @@ def aws(region: str, *args: str) -> str:
 def main() -> int:
     rep_dir, bucket, queue, jobdef, region = sys.argv[1:6]
     rep = Path(rep_dir)
+    # Language comes from the archive's own path (…/language=<x>_…); scoring a
+    # go workspace as python produces uniform zeros (exactly what the first
+    # go/ts parity run did when this was hardcoded to "python").
+    import re as _re
+    m = _re.search(r"language=([a-z]+)", str(rep))
+    if not m:
+        raise SystemExit(f"cannot infer language from path: {rep}")
+    language = m.group(1)
     local_scores = json.loads((rep / "scores.json").read_text())
 
     env_id = f"retort-parity-{uuid.uuid4().hex[:8]}"
@@ -74,9 +82,21 @@ def main() -> int:
             "--container-overrides", json.dumps({"environment": [
                 {"name": "RETORT_S3_IN", "value": s3_in},
                 {"name": "RETORT_S3_OUT", "value": s3_out},
-                {"name": "RETORT_AGENT_CMD", "value": json.dumps(["true"])},
+                {"name": "RETORT_AGENT_CMD", "value": json.dumps(
+                    # typescript archives carry the LOCAL machine's
+                    # node_modules (macOS-arm64 native binaries: esbuild, swc)
+                    # which cannot execute on linux — every tool "runs" and
+                    # every scorer reads 0.0. Rebuild deps in-container first,
+                    # exactly as a real sandbox agent cell would. Verified
+                    # 2026-09-01: without this, uniform zeros; with it,
+                    # metric-exact parity.
+                    ["bash", "-c",
+                     "rm -rf node_modules && (npm ci --no-audit --no-fund "
+                     "|| npm install --no-audit --no-fund) || true"]
+                    if language == "typescript" else ["true"]
+                )},
                 {"name": "RETORT_ENV_ID", "value": env_id},
-                {"name": "RETORT_LANGUAGE", "value": "python"},
+                {"name": "RETORT_LANGUAGE", "value": language},
                 {"name": "RETORT_MODEL", "value": "parity-check"},
                 {"name": "RETORT_SCORE_IN_CONTAINER", "value": "1"},
                 {"name": "RETORT_RESPONSES", "value": metrics},
@@ -103,7 +123,13 @@ def main() -> int:
         subprocess.run(
             ["tar", "-C", str(out_dir), "-xzf", str(out_tar)], check=True
         )
-        container = json.loads((out_dir / "_container_scores.json").read_text())
+        scores_path = out_dir / "_container_scores.json"
+        if not scores_path.exists():
+            raise SystemExit(
+                "PARITY: HARNESS FAILURE — container produced no "
+                "_container_scores.json (scoring never ran; check the gate)"
+            )
+        container = json.loads(scores_path.read_text())
         aws(region, "s3", "rm", f"s3://{bucket}/runs/{env_id}", "--recursive")
 
     flips = 0

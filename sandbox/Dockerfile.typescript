@@ -1,0 +1,79 @@
+# retort sandbox image — typescript cells.
+#
+# Same pinning contract as Dockerfile.python: push a NEW immutable tag per
+# rebuild (typescript-v1, ...), register a new job-definition revision, and
+# record the pushed DIGEST in SandboxRunner(image_digests={"typescript": ...}).
+#
+# Build (REPO ROOT as context):
+#   docker build -f sandbox/Dockerfile.typescript --platform linux/amd64 \
+#     --provenance=false --sbom=false -t retort-sandbox:typescript-v1 .
+#
+# Scoring toolchain: the ts scorers detect and shell out to jest / vitest
+# (`npx`, resolved from the PROJECT's node_modules), `node --test`, and Bun's
+# runner (`bun test --coverage`) — Bun is installed because bun:sqlite /
+# `bun test` projects false-fail without it (see the TS Bun scorer-gap note).
+# Node comes from NodeSource, PINNED to a major; the digest freezes the exact
+# minor per image.
+ARG OPENCODE_VERSION=1.18.20
+ARG NODE_MAJOR=22
+ARG BUN_VERSION=1.2.21
+
+FROM python:3.12-slim AS wheel
+WORKDIR /src
+COPY pyproject.toml README.md* ./
+COPY src ./src
+RUN pip wheel --no-deps --no-build-isolation -w /wheels . \
+    || (pip install hatchling && pip wheel --no-deps -w /wheels .)
+
+FROM python:3.12-slim
+
+ARG OPENCODE_VERSION
+ARG NODE_MAJOR
+ARG BUN_VERSION
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates curl git tar unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+# awscli v2 from the official installer — the Debian package's postinst is
+# broken against the floating python:3.12-slim base (python3-distro dpkg
+# error, hit 2026-09-01); the zip install is AWS's supported path anyway.
+RUN curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip \
+    && unzip -q /tmp/awscliv2.zip -d /tmp \
+    && /tmp/aws/install --bin-dir /usr/local/bin \
+    && rm -rf /tmp/aws /tmp/awscliv2.zip \
+    && aws --version
+
+# Node from NodeSource (Debian's node is too old for current agent output).
+RUN curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/* \
+    && node --version && npm --version
+
+# Bun, pinned.
+RUN curl -fsSL https://bun.sh/install | bash -s "bun-v${BUN_VERSION}" \
+    && ln -s /root/.bun/bin/bun /usr/local/bin/bun \
+    && bun --version
+
+COPY --from=wheel /wheels /wheels
+RUN pip install --no-cache-dir --no-deps /wheels/retort-*.whl \
+    && pip install --no-cache-dir pluggy pydantic pyyaml click \
+    && python -c "from retort.scoring.collector import ScoreCollector; \
+from retort.scoring.registry import create_default_registry; \
+create_default_registry()" \
+    && rm -rf /wheels
+
+RUN npm install -g "opencode-ai@${OPENCODE_VERSION}" && opencode --version
+
+RUN useradd --create-home --shell /bin/bash retort \
+    && mkdir -p /workspace && chown retort:retort /workspace \
+    && chmod 755 /root && chmod -R a+rx /root/.bun
+COPY sandbox/entrypoint.sh /entrypoint.sh
+COPY sandbox/score_gate.py /score_gate.py
+COPY sandbox/score_full.py /score_full.py
+RUN chmod +x /entrypoint.sh
+USER retort
+ENV HOME=/home/retort
+
+ENTRYPOINT ["/entrypoint.sh"]

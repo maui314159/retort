@@ -160,9 +160,14 @@ AGENT_SECONDS=$(python3 -c "print(f'{$T1 - $T0:.1f}')")
 # RETORT_RESPONSES, writing _container_scores.json. The v1 pytest gate keeps
 # running too (its keys feed _sandbox_meta.json for backward compat). Timed
 # separately; never added to agent_seconds.
-if [ "${RETORT_SCORE_IN_CONTAINER:-0}" = "1" ] \
-   && [ "${RETORT_LANGUAGE:-}" = "python" ]; then
-  python3 /score_gate.py > "$WS/_score_stdout.log" 2>&1 || true
+if [ "${RETORT_SCORE_IN_CONTAINER:-0}" = "1" ]; then
+  # score_gate is the python-only pytest fast path; score_full is the real
+  # scorer suite and runs for EVERY language (the python-only gate here made
+  # go/ts containers silently skip scoring — caught by the go/ts parity
+  # checks reading all-zeros, 2026-09-01).
+  if [ "${RETORT_LANGUAGE:-}" = "python" ]; then
+    python3 /score_gate.py > "$WS/_score_stdout.log" 2>&1 || true
+  fi
   if [ -n "${RETORT_RESPONSES:-}" ]; then
     python3 /score_full.py >> "$WS/_score_stdout.log" 2>&1 || true
   fi

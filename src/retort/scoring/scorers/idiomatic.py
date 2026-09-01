@@ -168,7 +168,7 @@ def _representative_sample(root: Path, language: str) -> str:
     for _size, p in candidates:
         try:
             text = p.read_text()
-        except OSError:
+        except (OSError, UnicodeDecodeError):
             continue
         rel = p.name
         header = f"\n# === {rel} ===\n"

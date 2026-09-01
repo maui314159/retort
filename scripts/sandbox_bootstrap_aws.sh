@@ -152,24 +152,34 @@ if ! aws batch describe-job-queues --job-queues "$NAME" --region "$REGION" \
     --compute-environment-order "order=1,computeEnvironment=${NAME}"
 else say "Job queue $NAME exists"; fi
 
-# Job definition: registering a new revision is harmless (revisions are
-# immutable); the runner always uses the latest.
-IMAGE="${ACCOUNT}.dkr.ecr.${REGION}.amazonaws.com/${NAME}:python"
-run aws batch register-job-definition --job-definition-name "${NAME}-python" \
-  --type container --region "$REGION" \
-  --platform-capabilities FARGATE \
-  --timeout "attemptDurationSeconds=5400" \
-  --container-properties "{
-    \"image\":\"${IMAGE}\",
-    \"resourceRequirements\":[
-      {\"type\":\"VCPU\",\"value\":\"2\"},
-      {\"type\":\"MEMORY\",\"value\":\"8192\"}],
-    \"executionRoleArn\":\"arn:aws:iam::${ACCOUNT}:role/${NAME}-execution\",
-    \"jobRoleArn\":\"arn:aws:iam::${ACCOUNT}:role/${NAME}-task\",
-    \"networkConfiguration\":{\"assignPublicIp\":\"ENABLED\"},
-    \"secrets\":[{\"name\":\"OPENROUTER_API_KEY\",
-      \"valueFrom\":\"arn:aws:secretsmanager:${REGION}:${ACCOUNT}:secret:retort/openrouter-opencode\"}],
-    \"logConfiguration\":{\"logDriver\":\"awslogs\"}}"
+# Job definitions: one per language lane, registered from the LATEST pushed
+# tag for that lane (python-v3, go-v1, typescript-v1, ...). Registering a new
+# revision is harmless (revisions are immutable); the runner always uses the
+# latest. A lane whose tag has never been pushed is skipped with a note —
+# bootstrap must stay runnable before the first image build.
+for LANG_TAG in "python:python-v3" "go:go-v2" "typescript:typescript-v2"; do
+  LANG="${LANG_TAG%%:*}"; TAG="${LANG_TAG##*:}"
+  IMAGE="${ACCOUNT}.dkr.ecr.${REGION}.amazonaws.com/${NAME}:${TAG}"
+  if [ "$MODE" != "--dry-run" ] && ! aws ecr describe-images        --repository-name "$NAME" --image-ids "imageTag=${TAG}"        --region "$REGION" >/dev/null 2>&1; then
+    say "SKIP job definition ${NAME}-${LANG}: image tag ${TAG} not pushed yet"
+    continue
+  fi
+  run aws batch register-job-definition --job-definition-name "${NAME}-${LANG}" \
+    --type container --region "$REGION" \
+    --platform-capabilities FARGATE \
+    --timeout "attemptDurationSeconds=5400" \
+    --container-properties "{
+      \"image\":\"${IMAGE}\",
+      \"resourceRequirements\":[
+        {\"type\":\"VCPU\",\"value\":\"2\"},
+        {\"type\":\"MEMORY\",\"value\":\"8192\"}],
+      \"executionRoleArn\":\"arn:aws:iam::${ACCOUNT}:role/${NAME}-execution\",
+      \"jobRoleArn\":\"arn:aws:iam::${ACCOUNT}:role/${NAME}-task\",
+      \"networkConfiguration\":{\"assignPublicIp\":\"ENABLED\"},
+      \"secrets\":[{\"name\":\"OPENROUTER_API_KEY\",
+        \"valueFrom\":\"arn:aws:secretsmanager:${REGION}:${ACCOUNT}:secret:retort/openrouter-opencode\"}],
+      \"logConfiguration\":{\"logDriver\":\"awslogs\"}}"
+done
 
 say "Bootstrap complete. Next: docker build + push to ${IMAGE}, record the"
 say "pushed DIGEST in the experiment's SandboxRunner(image_digests=...), and"
