@@ -453,6 +453,29 @@ class TestFullScoringPlumbing:
             "_container_scores.json"
 
 
+class TestSecondChanceContract:
+    def test_workspace_lives_at_work_dir_slash_env_id(self, tmp_path):
+        """cli.py's second chance seeds ``runner.work_dir / env_id2`` between
+        provision() and execute() (the _seed_repair_workspace call site). That
+        works for the sandbox lane ONLY because provision() builds the
+        workspace at exactly that path and execute() tars it afterwards —
+        this pins the contract so a workspace relocation can't silently turn
+        every sandbox second chance into an unseeded fresh attempt."""
+        runner = _make_runner(tmp_path)
+        env_id = runner.provision(_stack(), _task())
+        assert runner._envs[env_id].workspace == runner.work_dir / env_id
+        # Seed a repair file the way the second chance does, then prove it
+        # ships inside the input tarball execute() uploads.
+        (runner.work_dir / env_id / "FEEDBACK.md").write_text("fix R3")
+        calls = _wire_success(runner, artifacts={
+            "_sandbox_meta.json": _META, "_agent_stdout.log": _STEP_FINISH,
+        })
+        runner.execute(env_id, _stack(), _task())
+        upload = next(c for c in calls if c[:2] == ["s3", "cp"])
+        with tarfile.open(upload[2]) as tar:
+            assert "FEEDBACK.md" in tar.getnames()
+
+
 class TestSandboxConfigSchema:
     def test_playpen_sandbox_block_parses(self):
         from retort.config.schema import PlaypenConfig, RunnerType
