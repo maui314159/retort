@@ -374,7 +374,7 @@ def _venv_freeze(py: Path) -> list[str]:
     cache = py.parent.parent / "freeze.txt"
     try:
         return [ln for ln in cache.read_text().splitlines() if ln.strip()]
-    except OSError:
+    except (OSError, UnicodeDecodeError):
         pass
     try:
         r = subprocess.run([str(py), "-m", "pip", "freeze"],

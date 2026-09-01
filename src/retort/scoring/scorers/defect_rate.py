@@ -140,6 +140,15 @@ class DefectRateScorer:
             for m in _FILE_LINE_RE.finditer(output):
                 seen.add((m.group(1), m.group(2)))
 
+        # Diagnostics about undecodable files (AppleDouble ``._x.py`` sidecars,
+        # binary blobs with source extensions) are artifacts of the archive,
+        # not defects in the code — every tool "fails" on them, which polluted
+        # defect counts when a macOS-tar'd workspace was scored on Linux. Skip
+        # them, mirroring the read_text() guards in the LOC counter.
+        seen = {
+            hit for hit in seen
+            if _is_probably_text(output_dir / hit[0])
+        }
         return len(seen)
 
     def _run(self, cmd: list[str], output_dir: Path, language: str) -> str | None:
@@ -147,7 +156,8 @@ class DefectRateScorer:
             if cmd[:2] == ["python", "-m"] and cmd[2] == "py_compile":
                 # py_compile needs filenames appended; check each .py file individually.
                 files = [str(p) for p in output_dir.rglob("*.py")
-                         if "__pycache__" not in p.parts]
+                         if "__pycache__" not in p.parts
+                         and _is_probably_text(p)]
                 if not files:
                     return ""
                 result = subprocess.run(
@@ -170,6 +180,16 @@ class DefectRateScorer:
         return (result.stdout or "") + "\n" + (result.stderr or "")
 
 
+def _is_probably_text(path: Path) -> bool:
+    """True when the file's head decodes as UTF-8 — cheap sidecar/binary test."""
+    try:
+        with open(path, "rb") as fh:
+            fh.read(1024).decode("utf-8")
+    except (OSError, UnicodeDecodeError):
+        return False
+    return True
+
+
 def _count_source_lines(output_dir: Path, language: str) -> int:
     """Count non-blank source lines in the run's archive."""
     exts = _LOC_EXTENSIONS.get(language, set())
@@ -184,6 +204,6 @@ def _count_source_lines(output_dir: Path, language: str) -> int:
                 continue
             try:
                 total += sum(1 for line in p.read_text().splitlines() if line.strip())
-            except OSError:
+            except (OSError, UnicodeDecodeError):
                 continue
     return total

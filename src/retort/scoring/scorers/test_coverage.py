@@ -424,7 +424,7 @@ class TestCoverageScorer:
             return None
         try:
             text = pkg.read_text()
-        except OSError:
+        except (OSError, UnicodeDecodeError):
             return None
 
         # Bun's built-in runner (`bun test`, often with bun:sqlite) is matched by

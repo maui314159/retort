@@ -151,7 +151,7 @@ def _avg_function_length(files: list[Path], language: str) -> float:
     for f in files:
         try:
             text = f.read_text()
-        except OSError:
+        except (OSError, UnicodeDecodeError):
             continue
         non_blank = sum(1 for line in text.splitlines() if line.strip())
         fn_count = sum(len(p.findall(text)) for p in patterns)
@@ -171,7 +171,7 @@ def _file_size_variance(files: list[Path]) -> float:
     for f in files:
         try:
             loc.append(sum(1 for line in f.read_text().splitlines() if line.strip()))
-        except OSError:
+        except (OSError, UnicodeDecodeError):
             continue
     if len(loc) < 2:
         return 0.0
@@ -194,7 +194,7 @@ def _total_loc(files: list[Path]) -> int:
     for f in files:
         try:
             total += sum(1 for line in f.read_text().splitlines() if line.strip())
-        except OSError:
+        except (OSError, UnicodeDecodeError):
             continue
     return total
 

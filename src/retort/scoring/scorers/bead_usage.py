@@ -77,7 +77,7 @@ def _count_bead_ops(workspace: Path) -> int:
         try:
             lines = [l for l in interactions.read_text().splitlines() if l.strip()]
             return len(lines)
-        except OSError:
+        except (OSError, UnicodeDecodeError):
             pass
 
     # Secondary signal: audit log (written by higher-level operations).
@@ -86,7 +86,7 @@ def _count_bead_ops(workspace: Path) -> int:
         try:
             lines = [l for l in audit.read_text().splitlines() if l.strip()]
             return len(lines)
-        except OSError:
+        except (OSError, UnicodeDecodeError):
             pass
 
     # Fallback: treat any files beyond a lone config as evidence of activity.

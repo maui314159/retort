@@ -851,6 +851,41 @@ def run_experiments(
             prompts_dir=prompts_dir if prompts_dir.is_dir() else None,
             stack_manager=stack_manager,
         )
+    elif runner_type == "sandbox":
+        # AWS Batch/Fargate lane (future-experiments §0c): one cell = one
+        # ephemeral container. duration_seconds is the IN-CONTAINER agent time
+        # and metadata carries runner_lane=sandbox — never pool duration or
+        # build_time across lanes.
+        from retort.playpen.sandbox_runner import SandboxRunner, SandboxSpec
+        _sbx = workspace_config.playpen.sandbox
+        if _sbx is None:
+            raise click.ClickException(
+                "runner: sandbox requires a playpen.sandbox block "
+                "(s3_bucket at minimum) — see docs/future-experiments.md §0c."
+            )
+        # The opencode profile's model_options (e.g. the OpenRouter provider
+        # pin) rides along exactly as in the local lane; profiles + the
+        # playpen default model give the sandbox the SAME model-resolution
+        # chain as LocalRunner, and stall_minutes reaches the in-container
+        # watchdog so a hung agent dies in minutes, not the whole Batch wall.
+        _oc_profile = (workspace_config.playpen.local_agents or {}).get("opencode")
+        runner = SandboxRunner(
+            s3_bucket=_sbx.s3_bucket,
+            job_queue=_sbx.job_queue,
+            job_definition_prefix=_sbx.job_definition_prefix,
+            image_digests=_sbx.image_digests,
+            spec=SandboxSpec(vcpu=_sbx.vcpu, memory_mb=_sbx.memory_mb),
+            region=_sbx.region,
+            timeout_minutes=workspace_config.playpen.timeout_minutes,
+            stall_minutes=workspace_config.playpen.stall_minutes,
+            local_agents=workspace_config.playpen.local_agents,
+            default_model=workspace_config.playpen.model,
+            model_options=(
+                _oc_profile.model_options if _oc_profile is not None else None
+            ),
+            score_in_container=_sbx.score_in_container,
+            score_metrics=[r.name for r in workspace_config.responses],
+        )
     elif runner_type == "metaharness":
         from retort.playpen.metaharness_runner import MetaHarnessRunner
         runner = MetaHarnessRunner(
