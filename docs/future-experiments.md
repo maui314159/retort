@@ -432,48 +432,6 @@ CLAUDE.md and this factor is a capability toggle, exactly the kind that has sile
 **Cost note from exp-61.** Budget wall-clock, not agent time. exp-61's two-cell smoke pair took ~50
 minutes for ~5 minutes of agent work — the Opus judge pass and the 42 GB stack reload dominate.
 
-## 0a. exp-mu-glm53 — GLM 5.3 and GLM 5.3-Flash vs the GLM 5.2 baseline  — PLANNED 2026-08-31
-
-Z.ai released open weights for the 5.3 generation (2026-08-25): **GLM-5.3-Flash is 320B total /
-18B active, MIT, FP8 weights 328 GB** — so, like GLM-5.2 (744B-A40B), **nothing in this line fits
-the 64 GB machine and both run via API** (OpenRouter lists `z-ai/glm-5.3-flash` across ~10
-providers at $0.075–0.15/M in). The weights release matters for license/reproducibility, not local
-serving; recorded here because the daily scan only flags 64GB-fittable models and would never
-surface these.
-
-**Question.** Does the 5.3 generation move hard-task pass-proportion or cost vs 5.2 — and does
-Flash hold near the full model at a fraction of the price (a possible new Pareto point for
-optimal-blog)?
-
-**Harness is FIXED at opencode** — the known-good GLM harness. The June omp×GLM runs were
-harness-confounded (omp <16.4.5 corrupted GLM tool-call args); never introduce a new model and a
-new harness in the same comparison. Pin and record the opencode version.
-
-**Design.** `model {glm-5.2 (control), glm-5.3, glm-5.3-flash} × task {brazil-bench,
-rest-api-crud} × n=3` = 18 runs, in `experiments-local/experiment-mu-glm53/`. The glm-5.2 control
-is RE-RUN contemporaneously, not borrowed from July — API endpoints drift and OpenRouter routing
-spans providers with different quantizations.
-
-**Smoke tests before the grid (each with a pass criterion, per the CLAUDE.md principle):**
-1. **The served model is the requested model** — check the response `model`/provider fields, and
-   **pin an OpenRouter provider (or record per-call which provider served)**; multi-provider
-   routing is both a quality and a cost confound (see the omp multi-upstream cost note).
-2. **GLM-5.3 tool-call integrity** — one agentic run per new model, inspect multi-argument tool
-   calls in the transcript for merged/swallowed args. The dialect may have changed 5.2→5.3, which
-   is exactly the omp-bug class; a broken dialect scores an indistinguishable false zero.
-3. **Reasoning/thinking default recorded** — 5.3 ships thinking modes; record which mode ran
-   (effective value, not the config's).
-4. **Cost reconciles** — self-reported vs OpenRouter `/generation` billed.
-
-**Hypotheses.** (H1) 5.3 ≥ 5.2 on brazil-bench. **Ceiling risk, stated up front:** opencode ×
-glm-5.2 was already 9/9 mechanical on brazil — if the control's spec gate also sits at 1.0, the
-capability comparison is uninformative (the exp-62 lesson) and the honest headline becomes cost
-and wall-clock, with a harder cell (funkygibbon large-repo arm) needed for a capability delta.
-(H2) flash lands within noise of full 5.3 at a much lower price → the interesting result.
-
-**After:** aggregate into `master-local.*` only, update write-ups, move this entry to
-past-experiments, re-commit `data/maui-experiments`.
-
 ## 0b. exp-mu-primeagent — prime-agent 0.7.2 as a new agent-harness level  — PLANNED 2026-08-31
 
 `prime-agent` 0.7.2 is installed (`~/.local/bin`) — "AI coding assistant with an IPython tool",
@@ -575,55 +533,6 @@ one: never pool duration/build_time across runner lanes; lane is a provenance fi
 while exp-mu-glm53 runs; the bootstrap script (ECR repo, S3 bucket, Batch queue, IAM roles) is
 reviewed by the user before anything is created; smokes run only after the live experiment's
 driver completes.
-
-## 0d. exp-mu-glm53-provider — serving provider as a stack factor  — QUEUED 2026-08-31
-
-Gated on exp-mu-glm53 landing. The z-ai provider pin (§0a) held the provider constant; this
-measures what the pin cost. Probed 2026-08-31 (single 400-token generation each, glm-5.3, fp8,
-default thinking): **Parasail ~159 tok/s vs Z.AI ~69**, Fireworks/SiliconFlow ~75, Novita ~62 —
-but Parasail has the worst 1-day uptime of the fp8 set (94.5%) and a 2.5s probe says nothing
-about sustained long-context agent load. Provider is a serving-layer stack dimension; measure it.
-
-**Design.** `provider {z-ai, parasail, fireworks} × glm-5.3 × brazil-bench × python × n=3` = 9
-runs, opencode harness, everything else per §0a. Implemented as three `local_agents` profiles
-differing only in `model_options.provider.order` (mechanism already built and pin-verified).
-Fireworks caveat: its endpoint does not declare quantization — record that; if it cannot be
-established, substitute SiliconFlow (declared fp8, 99.6% uptime, same probe speed).
-
-**Responses:** pass-proportion, wall-clock, billed cost, token totals. **Hypothesis:** provider
-moves duration (2x+) and possibly reliability (uptime → crashed cells), NOT correctness — code
-quality is the model's, not the provider's (the harness-dimension precedent). A correctness delta
-across fp8 providers of the same weights would be the surprising, publishable result.
-
-**Smokes:** per-arm pin verification (the §0a biconditional check), and confirm `allow_fallbacks:
-false` failure mode per provider (a Parasail outage must fail the cell loudly, not silently
-reroute). Budget ~$15–25.
-
-## 0e. exp-mu-glm53-thinking — what does GLM-5.3's thinking buy on a hard task?  — QUEUED 2026-08-31
-
-Gated on exp-mu-glm53 landing. 5.3 thinks by default as served, and the brazil cells' token burn
-(7–10M tokens in wall-crashed cells) is dominated by reasoning tokens — so thinking carries a
-2–3x cost/wall multiplier whose capability payoff is unmeasured. The direct analog of the codex
-`effort` factor.
-
-**Off-switch, verified at API level 2026-08-31:** OpenRouter `reasoning: {"max_tokens": 1}` →
-**reasoning_tokens=0** on z-ai/glm-5.3. `{"exclude": true}` is NOT an off-switch (still thinks,
-30 tokens billed, merely hidden); `{"effort":"none"}` and `{"enabled":false}` are rejected (400).
-
-**Design.** `thinking {default-on, off} × glm-5.3 × brazil-bench × python × n=3` = 6 runs,
-z-ai-pinned, opencode, everything else per §0a. The off arm rides opencode per-model
-`model_options` (`reasoning: {max_tokens: 1}` merged beside the provider pin).
-
-**REQUIRED SMOKE before the grid** (the §0a discipline — "I set it" is not "it took effect"):
-one real opencode run per arm, assert `reasoning` tokens **0 in the off arm and >0 in the on arm**
-from the step_finish usage. Also confirm max_tokens:1 does not degrade tool-calling on a
-multi-tool probe — a thinking-starved model that emits malformed tool calls would score a false
-zero (the omp lesson, again).
-
-**Hypotheses, pre-registered:** off-arm passes anyway → thinking is ~pure cost on this task
-(headline: 2–3x savings); off-arm fails or degrades → the reasoning spend is load-bearing and the
-cost is the price of the capability. Either outcome publishes. Watch the ceiling: if BOTH arms
-pass 3/3, brazil cannot rank them and the entry needs a harder cell, not a conclusion.
 
 ## 1. exp-54 — does a Codex judge agree with the Opus judge?  — SCOPED DOWN (token budget)
 

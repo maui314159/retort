@@ -1178,3 +1178,64 @@ capability change rather than version drift, and mixing the two produces a delta
 attribute. That is exp-62.
 
 All six exp-61 rows in master.db carry the **rescored** metrics, not the run-time ones.
+
+## exp-mu-glm53 — GLM 5.3 + 5.3-Flash vs 5.2 (easy + brazil)  — DONE 2026-09-01
+
+**Capability is at ceiling; the finding is economic: Flash matches glm-5.2's perfect pass rate at
+~1/4 the hard-task cost and ~1/14 the easy-task cost.** All 18 completed cells across both grids —
+3 models x {rest-api-crud, brazil-bench} x python x n=3, opencode 1.18.20, all models pinned to one
+OpenRouter provider (z-ai fp8) — judged `requirement_coverage = 1.0` (opus-4.8). Per-cell brazil
+cost: flash ~$0.20–0.85, glm-5.2 $0.84–2.59, glm-5.3 $2.59–9.63. The price of Flash is wall-clock:
+2–5x slower than 5.2 (thinking overhead + ~69 tok/s at z-ai).
+
+The grid also produced two findings the design didn't ask for:
+
+- **The 40-min brazil wall truncated every first-pass 5.3/flash cell at exactly 2400s** while 5.2
+  cleared it by 25+ minutes — the exp-62 directional confound, pre-registered and then observed.
+  Raised to 90 shared by all arms; every truncated cell that later completed *passed* the gate.
+- **z-ai's endpoint hangs on long agentic streams** (6 stalls on 2026-08-31 evening: request out,
+  no bytes back, stall-guard kill) while short probes and its published uptime stayed at ~100%.
+  With `allow_fallbacks: false` a hang has nowhere to go. Long-stream reliability is invisible to
+  uptime metrics; it motivated exp-mu-glm53-provider directly. One 5.3 brazil cell took 3 retry
+  passes to land — an environment loss, not a capability one.
+
+Harness work shipped en route: `LocalAgentConfig.model_options` (the OpenRouter provider pin,
+verified biconditionally — a bogus provider fails "No endpoints found", the real one serves) and
+`OPENCODE_CONFIG` authoritative per-workspace config (the user's global opencode config, with a
+git-sourced plugin, hung `opencode run` at init ≥120s on 1.18.15; 1.18.15 also hangs on ANY
+per-model options — the pin requires ≥1.18.20). Data: experiments-local/experiment-mu-glm53-easy,
+-brazil; aggregated in master-local only.
+
+## exp-mu-glm53-provider — serving provider as a stack factor  — DONE 2026-09-01
+
+**Provider moves duration, cost and reliability — not correctness. Parasail won everything.**
+`provider {z-ai, parasail, fireworks} x glm-5.3 x brazil x python x n=3`, same opencode stack,
+provider pinned per-arm via `model_options`. All 9 cells (after one retry) judged
+`requirement_coverage = 1.0` — same weights produce the same passing code wherever hosted, the
+harness-dimension precedent replicated at the serving layer. What differed:
+
+| provider | mean wall | mean cost | stalls |
+|---|---|---|---|
+| parasail | ~36 min | $6.77 | 0 |
+| fireworks | ~49 min | $8.96 | 0 |
+| z-ai (first-party) | ~79 min | $8.54 | 1 (the grid's only crash) |
+
+Parasail is 2.2x faster than the first-party endpoint at equal-or-lower billed cost with zero
+hangs — its worse published 1-day uptime (94.5%) never bit, while z-ai's clean uptime hid the
+long-stream hang mode. **Standing consequence: GLM work here now pins parasail** (fp8, tool-capable
+for 5.3/flash; note parasail serves glm-5.2 only at fp4, so 5.2 controls stay z-ai). Caveat: n=3
+per arm, one evening+morning window; fireworks' quantization is undeclared on its endpoint.
+Data: experiments-local/experiment-mu-glm53-provider.
+
+## exp-mu-glm53-thinking — what does GLM-5.3's thinking buy on brazil?  — DONE 2026-09-01
+
+**Nothing, at 3–5x the cost: the thinking-OFF arm went 3/3 at `requirement_coverage = 1.0` in
+10–17 min at $1.80–2.77/cell; the ON arm went 2/3 at 28–61 min and $5.46–10.02, and produced the
+grid's only crash** (longer runs, more hang exposure). `thinking {default-on, off} x glm-5.3 x
+brazil x python x n=3`, parasail-pinned (amended from z-ai pre-run, documented in the queue entry),
+off = OpenRouter `reasoning: {max_tokens: 1}` — verified reasoning_tokens=0 in real opencode
+step_finish usage before the grid, on both providers, with tool calls intact (`exclude: true` is
+NOT an off-switch: it thinks, bills, and hides). Pre-registered ceiling caveat applies: both arms
+at 1.0 means brazil cannot detect whether thinking would HELP on a harder task — this licenses
+"off for tasks of this class", not "thinking is useless". Total grid spend $20.05.
+Data: experiments-local/experiment-mu-glm53-thinking.
