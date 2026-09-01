@@ -112,7 +112,14 @@ def _hermes_config() -> dict[str, Any] | None:
     # Hermes silently probes down to its 128K fallback tier — and lcm then compacts at
     # ~85% of 128K (~109K), thrashing at half the context you think you configured.
     # Report both, and flag the disagreement, so provenance can never lie about it.
-    per_model = (prov.get("models") or {}).get(model, {}).get("context_length")
+    # Hermes >= 0.20 configs can carry `model:` as a MAPPING
+    # ({default:, provider:, base_url:}) rather than a bare id — observed live
+    # 2026-09-01, where using it as a dict key raised "unhashable type" and
+    # took three provenance tests (and any capture() on this machine) down.
+    # Record what's there; only a string id can be looked up per-model.
+    per_model = None
+    if isinstance(model, str):
+        per_model = (prov.get("models") or {}).get(model, {}).get("context_length")
     top_level = cfg.get("context_length")
     return {
         "model": model,
