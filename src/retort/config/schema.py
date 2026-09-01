@@ -156,6 +156,50 @@ class RunnerType(str, Enum):
     cloud = "cloud"
     local = "local"
     metaharness = "metaharness"
+    sandbox = "sandbox"
+
+
+class SandboxConfig(BaseModel):
+    """AWS Batch/Fargate sandbox lane (playpen.sandbox; runner: sandbox).
+
+    One cell = one ephemeral Fargate task (future-experiments §0c). The image
+    digests and the task size are TUNING PARAMETERS: recorded per run, held
+    identical across the arms of one experiment.
+    """
+
+    s3_bucket: Annotated[str, Field(min_length=3, description="Artifacts bucket (runs/ prefix)")]
+    job_queue: Annotated[str, Field(default="retort-sandbox")]
+    job_definition_prefix: Annotated[
+        str,
+        Field(
+            default="retort-sandbox",
+            description="Job definition per language: <prefix>-<language>",
+        ),
+    ]
+    region: Annotated[str, Field(default="us-east-1")]
+    image_digests: Annotated[
+        dict[str, str],
+        Field(
+            default_factory=dict,
+            description=(
+                "language -> pinned image digest (sha256:...). A missing entry "
+                "is recorded as 'unpinned' in provenance rather than hidden."
+            ),
+        ),
+    ]
+    vcpu: Annotated[float, Field(default=2.0, gt=0)]
+    memory_mb: Annotated[int, Field(default=8192, ge=512)]
+    score_in_container: Annotated[
+        bool,
+        Field(
+            default=False,
+            description=(
+                "Run the v1 mechanical gate (pytest+coverage, python only) "
+                "inside the container. Off until the §0c scorer-parity smoke "
+                "passes for the image in use."
+            ),
+        ),
+    ]
 
 
 class LocalInferenceCost(BaseModel):
@@ -346,6 +390,13 @@ class PlaypenConfig(BaseModel):
             "otherwise silently fails/zeroes that language. Set false to skip."
         ),
     )]
+    sandbox: Annotated[
+        SandboxConfig | None,
+        Field(
+            default=None,
+            description="AWS Batch/Fargate lane config; required when runner: sandbox",
+        ),
+    ]
 
     @field_validator("thinking", mode="before")
     @classmethod

@@ -42,6 +42,10 @@ meta = {
     "model": os.environ.get("RETORT_MODEL", ""),
     "scored": False,
 }
+try:
+    meta.update(json.load(open("/tmp/score.json")))
+except Exception:
+    pass
 open(sys.argv[1], "w").write(json.dumps(meta))
 EOF
   tar -C "$WS" -czf /tmp/out.tar.gz . || true
@@ -86,14 +90,15 @@ set -e
 T1=$(python3 -c 'import time; print(time.monotonic())')
 AGENT_SECONDS=$(python3 -c "print(f'{$T1 - $T0:.1f}')")
 
-# ---- scoring (v1 stub) -----------------------------------------------------
-# In-container scoring is REQUIRED for cross-lane build_time comparability but
-# is gated on the §0c scorer-parity smoke. Until wired, meta records
-# scored=false and the host scores the pulled workspace (mechanical metrics
-# only; build_time from sandbox runs must not be compared to local runs).
-if [ "${RETORT_SCORE_IN_CONTAINER:-0}" = "1" ]; then
-  echo "in-container scoring requested but not yet wired (v1 stub)" \
-    >> "$WS/_agent_stderr.log"
+# ---- scoring ---------------------------------------------------------------
+# v1 mechanical gate: pytest under coverage, python only. Deliberately NOT
+# full scorer parity (code_quality / maintainability / idiomatic still run on
+# the host) — this proves the tests run in the environment the build ran in,
+# which is what cross-lane build_time comparability requires. Timed
+# separately; never added to agent_seconds.
+if [ "${RETORT_SCORE_IN_CONTAINER:-0}" = "1" ] \
+   && [ "${RETORT_LANGUAGE:-}" = "python" ]; then
+  python3 /score_gate.py > "$WS/_score_stdout.log" 2>&1 || true
 fi
 
 # finish() uploads via the EXIT trap.

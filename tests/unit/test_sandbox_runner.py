@@ -265,3 +265,74 @@ class TestTeardown:
 
         assert not ws.exists()
         assert any(c[:2] == ["s3", "rm"] and "--recursive" in c for c in calls)
+
+
+class TestInContainerScoring:
+    def test_score_flag_flips_env(self, tmp_path):
+        runner = _make_runner(tmp_path, score_in_container=True)
+        calls = _wire_success(runner, artifacts={"_sandbox_meta.json": _META})
+        env_id = runner.provision(_stack(), _task())
+        runner.execute(env_id, _stack(), _task())
+
+        submit = next(c for c in calls if c[:2] == ["batch", "submit-job"])
+        overrides = json.loads(submit[submit.index("--container-overrides") + 1])
+        env = {e["name"]: e["value"] for e in overrides["environment"]}
+        assert env["RETORT_SCORE_IN_CONTAINER"] == "1"
+
+    def test_scoring_defaults_off(self, tmp_path):
+        runner = _make_runner(tmp_path)
+        calls = _wire_success(runner, artifacts={"_sandbox_meta.json": _META})
+        env_id = runner.provision(_stack(), _task())
+        runner.execute(env_id, _stack(), _task())
+
+        submit = next(c for c in calls if c[:2] == ["batch", "submit-job"])
+        overrides = json.loads(submit[submit.index("--container-overrides") + 1])
+        env = {e["name"]: e["value"] for e in overrides["environment"]}
+        assert env["RETORT_SCORE_IN_CONTAINER"] == "0"
+
+    def test_score_meta_surfaced_in_artifacts(self, tmp_path):
+        meta = json.dumps({
+            "agent_exit": 0, "agent_seconds": 7.0, "scored": True,
+            "tests_passed": 5, "tests_total": 6, "coverage_pct": 83.1,
+        })
+        runner = _make_runner(tmp_path, score_in_container=True)
+        _wire_success(runner, artifacts={"_sandbox_meta.json": meta})
+        env_id = runner.provision(_stack(), _task())
+        art = runner.execute(env_id, _stack(), _task())
+
+        assert art.metadata["sandbox_tests_passed"] == "5"
+        assert art.metadata["sandbox_tests_total"] == "6"
+        assert art.metadata["sandbox_coverage_pct"] == "83.1"
+
+    def test_no_score_keys_when_not_scored(self, tmp_path):
+        runner = _make_runner(tmp_path)
+        _wire_success(runner, artifacts={"_sandbox_meta.json": _META})
+        env_id = runner.provision(_stack(), _task())
+        art = runner.execute(env_id, _stack(), _task())
+
+        assert "sandbox_tests_passed" not in art.metadata
+
+
+class TestSandboxConfigSchema:
+    def test_playpen_sandbox_block_parses(self):
+        from retort.config.schema import PlaypenConfig, RunnerType
+
+        cfg = PlaypenConfig(
+            runner="sandbox",
+            sandbox={
+                "s3_bucket": "retort-sandbox-artifacts-x",
+                "image_digests": {"python": "sha256:52dd"},
+                "score_in_container": True,
+            },
+        )
+        assert cfg.runner == RunnerType.sandbox
+        assert cfg.sandbox is not None
+        assert cfg.sandbox.job_queue == "retort-sandbox"
+        assert cfg.sandbox.vcpu == 2.0 and cfg.sandbox.memory_mb == 8192
+        assert cfg.sandbox.image_digests["python"] == "sha256:52dd"
+
+    def test_sandbox_block_optional_for_other_runners(self):
+        from retort.config.schema import PlaypenConfig
+
+        cfg = PlaypenConfig(runner="local")
+        assert cfg.sandbox is None

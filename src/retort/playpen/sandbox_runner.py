@@ -101,6 +101,7 @@ class SandboxRunner:
         work_dir: Path | None = None,
         timeout_minutes: int = 30,
         model_options: dict[str, Any] | None = None,
+        score_in_container: bool = False,
         queue_grace_seconds: int = _DEFAULT_QUEUE_GRACE_SECONDS,
         poll_seconds: float = _DEFAULT_POLL_SECONDS,
     ) -> None:
@@ -119,6 +120,11 @@ class SandboxRunner:
         # opencode per-model options (e.g. the OpenRouter provider pin) —
         # mirrors LocalAgentConfig.model_options for the local lane.
         self.model_options = model_options
+        # v1 mechanical gate (pytest+coverage, python only) inside the
+        # container. NOT full scorer parity — code_quality/maintainability/
+        # idiomatic still need the host scorer suite; this gate only proves
+        # the tests run where the build ran. Off until §0c smoke #4 passes.
+        self.score_in_container = score_in_container
         self.queue_grace_seconds = queue_grace_seconds
         self.poll_seconds = poll_seconds
         self._envs: dict[str, _SandboxEnv] = {}
@@ -257,9 +263,8 @@ class SandboxRunner:
                         {"name": "RETORT_MODEL",
                          "value": self._model_for(stack)},
                         {"name": "RETORT_IMAGE_DIGEST", "value": digest},
-                        # v1: scoring stays on the host; flipping this on is
-                        # gated on the scorer-parity smoke (§0c smoke #4).
-                        {"name": "RETORT_SCORE_IN_CONTAINER", "value": "0"},
+                        {"name": "RETORT_SCORE_IN_CONTAINER",
+                         "value": "1" if self.score_in_container else "0"},
                     ],
                 }),
             ])
@@ -337,6 +342,14 @@ class SandboxRunner:
         # Never wall time here — queue/pull/transfer would pollute a first-
         # class response.
         agent_seconds = float(sandbox_meta.get("agent_seconds", 0.0))
+
+        # v1 in-container mechanical gate results, if the entrypoint ran it.
+        score_meta = {
+            f"sandbox_{k}": str(sandbox_meta[k])
+            for k in ("tests_passed", "tests_total", "coverage_pct")
+            if k in sandbox_meta
+        }
+        base_meta.update(score_meta)
 
         stdout_text = _read_text(info.workspace / "_agent_stdout.log")
         stderr_text = _read_text(info.workspace / "_agent_stderr.log")
