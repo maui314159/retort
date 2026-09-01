@@ -44,6 +44,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from retort.config.schema import LocalAgentConfig
 from retort.playpen import local_runner as _local
 from retort.playpen.runner import (
     RunArtifacts,
@@ -60,6 +61,12 @@ _TERMINAL_STATES = frozenset({"SUCCEEDED", "FAILED"})
 #: Grace period on top of the agent timeout for queueing + image pull +
 #: S3 transfer before execute() gives up on a job (seconds).
 _DEFAULT_QUEUE_GRACE_SECONDS = 900
+
+#: Margin added to playpen.timeout_minutes for the Batch attempt timeout —
+#: covers image pull + S3 transfer + scoring so Batch's kill never races the
+#: entrypoint's own agent timeout/stall watchdog (which should fire first and
+#: preserve artifacts; a Batch kill loses the out tarball).
+_TIMEOUT_MARGIN_SECONDS = 600
 
 #: Poll interval for DescribeJobs (seconds). Injectable for tests.
 _DEFAULT_POLL_SECONDS = 15.0
@@ -100,8 +107,12 @@ class SandboxRunner:
         region: str = "us-east-1",
         work_dir: Path | None = None,
         timeout_minutes: int = 30,
+        stall_minutes: int = 0,
+        local_agents: dict[str, LocalAgentConfig] | None = None,
+        default_model: str | None = None,
         model_options: dict[str, Any] | None = None,
         score_in_container: bool = False,
+        score_metrics: list[str] | None = None,
         queue_grace_seconds: int = _DEFAULT_QUEUE_GRACE_SECONDS,
         poll_seconds: float = _DEFAULT_POLL_SECONDS,
     ) -> None:
@@ -117,9 +128,25 @@ class SandboxRunner:
         self.work_dir = work_dir or Path.home() / ".retort-sandbox"
         self.work_dir.mkdir(parents=True, exist_ok=True)
         self.timeout_minutes = timeout_minutes
+        # Stall guard, same semantics as the local lane: kill the agent after
+        # this many minutes with no new stdout bytes AND no workspace writes
+        # (0 = disabled). Enforced by entrypoint.sh's watchdog; without it a
+        # hung agent silently burns the whole Batch wall — observed 6 times in
+        # one evening on long z-ai streams (2026-08-31).
+        self.stall_minutes = stall_minutes
+        # Agent profiles + default model: the SAME fallback chain as
+        # LocalRunner._model_for (design row -> profile.model -> playpen
+        # default), so a workspace that relies on `playpen.model` behaves
+        # identically in both lanes.
+        self.local_agents = local_agents or {}
+        self.default_model = default_model
         # opencode per-model options (e.g. the OpenRouter provider pin) —
-        # mirrors LocalAgentConfig.model_options for the local lane.
+        # profile model_options win (per-agent), this is the runner-wide
+        # fallback, mirroring the local lane.
         self.model_options = model_options
+        # Metric names for full in-container scoring (RETORT_RESPONSES);
+        # None/empty means the container runs no full scorer suite.
+        self.score_metrics = score_metrics or []
         # v1 mechanical gate (pytest+coverage, python only) inside the
         # container. NOT full scorer parity — code_quality/maintainability/
         # idiomatic still need the host scorer suite; this gate only proves
@@ -189,7 +216,20 @@ class SandboxRunner:
         return env_id
 
     def _model_for(self, stack: StackConfig) -> str:
-        return str(stack.extra.get("model") or "")
+        """Design-row model, then profile default, then playpen default —
+        the same chain as LocalRunner._model_for."""
+        profile = self.local_agents.get(stack.agent)
+        profile_model = profile.model if profile is not None else None
+        return str(
+            stack.extra.get("model") or profile_model or self.default_model or ""
+        )
+
+    def _model_options_for(self, stack: StackConfig) -> dict[str, Any] | None:
+        """Per-agent profile model_options win; runner-wide options fall back."""
+        profile = self.local_agents.get(stack.agent)
+        if profile is not None and profile.model_options:
+            return profile.model_options
+        return self.model_options
 
     def _write_opencode_config(self, workspace: Path, stack: StackConfig) -> None:
         """Per-workspace opencode.json: model registration + permission grants.
@@ -209,9 +249,8 @@ class SandboxRunner:
             t: "allow" for t in _local.LocalRunner._OPENCODE_PERMISSION_TOOLS
         }
         permission["external_directory"] = {"*": "allow"}
-        entry: dict[str, object] = (
-            {"options": self.model_options} if self.model_options else {}
-        )
+        options = self._model_options_for(stack)
+        entry: dict[str, object] = {"options": options} if options else {}
         config = {
             "$schema": "https://opencode.ai/config.json",
             "permission": permission,
@@ -248,6 +287,15 @@ class SandboxRunner:
                 "--job-queue", self.job_queue,
                 "--job-definition",
                 f"{self.job_definition_prefix}-{stack.language}",
+                # The Batch attempt timeout derives from THIS experiment's
+                # playpen.timeout_minutes (+ setup/transfer margin), never the
+                # job definition's baked-in default — a job-def timeout is one
+                # value for every experiment, i.e. a tuning parameter that
+                # silently stops matching the config that claims to govern it.
+                "--timeout", json.dumps({
+                    "attemptDurationSeconds":
+                        self.timeout_minutes * 60 + _TIMEOUT_MARGIN_SECONDS,
+                }),
                 "--container-overrides", json.dumps({
                     "resourceRequirements": [
                         {"type": "VCPU", "value": str(self.spec.vcpu)},
@@ -265,6 +313,12 @@ class SandboxRunner:
                         {"name": "RETORT_IMAGE_DIGEST", "value": digest},
                         {"name": "RETORT_SCORE_IN_CONTAINER",
                          "value": "1" if self.score_in_container else "0"},
+                        {"name": "RETORT_STALL_SECONDS",
+                         "value": str(self.stall_minutes * 60)},
+                        {"name": "RETORT_RESPONSES",
+                         "value": ",".join(self.score_metrics)},
+                        {"name": "RETORT_AGENT_TIMEOUT_SECONDS",
+                         "value": str(self.timeout_minutes * 60)},
                     ],
                 }),
             ])
@@ -350,12 +404,37 @@ class SandboxRunner:
             if k in sandbox_meta
         }
         base_meta.update(score_meta)
+        if (info.workspace / "_container_scores.json").exists():
+            base_meta["sandbox_container_scores"] = "_container_scores.json"
 
         stdout_text = _read_text(info.workspace / "_agent_stdout.log")
         stderr_text = _read_text(info.workspace / "_agent_stderr.log")
         token_count, usage_meta = _local._parse_agent_usage(
             "opencode", stdout_text, info.workspace, self._model_for(stack)
         )
+
+        # Watchdog kills surface exactly like the local progress guard: exit
+        # 124 + kill_reason metadata, so `retort diagnose` and the crash
+        # accounting treat both lanes identically.
+        kill_reason = str(sandbox_meta.get("kill_reason") or "")
+        if kill_reason in ("stall", "timeout"):
+            base_meta["kill_reason"] = kill_reason
+            if kill_reason == "stall":
+                msg = (
+                    f"Killed after {agent_seconds:.0f}s — stalled "
+                    f"(no progress for {self.stall_minutes}m, unproductive loop)"
+                )
+            else:
+                msg = f"Timeout after {agent_seconds:.0f}s (in-container wall)"
+            return RunArtifacts(
+                output_dir=info.workspace,
+                stdout=stdout_text,
+                stderr=(stderr_text[-5000:] + "\n" + msg) if stderr_text else msg,
+                exit_code=124,
+                duration_seconds=agent_seconds,
+                token_count=token_count,
+                metadata={**usage_meta, **base_meta},
+            )
 
         return RunArtifacts(
             output_dir=info.workspace,
@@ -374,10 +453,12 @@ class SandboxRunner:
         command mirrors LocalRunner's opencode branch; --dir is the container
         workspace, fixed by entrypoint.sh.
         """
-        if stack.agent not in ("opencode", "oc"):
+        profile = self.local_agents.get(stack.agent)
+        harness = profile.harness if profile is not None else stack.agent
+        if harness not in ("opencode", "oc"):
             raise ValueError(
                 f"SandboxRunner v1 supports only the opencode harness; "
-                f"got agent {stack.agent!r}"
+                f"agent {stack.agent!r} resolves to {harness!r}"
             )
         model = self._model_for(stack)
         cmd = [

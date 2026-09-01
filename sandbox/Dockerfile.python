@@ -4,14 +4,30 @@
 # (sha256:...) in the experiment's SandboxRunner(image_digests={...}) — the
 # digest is a tuning parameter that lands in every run's provenance. Never run
 # two arms of one experiment on different digests. Rebuild = new digest = new
-# provenance value.
+# provenance value. The ECR repo is IMMUTABLE: each rebuild pushes a NEW tag
+# (python-v2, python-v3, ...) and registers a new job-definition revision.
 #
-# Build:  docker build -f sandbox/Dockerfile.python \
-#           --build-arg OPENCODE_VERSION=1.18.20 -t retort-sandbox:python .
+# Build (REPO ROOT as context — the wheel stage needs the source tree):
+#   docker build -f sandbox/Dockerfile.python --platform linux/amd64 \
+#     --provenance=false --sbom=false -t retort-sandbox:python-v3 .
 #
 # opencode >= 1.18.20 is REQUIRED: 1.18.15 hangs at init on any per-model
 # `options` key (the OpenRouter provider pin uses one). Verified 2026-08-31.
 ARG OPENCODE_VERSION=1.18.20
+
+# ---- wheel stage: retort itself, built from this worktree ------------------
+# Full scorer parity requires retort's REAL scorer code in the container.
+# `pip wheel --no-deps` builds the pure-python wheel WITHOUT touching the
+# heavy design-of-experiments deps (OApackage is a C++ ext that would make
+# this image infeasible); the runtime stage installs the wheel --no-deps plus
+# only the scoring path's real dependencies, and PROVES the import works at
+# build time so a missing dep fails the build, not a run.
+FROM python:3.12-slim AS wheel
+WORKDIR /src
+COPY pyproject.toml README.md* ./
+COPY src ./src
+RUN pip wheel --no-deps --no-build-isolation -w /wheels . \
+    || (pip install hatchling && pip wheel --no-deps -w /wheels .)
 
 FROM python:3.12-slim
 
@@ -22,8 +38,24 @@ RUN apt-get update \
         awscli ca-certificates curl git tar unzip \
     && rm -rf /var/lib/apt/lists/*
 
-# Scoring toolchain (future in-container scoring; harmless size now).
-RUN pip install --no-cache-dir pytest coverage
+# Scoring toolchain: pytest/coverage (test_coverage), ruff (code_quality /
+# defect_rate lint paths). Versions float at build time but are FROZEN per
+# image digest — the digest in provenance pins them.
+RUN pip install --no-cache-dir pytest coverage ruff
+
+# retort itself: wheel --no-deps + ONLY the scoring path's dependencies
+# (pluggy for the scorer registry, pydantic/pyyaml for config imports, click
+# for cli-module imports reached via playpen). Deliberately NOT the design
+# deps (OApackage/pyDOE3/pandas/scipy/statsmodels) — score_full.py never
+# imports retort.design. The import check below fails the BUILD if this
+# minimal set ever stops being enough.
+COPY --from=wheel /wheels /wheels
+RUN pip install --no-cache-dir --no-deps /wheels/retort-*.whl \
+    && pip install --no-cache-dir pluggy pydantic pyyaml click \
+    && python -c "from retort.scoring.collector import ScoreCollector; \
+from retort.scoring.registry import create_default_registry; \
+create_default_registry()" \
+    && rm -rf /wheels
 
 # opencode at a pinned version (npm dist ships the binary via optional deps).
 RUN apt-get update && apt-get install -y --no-install-recommends nodejs npm \
@@ -36,6 +68,7 @@ RUN useradd --create-home --shell /bin/bash retort \
     && mkdir -p /workspace && chown retort:retort /workspace
 COPY sandbox/entrypoint.sh /entrypoint.sh
 COPY sandbox/score_gate.py /score_gate.py
+COPY sandbox/score_full.py /score_full.py
 RUN chmod +x /entrypoint.sh
 USER retort
 ENV HOME=/home/retort

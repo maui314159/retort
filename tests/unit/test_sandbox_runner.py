@@ -313,6 +313,146 @@ class TestInContainerScoring:
         assert "sandbox_tests_passed" not in art.metadata
 
 
+class TestTimeoutAndStallParity:
+    def test_batch_timeout_derived_from_playpen_timeout(self, tmp_path):
+        runner = _make_runner(tmp_path, timeout_minutes=90)
+        env_id = runner.provision(_stack(), _task())
+        calls = _wire_success(runner, artifacts={
+            "_sandbox_meta.json": _META, "_agent_stdout.log": _STEP_FINISH,
+        })
+        runner.execute(env_id, _stack(), _task())
+
+        submit = next(c for c in calls if c[:2] == ["batch", "submit-job"])
+        timeout = json.loads(submit[submit.index("--timeout") + 1])
+        # playpen.timeout_minutes + the setup/transfer margin — never the job
+        # definition's baked-in default.
+        assert timeout["attemptDurationSeconds"] == 90 * 60 + 600
+
+    def test_stall_and_wall_env_reach_container(self, tmp_path):
+        runner = _make_runner(tmp_path, timeout_minutes=40, stall_minutes=25)
+        env_id = runner.provision(_stack(), _task())
+        calls = _wire_success(runner, artifacts={
+            "_sandbox_meta.json": _META, "_agent_stdout.log": _STEP_FINISH,
+        })
+        runner.execute(env_id, _stack(), _task())
+
+        submit = next(c for c in calls if c[:2] == ["batch", "submit-job"])
+        overrides = json.loads(submit[submit.index("--container-overrides") + 1])
+        env = {e["name"]: e["value"] for e in overrides["environment"]}
+        assert env["RETORT_STALL_SECONDS"] == str(25 * 60)
+        assert env["RETORT_AGENT_TIMEOUT_SECONDS"] == str(40 * 60)
+
+    def test_stall_kill_surfaces_like_local_lane(self, tmp_path):
+        meta = json.dumps({
+            "agent_exit": 124, "agent_seconds": 1810.0, "kill_reason": "stall",
+        })
+        runner = _make_runner(tmp_path, stall_minutes=25)
+        env_id = runner.provision(_stack(), _task())
+        _wire_success(runner, artifacts={
+            "_sandbox_meta.json": meta, "_agent_stdout.log": _STEP_FINISH,
+        })
+        art = runner.execute(env_id, _stack(), _task())
+
+        # Same contract as the local progress guard: exit 124, kill_reason in
+        # metadata, the stall message in stderr — diagnose sees one shape.
+        assert art.exit_code == 124
+        assert art.metadata["kill_reason"] == "stall"
+        assert "stalled" in art.stderr
+        assert art.duration_seconds == 1810.0
+        # Usage still parsed — a killed agent's spend is real spend.
+        assert art.token_count == 300
+
+
+class TestModelResolution:
+    def test_profile_model_fallback(self, tmp_path):
+        from retort.config.schema import LocalAgentConfig
+
+        runner = _make_runner(tmp_path, local_agents={
+            "oc": LocalAgentConfig(
+                harness="opencode", model="openrouter/z-ai/glm-5.3-flash"
+            ),
+        })
+        stack = StackConfig(
+            language="python", agent="oc", framework="stdlib",
+            extra={"tooling": "none"},  # no model in the design row
+        )
+        assert runner._model_for(stack) == "openrouter/z-ai/glm-5.3-flash"
+        # And the profile-named agent resolves to the opencode harness.
+        assert runner._build_agent_command(stack)[0] == "opencode"
+
+    def test_playpen_default_model_fallback(self, tmp_path):
+        runner = _make_runner(
+            tmp_path, default_model="openrouter/z-ai/glm-5.2"
+        )
+        stack = StackConfig(
+            language="python", agent="opencode", framework="stdlib",
+            extra={"tooling": "none"},
+        )
+        assert runner._model_for(stack) == "openrouter/z-ai/glm-5.2"
+
+    def test_design_row_wins_over_profile_and_default(self, tmp_path):
+        from retort.config.schema import LocalAgentConfig
+
+        runner = _make_runner(
+            tmp_path,
+            default_model="openrouter/z-ai/glm-5.2",
+            local_agents={"opencode": LocalAgentConfig(
+                harness="opencode", model="openrouter/z-ai/glm-5.3"
+            )},
+        )
+        assert runner._model_for(_stack()) == "openrouter/z-ai/glm-5.3-flash"
+
+    def test_profile_model_options_win(self, tmp_path):
+        from retort.config.schema import LocalAgentConfig
+
+        profile_pin = {"provider": {"order": ["parasail"]}}
+        runner = _make_runner(
+            tmp_path,
+            model_options={"provider": {"order": ["z-ai"]}},
+            local_agents={"opencode": LocalAgentConfig(
+                harness="opencode", model_options=profile_pin
+            )},
+        )
+        env_id = runner.provision(_stack(), _task())
+        cfg = json.loads(
+            (runner._envs[env_id].workspace / "opencode.json").read_text()
+        )
+        entry = cfg["provider"]["openrouter"]["models"]["z-ai/glm-5.3-flash"]
+        assert entry["options"] == profile_pin
+
+
+class TestFullScoringPlumbing:
+    def test_responses_env_reaches_container(self, tmp_path):
+        runner = _make_runner(
+            tmp_path,
+            score_in_container=True,
+            score_metrics=["code_quality", "test_coverage"],
+        )
+        env_id = runner.provision(_stack(), _task())
+        calls = _wire_success(runner, artifacts={
+            "_sandbox_meta.json": _META, "_agent_stdout.log": _STEP_FINISH,
+        })
+        runner.execute(env_id, _stack(), _task())
+
+        submit = next(c for c in calls if c[:2] == ["batch", "submit-job"])
+        overrides = json.loads(submit[submit.index("--container-overrides") + 1])
+        env = {e["name"]: e["value"] for e in overrides["environment"]}
+        assert env["RETORT_RESPONSES"] == "code_quality,test_coverage"
+
+    def test_container_scores_file_noted_in_metadata(self, tmp_path):
+        runner = _make_runner(tmp_path, score_in_container=True)
+        env_id = runner.provision(_stack(), _task())
+        _wire_success(runner, artifacts={
+            "_sandbox_meta.json": _META,
+            "_agent_stdout.log": _STEP_FINISH,
+            "_container_scores.json": json.dumps({"test_coverage": 0.9}),
+        })
+        art = runner.execute(env_id, _stack(), _task())
+
+        assert art.metadata["sandbox_container_scores"] == \
+            "_container_scores.json"
+
+
 class TestSandboxConfigSchema:
     def test_playpen_sandbox_block_parses(self):
         from retort.config.schema import PlaypenConfig, RunnerType

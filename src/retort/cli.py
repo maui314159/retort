@@ -864,7 +864,10 @@ def run_experiments(
                 "(s3_bucket at minimum) — see docs/future-experiments.md §0c."
             )
         # The opencode profile's model_options (e.g. the OpenRouter provider
-        # pin) rides along exactly as in the local lane.
+        # pin) rides along exactly as in the local lane; profiles + the
+        # playpen default model give the sandbox the SAME model-resolution
+        # chain as LocalRunner, and stall_minutes reaches the in-container
+        # watchdog so a hung agent dies in minutes, not the whole Batch wall.
         _oc_profile = (workspace_config.playpen.local_agents or {}).get("opencode")
         runner = SandboxRunner(
             s3_bucket=_sbx.s3_bucket,
@@ -874,10 +877,14 @@ def run_experiments(
             spec=SandboxSpec(vcpu=_sbx.vcpu, memory_mb=_sbx.memory_mb),
             region=_sbx.region,
             timeout_minutes=workspace_config.playpen.timeout_minutes,
+            stall_minutes=workspace_config.playpen.stall_minutes,
+            local_agents=workspace_config.playpen.local_agents,
+            default_model=workspace_config.playpen.model,
             model_options=(
                 _oc_profile.model_options if _oc_profile is not None else None
             ),
             score_in_container=_sbx.score_in_container,
+            score_metrics=[r.name for r in workspace_config.responses],
         )
     elif runner_type == "metaharness":
         from retort.playpen.metaharness_runner import MetaHarnessRunner
