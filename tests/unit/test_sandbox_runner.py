@@ -499,3 +499,32 @@ class TestSandboxConfigSchema:
 
         cfg = PlaypenConfig(runner="local")
         assert cfg.sandbox is None
+
+
+class TestPrimeHarnessSandbox:
+    def test_prime_agent_command_built_for_container(self, tmp_path):
+        from retort.config.schema import LocalAgentConfig
+
+        runner = _make_runner(tmp_path)
+        runner.local_agents = {"pa": LocalAgentConfig(harness="prime")}
+        stack = _stack(agent="pa")
+        stack.extra["model"] = "openrouter/z-ai/glm-5.3-flash"
+
+        cmd = runner._build_agent_command(stack)
+
+        assert cmd[0] == "prime-agent"
+        assert cmd[cmd.index("--cwd") + 1] == "/workspace"
+        assert cmd[cmd.index("--provider") + 1] == "openrouter"
+        assert cmd[cmd.index("--model") + 1] == "z-ai/glm-5.3-flash"
+        for flag in ("-nc", "-ns", "-ne", "-np", "--no-session"):
+            assert flag in cmd
+
+    def test_prime_provision_writes_no_opencode_config(self, tmp_path):
+        from retort.config.schema import LocalAgentConfig
+
+        runner = _make_runner(tmp_path)
+        runner.local_agents = {"pa": LocalAgentConfig(harness="prime")}
+        env_id = runner.provision(_stack(agent="pa"), _task())
+
+        ws = runner._envs[env_id].workspace
+        assert not (ws / "opencode.json").exists()

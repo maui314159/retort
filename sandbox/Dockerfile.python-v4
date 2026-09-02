@@ -1,0 +1,72 @@
+# retort sandbox python image v4 — python-v3 + prime-agent.
+#
+# Builds ON the pinned python-v3 digest (retort scorer suite, opencode
+# 1.18.20, watchdog entrypoint) and adds:
+#   * node 22 (prime-agent's runtime)
+#   * the prime-agent v0.7.2 DIST BUNDLE, copied from the LOCAL source build
+#     (staged into sandbox/prime-bundle/ by build_python_v4.sh — NOT committed).
+#     Deliberately the local bits and not an in-image rebuild: `npm run build`
+#     regenerates models.generated.ts from the live models.dev catalog, so a
+#     rebuild embeds whatever the catalog says on build day — version drift the
+#     provenance rules exist to prevent. The staged bundle is byte-identical to
+#     the binary that passed the §0b smokes; record its sha256 with the image.
+#   * /usr/local/bin/prime-agent wrapper (sets PI_SKIP_VERSION_CHECK; the
+#     upstream update manifest is unreachable and irrelevant in a cell).
+#
+# Build (from repo root; use build_python_v4.sh, it stages the bundle):
+#   docker build --platform linux/amd64 --provenance=false --sbom=false \
+#     -f sandbox/Dockerfile.python-v4 -t <ecr>/retort-sandbox:python-v4 .
+FROM 047719634604.dkr.ecr.us-east-1.amazonaws.com/retort-sandbox@sha256:4d04fe100393d61d9f24a2c831998ac05fad8b745a6b393e3ce3b5a43f568699
+
+USER root
+
+# Node 22 (NodeSource, major pinned). prime-agent's bundle needs >= 20.
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl gnupg \
+    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# The bundle deliberately externalizes native/interop packages (upstream
+# scripts/bundle.mjs `external:` list); node resolves them upward from the
+# bundle dir, so they live in /opt/prime-agent/node_modules. Installed into
+# the EMPTY dir BEFORE the package is copied in: installing beside the real
+# package.json makes npm chase its workspace-internal deps and fail. The
+# scaffolding package.json npm writes is removed; the real one arrives with
+# the COPY below and is load-bearing (cli.js reads version + asset root
+# from it — deleting it was the first v4 build's runtime breakage).
+RUN mkdir -p /opt/prime-agent && cd /opt/prime-agent \
+    && npm install --no-save --no-audit --no-fund --omit=dev \
+       zeromq@6.5.0 koffi@2.16.2 undici@7.29.0 \
+       "@silvia-odwyer/photon-node@0.3.4" "@mariozechner/clipboard@0.3.9" \
+    && rm -f package.json package-lock.json
+
+# The staged package (package.json + dist/, maps and .d.ts stripped). cli.js
+# resolves its assets (dist/modes themes, dist/skills, prime-agent-runtime)
+# and its version from the package.json ABOVE dist/ — the local layout,
+# mirrored exactly.
+COPY sandbox/prime-pkg/ /opt/prime-agent/
+
+# Prebuilt IPython kernel venv. prime-agent's ipython tool otherwise
+# bootstraps its runtime AT FIRST TOOL CALL via uv (network, latency, drift —
+# and uv is absent here, so every tool call failed: the v4b lesson). The
+# PRIME_AGENT_KERNEL_PYTHON contract (core/kernel/bootstrap.ts): a python
+# with ipykernel + prime-agent-runtime + the DEFAULT_RLM_EXTRA_PACKAGES list,
+# which is exactly what this venv carries, pinned at build time.
+RUN python3 -m venv /opt/prime-agent/kernel-venv \
+    && /opt/prime-agent/kernel-venv/bin/pip install --no-cache-dir --quiet \
+       ipykernel nest-asyncio /opt/prime-agent/runtime-src \
+       requests httpx pyyaml tomli python-dotenv pandas numpy scipy \
+       beautifulsoup4 lxml pydantic tyro \
+    && rm -rf /opt/prime-agent/runtime-src
+
+RUN printf '%s\n' \
+    '#!/bin/sh' \
+    '# prime-agent v0.7.2 dist bundle (staged from the smoked local build).' \
+    'export PI_SKIP_VERSION_CHECK="${PI_SKIP_VERSION_CHECK:-1}"' \
+    'export PRIME_AGENT_KERNEL_PYTHON="${PRIME_AGENT_KERNEL_PYTHON:-/opt/prime-agent/kernel-venv/bin/python}"' \
+    'exec node /opt/prime-agent/dist/bundle/cli.js "$@"' \
+    > /usr/local/bin/prime-agent \
+    && chmod 755 /usr/local/bin/prime-agent \
+    && node /opt/prime-agent/dist/bundle/cli.js --version
+
+USER retort

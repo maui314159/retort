@@ -1816,3 +1816,88 @@ def test_the_repair_attempt_is_not_seeded_with_a_poisoned_build_tree(tmp_path):
     assert (env / "Package.swift").exists()
     assert not (env / ".build").exists(), "a path-pinned build tree was copied"
     assert not (env / "node_modules").exists()
+
+
+class TestPrimeHarness:
+    """prime-agent (v0.7.2) headless integration — command shape + usage parse."""
+
+    def _profile(self, **kwargs):
+        from retort.config.schema import LocalAgentConfig
+
+        return LocalAgentConfig(harness="prime", **kwargs)
+
+    def test_builds_prime_command_with_openrouter_model(self, tmp_path):
+        from retort.playpen.local_runner import LocalRunner
+
+        runner = LocalRunner(
+            work_dir=tmp_path, local_agents={"pa": self._profile()},
+        )
+        stack = StackConfig(
+            language="python", agent="pa", framework="stdlib",
+            extra={"model": "openrouter/z-ai/glm-5.3-flash"},
+        )
+        task = TaskSpec(name="plain", description="d", prompt="hi")
+
+        cmd = runner._build_agent_command(stack, task, tmp_path)
+
+        assert cmd[:4] == ["prime-agent", "-p", "--mode", "json"]
+        # Purity flags + --no-session are load-bearing: without them prime
+        # discovers ~/.claude skills, extensions, CLAUDE.md, and persists the
+        # session into the user's history.
+        for flag in ("--offline", "-nc", "-ns", "-ne", "-np", "--no-session"):
+            assert flag in cmd
+        # openrouter/<vendor>/<id> design rows split into provider + bare id.
+        assert cmd[cmd.index("--provider") + 1] == "openrouter"
+        assert cmd[cmd.index("--model") + 1] == "z-ai/glm-5.3-flash"
+        assert cmd[cmd.index("--cwd") + 1] == str(tmp_path)
+        # Prompt rides after `--` so prompt text can never be parsed as flags.
+        assert cmd[cmd.index("--") + 1] == cmd[-1]
+        assert "You are working in python." in cmd[-1]
+
+    def test_prime_profile_resolves_harness_and_parser_dispatch(self, tmp_path):
+        from retort.playpen.local_runner import LocalRunner, _parse_agent_usage
+
+        runner = LocalRunner(
+            work_dir=tmp_path, local_agents={"pa": self._profile()},
+        )
+        stack = StackConfig(language="python", agent="pa", framework="stdlib")
+        assert runner._resolve_harness(stack) == "prime"
+        # Unknown stream -> empty result, not a crash.
+        assert _parse_agent_usage("prime", "not json") == (0, {})
+
+    def test_parse_prime_usage_sums_turns(self):
+        from retort.playpen.local_runner import _parse_agent_usage
+
+        # Two assistant turns, shapes as observed from v0.7.2 --mode json.
+        stdout = "\n".join([
+            '{"type":"session","version":3,"id":"x"}',
+            '{"type":"agent_start"}',
+            '{"type":"turn_start"}',
+            '{"type":"message_end","message":{"role":"user","content":[]}}',
+            '{"type":"message_end","message":{"role":"assistant","model":'
+            '"z-ai/glm-5.3-flash","responseId":"gen-111","usage":{"input":2396,'
+            '"output":6,"cacheRead":0,"cacheWrite":0,"totalTokens":2402,'
+            '"cost":{"input":0.0022762,"output":0.000024,"total":0.0023002}}}}',
+            '{"type":"turn_end","message":{"role":"assistant"}}',
+            '{"type":"turn_start"}',
+            '{"type":"message_end","message":{"role":"assistant","model":'
+            '"z-ai/glm-5.3-flash","responseId":"gen-222","usage":{"input":3000,'
+            '"output":100,"cacheRead":500,"cacheWrite":10,"totalTokens":3600,'
+            '"cost":{"total":0.001}}}}',
+            '{"type":"turn_end","message":{"role":"assistant"}}',
+            '{"type":"agent_end","messages":[]}',
+        ])
+
+        token_count, meta = _parse_agent_usage("prime", stdout)
+
+        assert token_count == 6002                       # 2402 + 3600
+        assert meta["input_tokens"] == "5396"            # 2396 + 3000
+        assert meta["output_tokens"] == "106"
+        assert meta["cache_read_input_tokens"] == "500"
+        assert meta["cache_creation_input_tokens"] == "10"
+        assert abs(float(meta["total_cost_usd"]) - 0.0033002) < 1e-9
+        assert meta["turns"] == "2"
+        assert meta["model"] == "z-ai/glm-5.3-flash"
+        # OpenRouter generation ids recorded for /generation reconcile —
+        # the capability opencode lacks.
+        assert meta["openrouter_generation_ids"] == "gen-111,gen-222"
