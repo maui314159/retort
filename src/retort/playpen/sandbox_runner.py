@@ -549,9 +549,29 @@ def _make_tar(src_dir: Path, out_path: Path) -> None:
 
 
 def _extract_tar(tar_path: Path, dest_dir: Path) -> None:
-    """Unpack an artifacts tar into the workspace (overwriting seeds)."""
+    """Unpack an artifacts tar into the workspace (overwriting seeds).
+
+    Members the safe filter refuses are SKIPPED, not fatal. An agent that
+    builds a `.venv` in its workspace ships symlinks to absolute container
+    paths (`.venv/bin/python -> /usr/local/bin/python`); `filter="data"`
+    rejects those, and before this guard the whole extraction — and therefore
+    a SUCCEEDED cell with real, scored work — was recorded as a 0.0s crash
+    (first hit: exp-mu-primeagent brazil, 2026-09-02). The skipped links are
+    provisioning artifacts, not deliverables: in-container scoring already
+    ran, and host-side rescoring rebuilds a venv anyway (ensure_python_env).
+    """
+    skipped = 0
     with tarfile.open(tar_path, "r:gz") as tar:
-        tar.extractall(dest_dir, filter="data")
+        for member in tar:
+            try:
+                tar.extract(member, dest_dir, filter="data")
+            except tarfile.FilterError:
+                skipped += 1
+    if skipped:
+        logger.warning(
+            "artifact extraction skipped %d unsafe member(s) (absolute-path "
+            "symlinks etc.) from %s", skipped, tar_path.name,
+        )
 
 
 def _read_text(path: Path) -> str:

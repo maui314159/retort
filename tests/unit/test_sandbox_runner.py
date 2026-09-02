@@ -528,3 +528,28 @@ class TestPrimeHarnessSandbox:
 
         ws = runner._envs[env_id].workspace
         assert not (ws / "opencode.json").exists()
+
+
+def test_extract_tar_skips_absolute_symlinks_keeps_files(tmp_path):
+    """A workspace venv ships symlinks to absolute container paths; the safe
+    filter refuses them. They must be SKIPPED — a SUCCEEDED cell's real files
+    must still land instead of the whole extraction crashing (the 0.0s-crash
+    mode from exp-mu-primeagent brazil, 2026-09-02)."""
+    import tarfile
+
+    from retort.playpen.sandbox_runner import _extract_tar
+
+    src = tmp_path / "src"
+    (src / ".venv" / "bin").mkdir(parents=True)
+    (src / "app.py").write_text("print('real work')\n")
+    (src / ".venv" / "bin" / "python").symlink_to("/usr/local/bin/python")
+    tar_path = tmp_path / "out.tar.gz"
+    with tarfile.open(tar_path, "w:gz") as tar:
+        tar.add(src, arcname=".")
+
+    dest = tmp_path / "dest"
+    dest.mkdir()
+    _extract_tar(tar_path, dest)
+
+    assert (dest / "app.py").read_text() == "print('real work')\n"
+    assert not (dest / ".venv" / "bin" / "python").exists()
