@@ -207,13 +207,23 @@ class SandboxRunner:
                 ["git", "init", "-q"], cwd=env_dir, capture_output=True
             )
 
-        self._write_opencode_config(env_dir, stack)
+        if self._resolve_harness(stack) == "opencode":
+            self._write_opencode_config(env_dir, stack)
 
         self._envs[env_id] = _SandboxEnv(
             env_id=env_id, workspace=env_dir, stack=stack, task=task
         )
         logger.info("Provisioned sandbox env %s at %s", env_id, env_dir)
         return env_id
+
+    def _resolve_harness(self, stack: StackConfig) -> str:
+        """Profile harness wins, else the agent name is the harness —
+        LocalRunner._resolve_harness's precedence, minus model inference
+        (sandbox stacks always name their agent)."""
+        profile = self.local_agents.get(stack.agent)
+        if profile is not None:
+            return profile.harness
+        return stack.agent
 
     def _model_for(self, stack: StackConfig) -> str:
         """Design-row model, then profile default, then playpen default —
@@ -410,7 +420,8 @@ class SandboxRunner:
         stdout_text = _read_text(info.workspace / "_agent_stdout.log")
         stderr_text = _read_text(info.workspace / "_agent_stderr.log")
         token_count, usage_meta = _local._parse_agent_usage(
-            "opencode", stdout_text, info.workspace, self._model_for(stack)
+            self._resolve_harness(stack), stdout_text, info.workspace,
+            self._model_for(stack),
         )
 
         # Watchdog kills surface exactly like the local progress guard: exit
@@ -453,22 +464,39 @@ class SandboxRunner:
         command mirrors LocalRunner's opencode branch; --dir is the container
         workspace, fixed by entrypoint.sh.
         """
-        profile = self.local_agents.get(stack.agent)
-        harness = profile.harness if profile is not None else stack.agent
-        if harness not in ("opencode", "oc"):
-            raise ValueError(
-                f"SandboxRunner v1 supports only the opencode harness; "
-                f"agent {stack.agent!r} resolves to {harness!r}"
-            )
+        harness = self._resolve_harness(stack)
         model = self._model_for(stack)
-        cmd = [
-            "opencode", "run", "--pure", "--print-logs", "--format", "json",
-            "--dir", "/workspace",
-        ]
-        if model and model != "none":
-            cmd.extend(["--model", model])
-        cmd.append(_local._build_agent_prompt(stack))
-        return cmd
+        if harness in ("opencode", "oc"):
+            cmd = [
+                "opencode", "run", "--pure", "--print-logs", "--format", "json",
+                "--dir", "/workspace",
+            ]
+            if model and model != "none":
+                cmd.extend(["--model", model])
+            cmd.append(_local._build_agent_prompt(stack))
+            return cmd
+        if harness == "prime":
+            # Mirrors LocalRunner's prime branch; auth via OPENROUTER_API_KEY,
+            # which the job definition injects from Secrets Manager — no
+            # auth-file seeding needed (see entrypoint.sh).
+            cmd = [
+                "prime-agent", "-p", "--mode", "json", "--offline",
+                "-nc", "-ns", "-ne", "-np", "--no-session",
+                "--cwd", "/workspace",
+            ]
+            if model and model != "none":
+                prefix = "openrouter/"
+                if model.startswith(prefix):
+                    cmd.extend(["--provider", "openrouter",
+                                "--model", model[len(prefix):]])
+                else:
+                    cmd.extend(["--model", model])
+            cmd.extend(["--", _local._build_agent_prompt(stack)])
+            return cmd
+        raise ValueError(
+            f"SandboxRunner supports the opencode and prime harnesses; "
+            f"agent {stack.agent!r} resolves to {harness!r}"
+        )
 
     def _poll_job(self, job_id: str) -> tuple[str, dict[str, Any]]:
         """Poll DescribeJobs until terminal or deadline.

@@ -1044,6 +1044,42 @@ class LocalRunner:
             cmd.append(_build_agent_prompt(stack, prompt_injection))
             return cmd
 
+        if harness == "prime":
+            # prime-agent headless (verified against v0.7.2). `--mode json`
+            # emits a JSONL event stream; assistant `message_end` events carry
+            # the per-turn usage + cost AND `responseId` — the OpenRouter
+            # generation id, so prime runs are /generation-reconcilable (which
+            # opencode never surfaced). Auth: OPENROUTER_API_KEY env only —
+            # keeps the key off argv/ps, matches the omp pattern locally and
+            # the Secrets-Manager injection in the sandbox container.
+            # `--offline` disables STARTUP network ops (update checks), not
+            # model calls. Purity flags (-nc -ns -ne -np) + --no-session:
+            # smoke-verified to suppress CLAUDE.md/skills/extensions/prompt-
+            # template discovery and session persistence.
+            # A design-row model of the form openrouter/<vendor>/<id> maps to
+            # `--provider openrouter --model <vendor>/<id>` (prime accepts
+            # arbitrary ids for the provider with a catalog warning).
+            cmd = [
+                "prime-agent", "-p", "--mode", "json", "--offline",
+                "-nc", "-ns", "-ne", "-np", "--no-session",
+            ]
+            if workspace is not None:
+                cmd.extend(["--cwd", str(workspace)])
+
+            model = self._model_for(stack)
+            if model and model != "none":
+                prefix = "openrouter/"
+                if model.startswith(prefix):
+                    cmd.extend(["--provider", "openrouter",
+                                "--model", model[len(prefix):]])
+                else:
+                    cmd.extend(["--model", model])
+
+            prompt_level = stack.extra.get("prompt", "none")
+            prompt_injection = self._load_prompt_file(prompt_level) if prompt_level != "none" else ""
+            cmd.extend(["--", _build_agent_prompt(stack, prompt_injection)])
+            return cmd
+
         if harness == "codex":
             # Codex's non-interactive JSONL mode emits token_count events.  Keep
             # the agent inside the per-run workspace and do not retain a session
@@ -1119,7 +1155,7 @@ class LocalRunner:
         profile = self.local_agents.get(stack.agent)
         if profile is not None:
             return profile.harness
-        if stack.agent in ("claude-code", "gemini", "omp", "opencode", "codex"):
+        if stack.agent in ("claude-code", "gemini", "omp", "opencode", "codex", "prime"):
             return stack.agent
         return _harness_for_model(self._model_for(stack))
 
@@ -1337,6 +1373,8 @@ def _parse_agent_usage(
         return _parse_omp_usage(stdout_text)
     if agent == "opencode":
         return _parse_opencode_usage(stdout_text)
+    if agent == "prime":
+        return _parse_prime_usage(stdout_text)
     if agent == "gemini":
         return _parse_gemini_usage(stdout_text)
     if agent == "codex":
@@ -1758,6 +1796,77 @@ def _parse_opencode_usage(stdout_text: str) -> tuple[int, dict[str, str]]:
         "cache_creation_input_tokens": str(cache_write_sum),
         "total_cost_usd": str(cost_sum),
     }
+
+
+def _parse_prime_usage(stdout_text: str) -> tuple[int, dict[str, str]]:
+    """Parse prime-agent's ``--mode json`` JSONL event stream (v0.7.2, observed).
+
+    Each assistant turn ends with a ``message_end`` event whose ``message``
+    carries that turn's usage — ``{input, output, cacheRead, cacheWrite,
+    totalTokens, cost: {..., total}}`` — plus ``model`` and ``responseId``,
+    which for the openrouter provider is the OpenRouter GENERATION ID
+    (``gen-…``). Per-run usage is the sum across assistant message_end events
+    (each turn's ``input`` is that turn's full context, like the other stream
+    parsers); turns = ``turn_end`` count. The generation ids are recorded so
+    prime runs can be ``/generation``-reconciled — the capability opencode
+    lacks (see [[omp-multiupstream-cost-undercount]] for why that matters).
+    """
+    input_sum = output_sum = cache_read_sum = cache_write_sum = 0
+    total_tokens_sum = 0
+    cost_sum = 0.0
+    assistant_msgs = turns = 0
+    model = ""
+    gen_ids: list[str] = []
+    for line in stdout_text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            event = json.loads(line)
+        except (json.JSONDecodeError, ValueError):
+            continue
+        if not isinstance(event, dict):
+            continue
+        etype = event.get("type")
+        if etype == "turn_end":
+            turns += 1
+        if etype != "message_end":
+            continue
+        msg = event.get("message")
+        if not isinstance(msg, dict) or msg.get("role") != "assistant":
+            continue
+        assistant_msgs += 1
+        model = str(msg.get("model") or model)
+        rid = msg.get("responseId")
+        if isinstance(rid, str) and rid:
+            gen_ids.append(rid)
+        usage = msg.get("usage")
+        if isinstance(usage, dict):
+            input_sum += int(usage.get("input", 0) or 0)
+            output_sum += int(usage.get("output", 0) or 0)
+            total_tokens_sum += int(usage.get("totalTokens", 0) or 0)
+            cache_read_sum += int(usage.get("cacheRead", 0) or 0)
+            cache_write_sum += int(usage.get("cacheWrite", 0) or 0)
+            cost = usage.get("cost")
+            if isinstance(cost, dict):
+                cost_sum += _parse_float(str(cost.get("total", 0.0)), 0.0)
+
+    if assistant_msgs == 0:
+        return 0, {}
+
+    metadata = {
+        "input_tokens": str(input_sum),
+        "output_tokens": str(output_sum),
+        "cache_read_input_tokens": str(cache_read_sum),
+        "cache_creation_input_tokens": str(cache_write_sum),
+        "total_cost_usd": str(cost_sum),
+        "turns": str(turns),
+    }
+    if model:
+        metadata["model"] = model
+    if gen_ids:
+        metadata["openrouter_generation_ids"] = ",".join(gen_ids)
+    return total_tokens_sum, metadata
 
 
 def _find_first(data: object, keys: tuple[str, ...]) -> object:
