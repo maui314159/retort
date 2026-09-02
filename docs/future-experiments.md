@@ -432,7 +432,7 @@ CLAUDE.md and this factor is a capability toggle, exactly the kind that has sile
 **Cost note from exp-61.** Budget wall-clock, not agent time. exp-61's two-cell smoke pair took ~50
 minutes for ~5 minutes of agent work — the Opus judge pass and the 42 GB stack reload dominate.
 
-## 0b. exp-mu-primeagent — prime-agent 0.7.2 as a new agent-harness level  — PLANNED 2026-08-31
+## 0b. exp-mu-primeagent — prime-agent 0.7.2 as a new agent-harness level  — RUNNING 2026-09-02 (sandbox lane)
 
 `prime-agent` 0.7.2 is installed (`~/.local/bin`) — "AI coding assistant with an IPython tool",
 with `-p/--print`, `--mode json`, `--provider/--model/--api-key`, and purity flags (`-nc` no
@@ -476,6 +476,17 @@ n=3` = 12 runs (6 if the opencode cells are inherited from exp-mu-glm53), in
 `experiments-local/experiment-mu-primeagent/`. Autonomous/gate mode stays OFF for the main run —
 it is a capability toggle (verify-on-stop's sibling) and a candidate **follow-up** factor, not
 part of the harness comparison.
+
+**AMENDED PRE-RUN (2026-09-02), after the tracer bullet:** the family runs on the SANDBOX lane
+(first production use of §0c) as `agent {prime, opencode} x task {easy, brazil} x glm-5.2 x python
+x n=3`, dirs experiment-mu-primeagent-{easy,brazil}. All six smokes passed (notably: plain `-p`
+has NO hidden caps — 15 turns past the autonomous 12-turn default; and prime surfaces OpenRouter
+GENERATION IDS, so its costs are /generation-reconcilable, which opencode's are not). **Both arms
+run UNPINNED**: prime v0.7.2 cannot pass provider routing, and pinning only the control would make
+provider a hidden factor; served providers are recorded post-hoc via the management-key activity
+API. Known hazard, stated: unpinned routing showed ~2/12 silent hangs in local smokes — the
+in-container stall watchdog is the mitigation and crashed cells get one retry pass. Budget guard
+$15 after easy / $40 total.
 
 **Hypothesis.** Null on the easy task (ceiling); brazil-bench discriminates. Even a pass-rate
 null is publishable if turns/tokens/cost move — that is the pass-proportion-vs-efficiency
