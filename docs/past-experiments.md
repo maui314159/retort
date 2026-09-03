@@ -1239,3 +1239,81 @@ NOT an off-switch: it thinks, bills, and hides). Pre-registered ceiling caveat a
 at 1.0 means brazil cannot detect whether thinking would HELP on a harder task — this licenses
 "off for tasks of this class", not "thinking is useless". Total grid spend $20.05.
 Data: experiments-local/experiment-mu-glm53-thinking.
+
+## exp-mu-primeagent — prime-agent 0.7.2 vs opencode, and the harness x language interaction  — DONE 2026-09-02
+
+**The headline is an INTERACTION, not a main effect: which harness is cheaper depends on the
+language.** Holding model (glm-5.2), task and lane fixed, prime-agent is 4.5x cheaper and 2x faster
+than opencode on python — and 1.2x dearer and 2.4x slower on go. A harness ranking published from
+the python cells alone would have been wrong for go. This is the first production family on the
+sandbox lane (§0c), `agent {opencode, prime} x task {rest-api-crud, brazil-bench} x glm-5.2 x n=3`,
+extended the same day to `language {python, go, typescript}` on the easy task.
+
+Easy task (rest-api-crud), per-cell means over all 3 reps including failures:
+
+| language | agent | pass | mean cost | mean wall |
+|---|---|---:|---:|---:|
+| python | opencode | 3/3 | $0.113 | 177 s |
+| python | prime | 3/3 | **$0.025** | **87 s** |
+| go | opencode | 3/3 | **$0.052** | **170 s** |
+| go | prime | 3/3 | $0.064 | 407 s |
+| typescript | opencode | 2/3 | $0.151 | 113 s |
+| typescript | prime | 2/3 | $0.094 | 367 s |
+
+Correctness is language-robust for both harnesses — 16 of 18 easy cells at `requirement_coverage`
+1.0 (opus-4.8), with one GENUINE miss per arm on typescript. The efficiency responses are where the
+harness lives, which is the pass-proportion-vs-efficiency decomposition this project exists for.
+
+On brazil-bench (python only): **opencode 3/3, prime 2/3** — but prime's passes cost **$0.74 each
+against opencode's $2.47**, and ran faster (mean 17.8 min vs 24.1 min). Cheaper per attempt and
+cheaper per pass, at a lower pass rate; whether that trade is worth taking is a budget question, not
+a capability one. Total self-reported grid spend $10.40 ($1.50 easy + $8.90 brazil).
+
+**The prime brazil failure is a GENUINE miss with an unusual tell — prime exits 0 on a run that
+produced nothing.** [DIRECT] rep1 wrote no source files at all, yet `agent_exit: 0` and
+`succeeded: true`; the archive holds only the task inputs. Against the passing rep2 in the same
+cell it made 205 `ipython` tool calls versus 1291, and hit `"stopReason":"length"` 3 times (rep2: 0)
+— the model burned the run deliberating over team-name normalization, got truncated mid-reasoning,
+and prime returned cleanly. [HYPOTHESIS] `-p` print mode has no notion of "finished the task", so a
+model that stalls in thought exits successfully. Two consequences worth noting: this is the exact
+signature the README warns reads as a capability wall, and retort's own `no_write_abort_after: 3`
+guard did not fire on a zero-write run — worth a look before the next prime grid.
+
+**Both arms ran UNPINNED, and the provider table shows what that cost.** prime 0.7.2 cannot pass
+provider routing, and pinning only the control would have made provider a hidden factor. Pulled
+post-hoc from the OpenRouter activity API with the management key (per-day, per-model,
+per-provider), glm-5.2 on 2026-09-02:
+
+| provider | requests | share | billed |
+|---|---:|---:|---:|
+| digitalocean | 1042 | 70.5% | $8.21 |
+| novita/fp8 | 192 | 13.0% | $0.44 |
+| streamlake/fp8 | 100 | 6.8% | $0.22 |
+| together | 44 | 3.0% | $0.65 |
+| atlas-cloud/fp8 | 41 | 2.8% | $0.92 |
+| decart/fp4 | 38 | 2.6% | $0.53 |
+| parasail/fp4 | 20 | 1.4% | $0.15 |
+| ambient/fp8 | 1 | 0.1% | $0.01 |
+| **total** | **1478** | | **$11.12** |
+
+Eight endpoints served one grid, **and 4.0% of requests went to fp4 endpoints** — so quantization
+varied silently within and across arms. The exp-mu-glm53-provider result says provider moves
+duration, cost and reliability but not correctness, which bounds the damage to the efficiency
+responses; it does not eliminate it, and the split is not known to be equal across arms. **Caveat on
+the table itself: these rows are per-day and account-wide**, so they cover the whole family plus any
+other glm-5.2 traffic that day and cannot be attributed per-arm or per-cell. $11.12 billed against
+$10.40 self-reported is a reasonable reconciliation given the retries and smokes. Known hazard,
+stated pre-run and observed: unpinned routing showed ~2/12 silent hangs in local smokes; the
+in-container stall watchdog plus a one-shot retry pass was the mitigation.
+
+**TypeScript scorer false-fails persist even in-container.** 4 of 6 recorded TS failures were
+TOOLING, recovered by `diagnose` + `rescore` — publishing the raw table would have reported 0/6
+when the truth is 4/6. The sandbox lane does not fix this; it is the scorer, not the environment
+(see the standing TS notes on node:sqlite, Bun and ESM Jest).
+
+**Also established, and useful beyond this experiment:** prime surfaces OpenRouter **generation
+IDs**, so its costs are `/generation`-reconcilable — opencode's are not. All six pre-registered
+smokes passed, notably that plain `-p` has NO hidden caps (15 turns past the autonomous 12-turn
+default). Harness work shipped: prime-agent as an `agent` level on both local and sandbox lanes
+(ea488015), image python-v4c, and a skip-unsafe-tar-members fix on artifact extraction (eddc4de4).
+Data: experiments-local/experiment-mu-primeagent-{easy,brazil}; aggregated in master-local only.

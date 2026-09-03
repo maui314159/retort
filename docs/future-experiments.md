@@ -432,70 +432,27 @@ CLAUDE.md and this factor is a capability toggle, exactly the kind that has sile
 **Cost note from exp-61.** Budget wall-clock, not agent time. exp-61's two-cell smoke pair took ~50
 minutes for ~5 minutes of agent work — the Opus judge pass and the 42 GB stack reload dominate.
 
-## 0b. exp-mu-primeagent — prime-agent 0.7.2 as a new agent-harness level  — RUNNING 2026-09-02 (sandbox lane)
+## 0b. exp-mu-primeagent follow-ups — what the 2026-09-02 family left open  — QUEUED
 
-`prime-agent` 0.7.2 is installed (`~/.local/bin`) — "AI coding assistant with an IPython tool",
-with `-p/--print`, `--mode json`, `--provider/--model/--api-key`, and purity flags (`-nc` no
-context files, `-ns` no skills, `-ne` no extensions, `-np` no prompt templates, `--no-session`).
+The main family is written up in [past-experiments](past-experiments.md). Four follow-ups it
+generated, in priority order:
 
-**Question.** Holding the model fixed, does prime-agent change pass-proportion, cost, wall-clock
-or turns vs opencode? Secondary interest: the IPython tool may collapse many shell/file turns
-into fewer code-execution turns → token efficiency.
-
-**Model is FIXED at glm-5.2 via OpenRouter** — the best-characterized API model on both existing
-harnesses, and it shares its control cells with exp-mu-glm53 (whichever experiment runs first
-provides the `opencode × glm-5.2` cells; record the reuse). Same rule as above, opposite
-direction: new harness on a trusted model, never both new at once.
-
-**Integration to build first** (an agent = a command branch + a usage parser + a profile,
-per local_runner.py):
-- add `"prime"` to the `LocalHarness` literal in `config/schema.py`;
-- command branch: `prime-agent -p --mode json --cwd <playpen> -nc -ns -ne -np --no-session`
-  plus provider/model flags; `_parse_prime_usage` from the `--mode json` shape (inspect it —
-  don't guess);
-- `playpen.local_agents` profile; record the prime-agent version in provenance (it is a level of
-  the agent factor);
-- cost via OpenRouter `/generation` reconcile.
-
-**Smoke tests before the grid (pass criteria pre-registered):**
-1. **File-write in the playpen** — the /var sensitive-path refusal produced a false zero once;
-   prove prime-agent's tools write where retort's playpen lives.
-2. **Purity flags actually suppress** — opencode's `--pure` still loaded global skills and
-   provenance never recorded it. Verify with `--verbose` startup / session log that no
-   ~/.claude or ~/.agents skills, extensions, or CLAUDE.md were loaded.
-3. **No hidden caps in plain `-p` mode** — the `--autonomous` options default to 12 turns /
-   80K tokens / 30 min. Confirm plain print mode has no such ceiling binding below retort's own
-   `max_turns`/`timeout_minutes`, or raise them; a binding cap measures the cap (exp-39, exp-62).
-4. **Model flag takes effect** — the JSON output names the served model.
-5. **Usage parser returns turns + tokens + cost** on a real run, reconciled against billed.
-6. **GLM tool-call integrity under prime-agent** — same dialect check as exp-mu-glm53; a
-   harness-side GLM dialect bug here would replay the June omp episode.
-
-**Design.** `agent {opencode (control), prime-agent} × task {brazil-bench, rest-api-crud} ×
-n=3` = 12 runs (6 if the opencode cells are inherited from exp-mu-glm53), in
-`experiments-local/experiment-mu-primeagent/`. Autonomous/gate mode stays OFF for the main run —
-it is a capability toggle (verify-on-stop's sibling) and a candidate **follow-up** factor, not
-part of the harness comparison.
-
-**AMENDED PRE-RUN (2026-09-02), after the tracer bullet:** the family runs on the SANDBOX lane
-(first production use of §0c) as `agent {prime, opencode} x task {easy, brazil} x glm-5.2 x python
-x n=3`, dirs experiment-mu-primeagent-{easy,brazil}. All six smokes passed (notably: plain `-p`
-has NO hidden caps — 15 turns past the autonomous 12-turn default; and prime surfaces OpenRouter
-GENERATION IDS, so its costs are /generation-reconcilable, which opencode's are not). **Both arms
-run UNPINNED**: prime v0.7.2 cannot pass provider routing, and pinning only the control would make
-provider a hidden factor; served providers are recorded post-hoc via the management-key activity
-API. Known hazard, stated: unpinned routing showed ~2/12 silent hangs in local smokes — the
-in-container stall watchdog is the mitigation and crashed cells get one retry pass. Budget guard
-$15 after easy / $40 total.
-
-**Hypothesis.** Null on the easy task (ceiling); brazil-bench discriminates. Even a pass-rate
-null is publishable if turns/tokens/cost move — that is the pass-proportion-vs-efficiency
-decomposition the project exists for.
-
-**Sequencing (ONE experiment at a time):** run exp-mu-glm53 first — it is pure API spend with
-zero build work — then exp-mu-primeagent once the integration lands. A linking cell
-(`prime-agent × glm-5.3-flash`) is only meaningful after BOTH mains establish their factor
-separately; queue it as a follow-up, not part of either grid.
+1. **C# breadth extension** — the natural continuation of the language arm, and now UNBLOCKED: the
+   `obj/*.cs` false-PASS is fixed upstream (b7f9727, in our main) and coverlet has the pass-rate
+   fallback. Needs a `csharp` cloud image built on the go-v3b recipe (including its `ENV HOME`
+   lesson) plus a scorer-parity check against the exp-17 archives. **Standing caveat: ground-truth
+   every C# `TOOLING` verdict by hand** — `diagnose` still calls a run recoverable when its only
+   test is the empty xUnit scaffold.
+2. **Why didn't `no_write_abort_after: 3` fire?** The prime brazil rep1 wrote zero source files and
+   still exited 0 after 430 s. The guard was configured at 3 and did not abort. Cheap to
+   investigate, and it protects every future grid from paying for empty runs.
+3. **Pin prime's provider once 0.7.2+ supports it.** The unpinned arms drew 8 endpoints including
+   4.0% fp4. Re-check upstream for routing flags; until then prime grids carry the confound and
+   must pull the post-hoc activity table (management key, ~1 day lag).
+4. **prime autonomous/gate mode as a capability factor** — deliberately excluded from the harness
+   comparison. It is verify-on-stop's sibling and belongs in its own toggle experiment; the
+   `prime x glm-5.3-flash` linking cell is a separate, now-meaningful follow-up since both mains
+   have established their factor.
 
 ## 0c. Methodology: SandboxRunner — ephemeral per-cell cloud environments (AWS Batch on Fargate)  — IN USE 2026-09-01 (merged to main)
 
@@ -552,10 +509,14 @@ reqcov 1.0 by opus-4.8), the in-container stall watchdog live-verified (60s wind
 60.1s, kill_reason=stall surfaced like the local guard), full scorer suite in-container at
 metric-level parity on python/go/typescript, and shard/resume semantics proven over Batch with
 zero duplicate submissions. Shakedown agreed with the local lane 3/3. Parity checking caught
-three would-be false-zero bugs before they could touch a result. Remaining before broader use:
-non-opencode harnesses (prime-agent next, needs a key-attribution decision; claude-code needs an
-API-key billing decision), live-triggered second chance on Fargate. Cross-lane rule stands:
+three would-be false-zero bugs before they could touch a result. Cross-lane rule stands:
 durations never pool across lanes.
+
+**UPDATE 2026-09-02 — prime-agent discharged.** exp-mu-primeagent ran the first production family on
+this lane across three languages and two tasks with zero host-side fixes (see
+[past-experiments](past-experiments.md)); the key-attribution question was settled by the dedicated
+cloud key in Secrets Manager. **Remaining before broader use:** claude-code on the lane (still needs
+an API-key billing decision), live-triggered second chance on Fargate, and a `csharp` image.
 
 ## 1. exp-54 — does a Codex judge agree with the Opus judge?  — SCOPED DOWN (token budget)
 
