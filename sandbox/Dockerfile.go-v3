@@ -1,0 +1,57 @@
+# retort sandbox go image v3 — go-v2 + prime-agent (mirrors Dockerfile.python-v4).
+#
+# Builds ON the pinned go-v2 digest (go 1.22.12 toolchain, retort scorer
+# suite, opencode 1.18.20, watchdog entrypoint) and adds the same prime-agent
+# layers as python-v4c: node 22 (go-v2 carries Debian's node 18, too old for
+# the bundle — NodeSource replaces it; opencode is re-verified after), the
+# staged v0.7.2 dist bundle + externalized natives, the prebaked ipython
+# kernel venv, and the /usr/local/bin/prime-agent wrapper. See
+# Dockerfile.python-v4 for the rationale on each layer.
+#
+# Build via build_prime_lang.sh (stages sandbox/prime-pkg/, never committed).
+FROM 047719634604.dkr.ecr.us-east-1.amazonaws.com/retort-sandbox@sha256:e54e89a584b3255d323fc83984705d8501553e9b1a929bdce2a982f476ca2ee3
+
+USER root
+# The base image's ENV HOME=/home/retort persists into these root
+# stages; without resetting it, npm/pip write ROOT-OWNED cache dirs into
+# retort's home and the entrypoint's auth seeding later fails with
+# EACCES (hit on the first go-v3 echo cell). Root stages use /root, and a
+# final chown repairs anything that leaked.
+ENV HOME=/root
+
+# Node 22 over Debian's 18: NodeSource's package replaces nodejs+npm; the
+# globally installed opencode must survive the swap — verified in-build.
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl gnupg \
+    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && apt-get clean && rm -rf /var/lib/apt/lists/* \
+    && node --version && opencode --version
+
+RUN mkdir -p /opt/prime-agent && cd /opt/prime-agent \
+    && npm install --no-save --no-audit --no-fund --omit=dev \
+       zeromq@6.5.0 koffi@2.16.2 undici@7.29.0 \
+       "@silvia-odwyer/photon-node@0.3.4" "@mariozechner/clipboard@0.3.9" \
+    && rm -f package.json package-lock.json
+
+COPY sandbox/prime-pkg/ /opt/prime-agent/
+
+RUN python3 -m venv /opt/prime-agent/kernel-venv \
+    && /opt/prime-agent/kernel-venv/bin/pip install --no-cache-dir --quiet \
+       ipykernel nest-asyncio /opt/prime-agent/runtime-src \
+       requests httpx pyyaml tomli python-dotenv pandas numpy scipy \
+       beautifulsoup4 lxml pydantic tyro \
+    && rm -rf /opt/prime-agent/runtime-src
+
+RUN printf '%s\n' \
+    '#!/bin/sh' \
+    '# prime-agent v0.7.2 dist bundle (staged from the smoked local build).' \
+    'export PI_SKIP_VERSION_CHECK="${PI_SKIP_VERSION_CHECK:-1}"' \
+    'export PRIME_AGENT_KERNEL_PYTHON="${PRIME_AGENT_KERNEL_PYTHON:-/opt/prime-agent/kernel-venv/bin/python}"' \
+    'exec node /opt/prime-agent/dist/bundle/cli.js "$@"' \
+    > /usr/local/bin/prime-agent \
+    && chmod 755 /usr/local/bin/prime-agent \
+    && node /opt/prime-agent/dist/bundle/cli.js --version
+
+RUN chown -R retort:retort /home/retort
+ENV HOME=/home/retort
+USER retort

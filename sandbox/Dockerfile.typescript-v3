@@ -1,0 +1,37 @@
+# retort sandbox typescript image v3 — typescript-v2 + prime-agent (mirrors
+# Dockerfile.python-v4). typescript-v2 already carries node 22 (NodeSource)
+# and bun, so only the prime-agent layers are added: staged v0.7.2 dist
+# bundle + externalized natives, prebaked ipython kernel venv, wrapper.
+# See Dockerfile.python-v4 for per-layer rationale.
+#
+# Build via build_prime_lang.sh (stages sandbox/prime-pkg/, never committed).
+FROM 047719634604.dkr.ecr.us-east-1.amazonaws.com/retort-sandbox@sha256:3bc005ce64cb6bb018df87ec5d1eee7316eebf23e26fde43028355ba2df0e042
+
+USER root
+
+RUN mkdir -p /opt/prime-agent && cd /opt/prime-agent \
+    && npm install --no-save --no-audit --no-fund --omit=dev \
+       zeromq@6.5.0 koffi@2.16.2 undici@7.29.0 \
+       "@silvia-odwyer/photon-node@0.3.4" "@mariozechner/clipboard@0.3.9" \
+    && rm -f package.json package-lock.json
+
+COPY sandbox/prime-pkg/ /opt/prime-agent/
+
+RUN python3 -m venv /opt/prime-agent/kernel-venv \
+    && /opt/prime-agent/kernel-venv/bin/pip install --no-cache-dir --quiet \
+       ipykernel nest-asyncio /opt/prime-agent/runtime-src \
+       requests httpx pyyaml tomli python-dotenv pandas numpy scipy \
+       beautifulsoup4 lxml pydantic tyro \
+    && rm -rf /opt/prime-agent/runtime-src
+
+RUN printf '%s\n' \
+    '#!/bin/sh' \
+    '# prime-agent v0.7.2 dist bundle (staged from the smoked local build).' \
+    'export PI_SKIP_VERSION_CHECK="${PI_SKIP_VERSION_CHECK:-1}"' \
+    'export PRIME_AGENT_KERNEL_PYTHON="${PRIME_AGENT_KERNEL_PYTHON:-/opt/prime-agent/kernel-venv/bin/python}"' \
+    'exec node /opt/prime-agent/dist/bundle/cli.js "$@"' \
+    > /usr/local/bin/prime-agent \
+    && chmod 755 /usr/local/bin/prime-agent \
+    && node /opt/prime-agent/dist/bundle/cli.js --version
+
+USER retort
