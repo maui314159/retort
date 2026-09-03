@@ -1,0 +1,58 @@
+{
+  "agent_config": {},
+  "agents": {
+    "opencode": "opencode",
+    "prime": "prime"
+  },
+  "harness": {
+    "local_agents": {
+      "opencode": {
+        "harness": "opencode",
+        "model": null
+      },
+      "prime": {
+        "harness": "prime",
+        "model": null
+      }
+    },
+    "max_turns": 100,
+    "no_write_abort_after": 3,
+    "playpen_root": "/Users/maui/.retort/work",
+    "replicates": 3,
+    "runner": "sandbox",
+    "stack_presets": null,
+    "stall_minutes": 25,
+    "timeout_minutes": 90
+  },
+  "host": {
+    "cpu": "Apple M4 Max",
+    "iogpu_wired_limit_mb": "0",
+    "machine": "Mac16,6",
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "python": "3.12.12",
+    "ram_bytes": "68719476736"
+  },
+  "models": {
+    "z-ai/glm-5.2": {
+      "served_as": "z-ai/glm-5.2"
+    }
+  },
+  "retort": {
+    "branch": "main",
+    "commit": "eddc4de467dd1bc13ec0954e6d03d69dd3e3e743",
+    "dirty": false
+  },
+  "serving": {},
+  "stack_presets": null,
+  "tools": {
+    "cargo": "cargo 1.95.0 (f2d3ce0bd 2026-03-21)",
+    "claude": "2.1.258 (Claude Code)",
+    "go": "go version go1.26.5 darwin/arm64",
+    "hermes": "Hermes Agent v0.20.0 (2026.8.3)",
+    "hermes_bin": "hermes",
+    "llama_server": null,
+    "node": "v22.22.3",
+    "omlx": null,
+    "omp": "omp/16.5.0"
+  }
+}

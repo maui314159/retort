@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "brsl-mcp"
+version = "0.2.0"
+description = "MCP server exposing a knowledge graph of Brazilian soccer data (Brasileirao, Copa do Brasil, Libertadores, FIFA players)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Brazilian Soccer MCP" }]
+dependencies = [
+    "pandas>=2.0",
+    "mcp>=2.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+brsl-server = "brsl.server:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["brsl*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-ra -q"

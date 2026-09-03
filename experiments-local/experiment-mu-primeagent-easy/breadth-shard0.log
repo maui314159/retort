@@ -1,0 +1,17 @@
+Design matrix: 6 runs (loaded from experiments-local/experiment-mu-primeagent-easy/design.csv)
+Task: rest-api-crud
+Replicates: 3 (18 total runs)
+Resume: 12 run(s) already recorded — will skip.
+Disk preflight: 101 GB free — ok.
+
+Stack provenance (recorded to provenance.json):
+  retort   : eddc4de467 (dirty) on main
+  host     : Mac16,6  wired_limit=0MB
+  agents   : opencode (opencode), prime (prime)
+  model    : z-ai/glm-5.2 rev=None quant=None size=None
+
+Starting experiment runs...
+  [6/6 rep 1/3] typescript/unknown/prime — skip (resume)
+  [6/6 rep 2/3] typescript/unknown/prime — skip (resume)
+
+Done: 0 completed, 0 failed out of 18 (2 skipped via resume)

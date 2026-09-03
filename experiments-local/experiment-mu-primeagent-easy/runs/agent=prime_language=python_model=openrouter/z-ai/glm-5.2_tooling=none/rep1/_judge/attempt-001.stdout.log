@@ -1,0 +1,26 @@
+Both skills are done. Here's the summary.
+
+## `evaluate-run` — clean PASS
+
+**Run:** `agent=prime · python · openrouter/z-ai/glm-5.2 · tooling=none · rep1` (Flask + SQLite REST API)
+
+- **Requirements: 12/12 implemented**, 0 partial, 0 missing (against the pinned `REQUIREMENTS.json` — full CRUD, `?author=` filter, `/health`, SQLite persistence, title/author validation, README, tests).
+- **Tests: 7 passed / 0 failed / 0 skipped**, 92.74% coverage (read from `scores.json` + `_sandbox_meta.json`; not re-run).
+- **Stored scores:** test_coverage 0.93, defect_rate 0.83, maintainability 0.90, code_quality 0.62 (some lint warnings, not re-run per skill).
+- Wrote `evaluation.md`, `findings.jsonl` (2 **info** findings — both enhancements *beyond* spec: PUT partial-merge, extra year/isbn validation), and `summary/index.md`.
+
+No critical/high/medium/low findings — this is a genuine passing run, not a harness false-pass (the agent burned 70s and produced real, tested code).
+
+## `file-run-issues` — `min_severity=high`
+
+Both findings are `info`, so they filter out entirely. `assessment.json` written atomically:
+
+```
+Severity counts: critical=0 high=0 medium=0 low=0 info=0
+Penalty score:   1.0000  (clean)
+Req coverage:    100.0%
+Model:           openrouter/z-ai/glm-5.2
+Top finding:     (none at ≥high)
+```
+
+Note: per the skill contract this only aggregates findings into `assessment.json` — it does **not** open beads/GitHub issues, and with `min_severity=high` there was nothing to file anyway.

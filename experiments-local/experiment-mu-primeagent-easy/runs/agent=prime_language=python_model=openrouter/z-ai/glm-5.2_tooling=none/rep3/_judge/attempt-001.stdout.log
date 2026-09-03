@@ -1,0 +1,22 @@
+Both skills are done. Summary:
+
+## evaluate-run
+
+Clean **PASS**. The prime agent (GLM-5.2) produced a complete Flask + SQLite book API.
+
+- **Requirements: 12/12 implemented** against the pinned `REQUIREMENTS.json` — all five CRUD routes, `?author=` filter, SQLite persistence, JSON + correct status codes, title/author validation, `/health`, README, and 12 tests.
+- **Tests: 12 passed / 0 failed / 0 skipped.** Stored scores (not re-run, per skill): `code_quality=1.0`, `test_coverage=0.96`, `defect_rate=1.0`, `maintainability=0.87`.
+- **Findings: 3, all `info`** — two "beyond spec" enhancements (partial-update PUT, extra year/isbn validation + 404/405/500 handlers) and one nit (`init_db()` runs at import time against default `books.db`). Nothing gates.
+
+Wrote `evaluation.md` and `findings.jsonl` in the run dir.
+
+## file-run-issues (min_severity=high)
+
+All 3 findings are `info`, below the `high` threshold, so they're filtered out. Wrote `assessment.json` atomically:
+
+- Severity counts (≥high): all zero
+- **penalty_score: 1.0000** (clean)
+- **requirement_coverage: 1.0** (12/12)
+- model: `openrouter/z-ai/glm-5.2`
+
+One note on your invocation: you passed `tracker=beads`, but this skill (v2.0) only aggregates findings into `assessment.json` — by its own constraints it **does not create beads or GitHub issues**. Since nothing reached `high` anyway, there'd be nothing to file. If you actually want beads issues cut for a run, that's a different tool (the `skills/file-run-issues` here won't do it).

@@ -1,0 +1,19 @@
+Both skills complete. Summary:
+
+## Evaluation — `agent=opencode / typescript / openrouter/z-ai/glm-5.2 / tooling=none` · rep1
+
+**Result: PASS (clean).** This was a REPAIR-variant run (prior attempt failed the gate); GLM-5.2 via opencode fixed it.
+
+- **Requirements:** 12/12 implemented, 0 partial, 0 missing
+- **Tests:** 12 passed / 0 failed / 0 skipped — `test_coverage=1.0` (from `scores.json`) confirms `tsc` build + `node --test` all passed. (The lone "skip" grep hit was a false positive: `process.exit(0)` matching `xit(`.)
+- **Mechanical scores:** code_quality=0.73, defect_rate=1.0, maintainability=0.79
+- **Stack quality:** Express app factory with injectable `BookDb` backed by **better-sqlite3** (real file persistence → R7 genuinely satisfied, not the in-memory false-pass pattern), full validation, correct 201/200/204/400/404 codes. 398 LOC, 5 files, 8 deps.
+
+**Written to run_dir:**
+- `evaluation.md` — full report
+- `findings.jsonl` — 3 findings, all low/info (server.ts bootstrap uncovered; PUT-is-full-replace note; SQLite-persistence confirmation). No critical/high/medium.
+- `assessment.json` — at `min_severity=high` all 3 findings filter out → **penalty_score 1.0**, requirement_coverage 1.0, all severity counts zero.
+
+Per the file-run-issues skill, this is aggregation-only — **no beads issues were created** (the skill explicitly forbids external tracker records; the `tracker=beads min_severity=high` args select the aggregation filter, and at `high` there was nothing to escalate anyway).
+
+No files outside `run_dir` were touched; `retort.db` was not modified.

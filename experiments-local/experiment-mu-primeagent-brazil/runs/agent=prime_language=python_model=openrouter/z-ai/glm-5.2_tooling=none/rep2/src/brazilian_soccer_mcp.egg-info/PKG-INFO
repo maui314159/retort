@@ -1,0 +1,157 @@
+Metadata-Version: 2.4
+Name: brazilian-soccer-mcp
+Version: 2.0.0
+Summary: MCP (Model Context Protocol) server exposing Brazilian soccer match, team, player and competition data from Kaggle datasets.
+Author: Brazilian Soccer MCP
+License: Apache-2.0
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: pandas>=1.5
+Requires-Dist: numpy>=1.23
+Requires-Dist: mcp>=2.0
+Provides-Extra: test
+Requires-Dist: pytest>=7; extra == "test"
+Requires-Dist: pytest-bdd>=7; extra == "test"
+
+# Brazilian Soccer MCP Server
+
+An **MCP (Model Context Protocol) server** that exposes Brazilian soccer data —
+matches, teams, players and competitions — from the provided Kaggle datasets so
+that an LLM client can answer natural‑language questions about Brazilian
+football.
+
+The specification lives in [`brazilian-soccer-mcp-guide.md`](brazilian-soccer-mcp-guide.md)
+(`TASK.md` is the task brief).
+
+## What was built
+
+* A normalised, in‑memory **data layer** that loads all six provided CSV files
+  and unifies their different schemas (state suffixes, accented vs ascii names,
+  three different date formats, missing/"not played" goals).
+* A **team‑name normalizer** that collapses the many spelling variants of each
+  club (`Flamengo`, `Flamengo-RJ`, `Flamengo - RJ`) to a single canonical key so
+  the same team can be matched across files.
+* A **query engine** implementing every capability category required by the
+  spec: match queries, team queries, player queries, competition queries and
+  statistical analysis.
+* An **MCP server** (`mcp` v2 / `MCPServer`) exposing 16 tools, one per
+  capability, each returning JSON that an LLM can consume.
+* A **BDD (Gherkin + pytest‑bdd) test suite** plus integration, performance and
+  sample‑question coverage tests.
+
+## Project layout
+
+```
+.
+├── data/kaggle/                       # the six provided datasets
+├── src/brazilian_soccer_mcp/
+│   ├── __init__.py
+│   ├── normalizer.py                   # team-name canonicalization + derbies
+│   ├── data.py                         # loads & normalizes all CSVs
+│   ├── queries.py                      # QueryEngine (the query API)
+│   └── server.py                       # MCP server (tools) + stdio entrypoint
+├── tests/
+│   ├── conftest.py
+│   ├── features/                       # Gherkin .feature files (BDD scenarios)
+│   ├── test_match_queries.py
+│   ├── test_team_queries.py
+│   ├── test_player_queries.py
+│   ├── test_competition_queries.py
+│   ├── test_statistical_queries.py
+│   ├── test_data_coverage.py
+│   ├── test_server.py                  # MCP tool registry + stdio end-to-end
+│   ├── test_performance.py             # <2s lookups, <5s aggregates
+│   └── test_sample_questions.py        # 20+ spec sample questions
+└── pyproject.toml
+```
+
+## Install
+
+```bash
+pip install -e .[test]
+```
+
+Dependencies: `pandas`, `numpy`, `mcp>=2`. Test extras: `pytest`, `pytest-bdd`.
+
+## Run the tests
+
+```bash
+python -m pytest
+```
+
+20 BDD scenarios (Gherkin `Given/When/Then`) plus integration, performance and
+sample‑question tests — 51 tests total, all passing.
+
+## Run the MCP server
+
+Stdio transport (for an MCP‑aware LLM client):
+
+```bash
+python -m brazilian_soccer_mcp
+```
+
+Or the installed console script:
+
+```bash
+brazilian-soccer-mcp
+```
+
+A client connects over stdio, calls `initialize`, `tools/list` and
+`tools/call` exactly as in `tests/test_server.py::test_mcp_stdio_end_to_end`.
+
+## Available MCP tools
+
+| Tool | Description |
+|------|-------------|
+| `find_matches` | Matches by team, opponent, competition, season and/or date range |
+| `head_to_head` | Head‑to‑head record between two teams |
+| `last_match_between` | Most recent match played between two teams |
+| `team_statistics` | Win/draw/loss & goal stats for a team (by season/venue) |
+| `team_competitions` | Competitions a team has appeared in |
+| `search_players` | FIFA players by name/nationality/club/position/rating |
+| `top_brazilian_players` | Top‑rated Brazilian players |
+| `players_at_club` | All FIFA players at a club |
+| `brazilian_players_by_club` | Brazilian players per Brazilian club with avg rating |
+| `standings` | League standings calculated from match results (3 pts/win) |
+| `biggest_wins` | Biggest victories by goal margin |
+| `average_goals` | Average goals/match and home/away win/draw rates |
+| `best_home_record` | Best home win rates |
+| `best_away_record` | Best away win rates |
+| `derbies` | Traditional Brazilian derby matches |
+| `seasons_summary` | Per‑season aggregate summary |
+
+## Data sources (all in `data/kaggle/`)
+
+| File | Dataset | License |
+|------|---------|---------|
+| `Brasileirao_Matches.csv` | jogos‑do‑campeonato‑brasileiro | CC BY 4.0 |
+| `Brazilian_Cup_Matches.csv` | jogos‑do‑campeonato‑brasileiro | CC BY 4.0 |
+| `Libertadores_Matches.csv` | jogos‑do‑campeonato‑brasileiro | CC BY 4.0 |
+| `BR-Football-Dataset.csv` | brazilian‑football‑matches | CC0 |
+| `novo_campeonato_brasileiro.csv` | campeonato‑brasileiro‑2003‑a‑2019 | CC BY 4.0 |
+| `fifa_data.csv` | fifa‑players‑data | Apache 2.0 |
+
+## Team‑name normalization
+
+The datasets use inconsistent conventions (`Palmeiras-SP`, `Palmeiras`,
+`Sport Club Corinthians Paulista`, `América FC (Minas Gerais)`, …). The
+normalizer in `src/brazilian_soccer_mcp/normalizer.py` strips state/country
+suffixes, folds accents, removes generic club words, and uses an explicit alias
+table to disambiguate clubs that share a short base name and differ only by
+state (e.g. `Atlético-MG` → Atlético Mineiro, `Atlético-GO` → Atlético Goianiense,
+`Athletico-PR`/`Atletico-PR`/`Athletico` → Athletico Paranaense). `canonical_key`
+and `display_name` are the public entry points used by every query.
+
+## Example
+
+```python
+from brazilian_soccer_mcp import get_engine
+
+engine = get_engine()
+print(engine.standings(competition="brasileirao", season=2019, top=1))
+# [{'team': 'Flamengo', 'played': 38, 'wins': 28, 'draws': 6, 'losses': 4,
+#   'goals_for': 86, 'goals_against': 37, 'goal_difference': 49, 'points': 90}]
+
+print(engine.head_to_head("Flamengo", "Fluminense"))
+# Flamengo 31 wins, Fluminense 25 wins, 21 draws (77 matches)
+```

@@ -1,0 +1,21 @@
+Both skills complete. Summary:
+
+## evaluate-run
+Clean, fully-conformant run of the easy `rest-api-crud` task (opencode + GLM-5.2, Python/Flask).
+
+- **Status: ok** — all **12/12** pinned requirements implemented (R1–R12), 0 partial, 0 missing.
+- **Tests: 12 passed / 0 failed / 0 skipped**, coverage 95.83% (`test_coverage=0.96`). Well over the ≥3-test bar.
+- Single-module Flask app over SQLite: full CRUD, `?author=` filter, `/health`, title/author validation, JSON + correct status codes (201/200/404/400/204). README documents setup/run/env vars.
+- Extras beyond spec: PUT enforces full-body replacement (rejects partials), and non-JSON / empty-string payloads rejected with 400.
+- Only soft mark: `code_quality=0.5` (a broad `except Exception` in the health handler at `app.py:102`, plus ruff-level nits) — a **low**-severity lint finding, not a gate failure.
+
+Wrote `evaluation.md` and `findings.jsonl` (3 findings: 1 low, 2 info).
+
+## file-run-issues (min_severity=high)
+Wrote `assessment.json`:
+- **Severity counts (≥high):** all zero — the 3 findings are low/info and drop out under the `high` threshold.
+- **Penalty score: 1.0000** (clean)
+- **Requirement coverage: 100.0%** (12/12)
+- **Model:** openrouter/z-ai/glm-5.2
+
+No beads/GitHub tracker records were created — per the skill, `file-run-issues` only aggregates into `assessment.json`. This is a false-positive-free PASS; nothing at high severity to file.

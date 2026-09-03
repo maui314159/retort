@@ -1,0 +1,19 @@
+Design matrix: 6 runs (loaded from experiments-local/experiment-mu-primeagent-easy/design.csv)
+Task: rest-api-crud
+Replicates: 3 (18 total runs)
+Resume: 12 run(s) already recorded — will skip.
+Disk preflight: 101 GB free — ok.
+
+Stack provenance (recorded to provenance.json):
+  retort   : eddc4de467 (dirty) on main
+  host     : Mac16,6  wired_limit=0MB
+  agents   : opencode (opencode), prime (prime)
+  model    : z-ai/glm-5.2 rev=None quant=None size=None
+
+Starting experiment runs...
+  [4/6 rep 2/3] go/unknown/prime — ok (460.1s) [code_quality=1.00, test_coverage=0.63, defect_rate=1.00, maintainability=0.87, token_efficiency=0.04] tokens=359,959 cost=$0.0743
+  [3/6 rep 3/3] go/unknown/opencode — ok (170.1s) [code_quality=1.00, test_coverage=0.67, defect_rate=1.00, maintainability=0.85, token_efficiency=0.06] tokens=172,833 cost=$0.0670
+  [6/6 rep 3/3] typescript/unknown/prime — 2nd chance… — FAIL (140.2s) [code_quality=0.00, test_coverage=0.00, defect_rate=0.00, maintainability=0.00, token_efficiency=0.00] tokens=148,485 cost=$0.0299
+    gate: tests did not run (test_coverage=0) — marked failed
+
+Done: 2 completed, 1 failed out of 18

@@ -1,0 +1,3 @@
+.........................................................                [100%]
+
+score_full: wrote _container_scores.json {'code_quality': 0.5, 'test_coverage': 0.93, 'defect_rate': 1.0, 'maintainability': 0.549247230136119, 'token_efficiency': 0.11995201919232308}

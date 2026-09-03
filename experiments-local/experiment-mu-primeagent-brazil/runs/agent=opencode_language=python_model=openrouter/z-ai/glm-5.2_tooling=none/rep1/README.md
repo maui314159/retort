@@ -1,0 +1,85 @@
+# Brazilian Soccer MCP
+
+A Model Context Protocol (MCP) server that exposes a knowledge graph of
+Brazilian soccer data sourced from the bundled Kaggle CSVs in `data/kaggle/`.
+
+The server answers natural-language questions about players, teams, matches and
+competitions by surfacing the query layer as MCP tools that an LLM can call.
+
+## Data sources (all bundled in `data/kaggle/`)
+
+| File | Contents | License |
+|------|----------|---------|
+| `Brasileirao_Matches.csv` | Brasileirão Serie A matches | CC BY 4.0 |
+| `Brazilian_Cup_Matches.csv` | Copa do Brasil matches | CC BY 4.0 |
+| `Libertadores_Matches.csv` | Copa Libertadores matches | CC BY 4.0 |
+| `BR-Football-Dataset.csv` | Extended match statistics (corners, shots, attacks) | CC0 |
+| `novo_campeonato_brasileiro.csv` | Historical Brasileirão (2003-2019) | CC BY 4.0 |
+| `fifa_data.csv` | FIFA player database (~18k players) | Apache 2.0 |
+
+## Implementation
+
+`brazilian_soccer_mcp/`
+
+- `normalize.py` — canonicalises team names, competition names and dates so the
+  messy, multi-format source data matches consistently. Brazilian clubs are the
+  hard part: the same club appears as `Atlético-MG`, `Atletico Mineiro` and
+  `Atlético Mineiro - MG` depending on the file, while distinct clubs share a
+  nickname (`Botafogo-RJ` vs `Botafogo-SP`, `Atlético-MG` vs `Atlético-GO`).
+  A curated alias table bridges every known spelling onto one canonical key
+  while keeping same-named clubs in different states distinct.
+- `data_loader.py` — loads all six CSVs into in-memory `Match` / `Player`
+  records, de-duplicates fixtures that appear in overlapping sources, and
+  builds lazy indexes for fast team / competition / player lookups.
+- `queries.py` — the query layer implementing the five capability categories
+  from `brazilian-soccer-mcp-guide.md`: match, team, player, competition and
+  statistical queries.
+- `server.py` — the MCP server (built on `mcp` 2.x `MCPServer`) that surfaces
+  each query as a tool over the stdio / SSE / streamable-http transports.
+- `models.py` — light `dataclass` models for `Match` and `Player`.
+
+## Tools exposed
+
+`find_matches`, `head_to_head`, `team_stats`, `compare_teams`,
+`competitions_for_team`, `search_players`, `top_brazilian_players`,
+`players_for_club`, `top_clubs_by_nationality`, `standings`, `champions`,
+`relegated_teams`, `average_goals`, `biggest_wins`, `home_away_balance`,
+`derbies`.
+
+Examples of what the tools answer (from `brazilian-soccer-mcp-guide.md`):
+
+- 2019 Brasileirão champion → **Flamengo, 90 pts (28W 6D 4L)** (computed from
+  match results and de-duplicated across the three overlapping sources).
+- 2018 champion → **Palmeiras**; 2012 → **Fluminense**.
+- Head-to-head Flamengo vs Fluminense → 45 meetings with wins/draws/losses.
+- Top Brazilian players in the FIFA dataset → **Neymar Jr (92)** first.
+
+## Install
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -e .
+```
+
+Dependencies: `mcp>=2.0`, `pydantic>=2.0`; dev: `pytest>=8.0`, `ruff`.
+
+## Run
+
+```bash
+python -m brazilian_soccer_mcp.server                 # stdio (default)
+python -m brazilian_soccer_mcp.server --transport streamable-http --port 8000
+```
+
+The console script `brazilian-soccer-mcp` is also installed.
+
+## Test
+
+BDD / Given-When-Then structured pytest in `tests/`:
+
+```bash
+python -m pytest            # 57 tests
+python -m ruff check .      # lint
+```
+
+The loader is cached, so the whole suite runs in ~8s and every simple lookup is
+sub-10ms after the first (cold) load, well within the spec's 2s / 5s budgets.

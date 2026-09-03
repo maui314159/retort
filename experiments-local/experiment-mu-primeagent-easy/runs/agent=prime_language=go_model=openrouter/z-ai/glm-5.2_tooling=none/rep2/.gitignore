@@ -1,0 +1,7 @@
+# Built binary
+/bookapi
+# SQLite database file
+*.db
+*.db-journal
+# Test artifacts
+*.out

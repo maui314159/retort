@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.npm-cache/
+books.db
+books.db-journal
+books.db-wal
+books.db-shm
+*.log

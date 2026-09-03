@@ -1,0 +1,210 @@
+# Brazilian Soccer MCP Server
+
+An MCP (Model Context Protocol) server that provides a knowledge-graph
+interface for Brazilian soccer data — matches, teams, players, and
+competitions — sourced from freely-available Kaggle datasets.
+
+## What Was Built
+
+A complete, tested MCP server implementation in Python that:
+
+1. **Loads and unifies all 6 Kaggle CSV datasets** into a single
+   normalised data model, handling the different team-name
+   conventions, date formats, and character encodings used by each
+   source.
+2. **Builds an in-memory knowledge graph** with typed nodes
+   (Team, Player, Match, Competition) and edges (PLAYED_HOME,
+   PLAYED_AWAY, IN_COMPETITION, MEMBER_OF).
+3. **Exposes 19 MCP tools** covering all five query categories
+   required by the spec: match queries, team queries, player
+   queries, competition queries, and statistical analysis.
+4. **Deduplicates overlapping datasets** (Brasileirão 2012–2019
+   appears in both the Brasileirão and Historical CSVs) so that
+   standings and statistics are not double-counted.
+5. **Passes 94 BDD-style pytest tests** using Given-When-Then
+   scenarios as specified in the testing approach.
+
+## Project Structure
+
+```
+brazilian-soccer-mcp/
+├── pyproject.toml                         # Project config + dependencies
+├── README.md
+├── data/kaggle/                           # Six CSV datasets
+│   ├── Brasileirao_Matches.csv
+│   ├── Brazilian_Cup_Matches.csv
+│   ├── Libertadores_Matches.csv
+│   ├── BR-Football-Dataset.csv
+│   ├── novo_campeonato_brasileiro.csv
+│   └── fifa_data.csv
+├── src/brazilian_soccer_mcp/
+│   ├── __init__.py                         # Package init
+│   ├── normalizer.py                       # Team-name & date normalisation
+│   ├── data_loader.py                      # Loads & unifies all CSVs
+│   ├── knowledge_graph.py                  # In-memory graph (nodes + edges)
+│   ├── queries.py                          # 19 query methods
+│   └── server.py                           # MCP server (MCPServer)
+└── tests/
+    ├── conftest.py                         # Shared session-scoped fixtures
+    ├── test_normalizer.py                  # Normaliser unit tests
+    ├── test_data_loader.py                 # Data loader tests
+    ├── test_bdd_match.py                   # BDD match query scenarios
+    ├── test_bdd_team.py                    # BDD team query scenarios
+    ├── test_bdd_player.py                  # BDD player query scenarios
+    ├── test_bdd_competition.py             # BDD competition scenarios
+    ├── test_bdd_statistics.py              # BDD statistics scenarios
+    └── test_server.py                      # MCP server tool tests
+```
+
+## Data Sources
+
+| File | Description | Matches/Players |
+|------|-------------|-----------------|
+| `Brasileirao_Matches.csv` | Serie A 2012–2022 | 4,180 matches |
+| `Brazilian_Cup_Matches.csv` | Copa do Brasil 2012–2023 | 1,337 matches |
+| `Libertadores_Matches.csv` | Copa Libertadores 2013–2023 | 1,255 matches |
+| `BR-Football-Dataset.csv` | Extended stats, 2023 | 10,296 matches |
+| `novo_campeonato_brasileiro.csv` | Historical Brasileirão 2003–2019 | 6,886 matches |
+| `fifa_data.csv` | FIFA player database | 18,207 players |
+
+After deduplication the server holds **~18,900 matches** and **18,207
+players**.
+
+## MCP Tools (19)
+
+### Match Queries
+| Tool | Description |
+|------|-------------|
+| `find_matches` | Search by team, opponent, competition, season, date range |
+| `head_to_head` | Head-to-head record between two teams |
+
+### Team Queries
+| Tool | Description |
+|------|-------------|
+| `team_statistics` | W/D/L, goals, win rate (filterable by season/competition/venue) |
+| `team_info` | Overview: states, competitions, top players |
+| `compare_teams` | Side-by-side comparison with head-to-head |
+| `best_home_record` | Rank teams by home win rate |
+| `best_away_record` | Rank teams by away win rate |
+
+### Player Queries
+| Tool | Description |
+|------|-------------|
+| `find_players` | Search by name, nationality, club, position, rating |
+| `top_players` | Top-rated players (with filters) |
+| `players_at_brazilian_clubs` | Cross-reference FIFA data with match teams |
+
+### Competition Queries
+| Tool | Description |
+|------|-------------|
+| `competition_standings` | League table calculated from match results |
+| `competition_seasons` | Available seasons for a competition |
+| `competition_info` | Competition summary with season breakdown |
+| `all_competitions` | List all competitions |
+
+### Statistical Analysis
+| Tool | Description |
+|------|-------------|
+| `biggest_wins` | Biggest victory margins |
+| `average_goals` | Goals-per-match, home/away win rates |
+| `home_vs_away` | Home vs away performance comparison |
+| `team_list` | List all teams (with search) |
+| `search_all` | Cross-entity search (teams, players, competitions) |
+
+## Installation
+
+```bash
+pip install -e .
+```
+
+## Running the Server
+
+```bash
+# Via console script
+brazilian-soccer-mcp
+
+# Or via Python module
+python -m brazilian_soccer_mcp.server
+```
+
+The server runs over stdio, the standard MCP transport.
+
+## Running Tests
+
+```bash
+# Run all tests
+python -m pytest tests/ -v
+
+# Run only BDD scenarios
+python -m pytest tests/ -v -m bdd
+
+# Run a specific test file
+python -m pytest tests/test_bdd_match.py -v
+```
+
+## Key Design Decisions
+
+### Team Name Normalisation
+The six datasets use different naming conventions for the same teams:
+`"Palmeiras-SP"`, `"Palmeiras"`, `"Atletico Mineiro"`, `"America FC
+Natal"`.  The `normalizer` module collapses all variants into a
+canonical match key via:
+
+1. Removing parenthetical notes and diacritics
+2. Applying an alias map (e.g. `"atletico mineiro"` → `"atletico-mg"`)
+3. Stripping state suffixes (`-SP`) and trailing state words (` MG`)
+4. Removing trailing club designators (`FC`, `EC`, `SC`)
+5. Applying base-name fixes (`"athletico"` → `"atletico"`,
+   `"vasco da gama"` → `"vasco"`)
+
+The state is preserved separately so that teams sharing a base name
+(e.g. the three Atlético clubs) can be disambiguated in standings.
+
+### Deduplication
+The Brasileirão dataset (2012–2022) and the Historical dataset
+(2003–2019) overlap for 2012–2019.  Matches sharing the same
+`(date, teams, score)` are deduplicated, keeping the more structured
+Brasileirão source.  This reduces the 2019 Brasileirão from 760
+matches (380 × 2 sources) to 382.
+
+### Knowledge Graph
+The in-memory graph uses typed nodes and adjacency-list edges:
+- **TeamNode** — keyed by normalised name, holds home/away match lists
+- **PlayerNode** — keyed by FIFA ID, linked to team via club key
+- **MatchNode** — holds the unified MatchRecord
+- **CompetitionNode** — holds matches and available seasons
+
+## Performance
+
+All queries run well within the spec's performance budgets:
+
+| Query type | Time | Budget |
+|-----------|------|--------|
+| Simple lookup (find_matches) | < 0.01 s | < 2 s |
+| Aggregate (standings) | < 0.01 s | < 5 s |
+| Aggregate (head_to_head) | < 0.01 s | < 5 s |
+| Aggregate (biggest_wins) | 0.05 s | < 5 s |
+
+## Sample Questions Answerable
+
+The server can answer 20+ natural-language questions including:
+
+- "Show me all Flamengo vs Fluminense matches"
+- "What matches did Palmeiras play in 2023?"
+- "Find all Copa do Brasil finals"
+- "What is Corinthians' home record in 2022?"
+- "Compare Palmeiras and Santos head-to-head"
+- "Find all Brazilian players in the dataset"
+- "Who are the highest-rated Brazilian players?"
+- "Who won the 2019 Brasileirão?" → **Flamengo (90 pts)**
+- "Who won the 2018 Brasileirão?" → **Palmeiras (95 pts)**
+- "What's the average goals per match in the Brasileirão?" → **2.49**
+- "Which team has the best home record?"
+- "Show me the biggest wins in the dataset"
+- "Which players play for Santos?"
+- "What competitions has Flamengo played in?"
+
+## License
+
+Data: CC BY 4.0 / CC0 / Apache 2.0 (see source-specific licenses)
+Code: MIT

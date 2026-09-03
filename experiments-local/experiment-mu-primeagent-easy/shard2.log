@@ -1,0 +1,15 @@
+Design matrix: 2 runs (loaded from experiments-local/experiment-mu-primeagent-easy/design.csv)
+Task: rest-api-crud
+Replicates: 3 (6 total runs)
+Disk preflight: 101 GB free — ok.
+
+Stack provenance (recorded to provenance.json):
+  retort   : 4283b6b39d on main
+  host     : Mac16,6  wired_limit=0MB
+  agents   : opencode (opencode), prime (prime)
+  model    : z-ai/glm-5.2 rev=None quant=None size=None
+
+Starting experiment runs...
+  [2/2 rep 3/3] python/unknown/prime — ok (100.1s) [code_quality=1.00, test_coverage=0.96, defect_rate=1.00, maintainability=0.87, token_efficiency=0.07] tokens=90,818 cost=$0.0268
+
+Done: 1 completed, 0 failed out of 6

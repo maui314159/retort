@@ -1,0 +1,20 @@
+Both skills are done. Summary:
+
+## `evaluate-run` — rep3 (opencode × go × glm-5.2)
+
+**Status: ok — a clean, fully-conformant run.** Wrote `evaluation.md` + `findings.jsonl`.
+
+- **Requirements: 12/12 implemented** against the pinned `REQUIREMENTS.json` — all CRUD routes, `?author=` filter, SQLite persistence (`modernc.org/sqlite`, pure-Go), JSON + correct status codes, title/author validation, `/health`, README, and ≥3 tests.
+- **Tests:** 4 test funcs (6 sub-cases), **0 skipped**; `defect_rate=1.0` ⇒ build + all tests passed; `test_coverage=0.674`, `code_quality=1.0` (read from `scores.json`, toolchain not re-run per skill).
+- **Findings:** only 3 advisory notes — 1 low (`DisallowUnknownFields` rejects extra JSON keys), 2 info (full-replace PUT semantics; `itoa` helper in a non-test file). No requirement/build/test/skip findings.
+
+## `file-run-issues` — `min_severity=high`
+
+All 3 findings are below `high`, so they filter out → clean assessment. Wrote `assessment.json` atomically:
+
+- Severity counts: all 0
+- **Penalty score: 1.0000** (clean)
+- **Requirement coverage: 100.0%** (12/12)
+- Model: `openrouter/z-ai/glm-5.2`
+
+Note per the skill, no beads/GitHub tracker issues were created — `file-run-issues` v2.0 only aggregates into `assessment.json`. The `tracker=beads` argument has no effect in this skill version; nothing was filed to an external tracker.

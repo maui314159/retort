@@ -1,0 +1,11 @@
+
+=============================== warnings summary ===============================
+../usr/local/lib/python3.12/site-packages/_pytest/config/__init__.py:1624
+  /usr/local/lib/python3.12/site-packages/_pytest/config/__init__.py:1624: PytestConfigWarning: No files were found in testpaths; consider removing or adjusting your testpaths configuration. Searching recursively from the current directory instead.
+    self.args, self.args_source = self._decide_args(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+/usr/local/lib/python3.12/site-packages/coverage/control.py:967: CoverageWarning: No data was collected. (no-data-collected); see https://coverage.readthedocs.io/en/7.16.0/messages.html#warning-no-data-collected
+  self._warn("No data was collected.", slug="no-data-collected")
+
+score_full: wrote _container_scores.json {'code_quality': 0.0, 'test_coverage': 0.0, 'defect_rate': 0.0, 'maintainability': 0.0, 'token_efficiency': 0.0}

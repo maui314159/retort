@@ -1,0 +1,16 @@
+Design matrix: 2 runs (loaded from experiments-local/experiment-mu-primeagent-brazil/design.csv)
+Task: repo#brazilian-soccer-mcp-guide.md
+Replicates: 3 (6 total runs)
+Disk preflight: 102 GB free — ok.
+
+Stack provenance (recorded to provenance.json):
+  retort   : 4283b6b39d on main
+  host     : Mac16,6  wired_limit=0MB
+  agents   : opencode (opencode), prime (prime)
+  model    : z-ai/glm-5.2 rev=None quant=None size=None
+
+Starting experiment runs...
+  [2/2 rep 3/3] python/unknown/prime — CRASH (0.0s) [code_quality=0.00, test_coverage=0.00, defect_rate=0.00, maintainability=0.00, token_efficiency=0.00]
+    error: Batch job d479f71d-8daa-4f16-acd0-ae8e1394a094 SUCCEEDED (Essential container in task exited); artifacts unavailable: './.venv/bin/python' is a link to an absolute path
+
+Done: 0 completed, 0 failed out of 6 (1 crashed — retried on --resume)

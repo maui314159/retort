@@ -1,0 +1,25 @@
+Both skills are complete.
+
+## `evaluate-run` — result
+
+**Clean pass.** This was a *repair* task (the prior attempt failed because "build/tests did not fully pass"); the repaired GLM-5.2/opencode/TypeScript code now builds green and satisfies every pinned requirement.
+
+- **Status:** ok — **12/12 requirements implemented**, 0 partial, 0 missing
+- **Tests:** 17 passed / 0 failed / **0 skipped** (across `books`, `validation`, `health`)
+- **Mechanical scores** (from `scores.json`, not re-run per skill guidance): `test_coverage=1.0`, `defect_rate=1.0`, `code_quality=0.717`, `maintainability=0.697`
+- **Architecture:** cleanly layered — `db.ts` (better-sqlite3 `BookStore`, DI'd), `validation.ts` (pure, unit-tested), `app.ts` (Express routes + JSON/500 fallback), `index.ts` (composition root, graceful shutdown). Details in `summary/index.md`.
+- **Findings:** 3, all **info** (no defects) — beyond-spec error handling, case-insensitive partial `?author=` filter, and PUT being full-replacement (valid for R5).
+
+Wrote `evaluation.md`, `findings.jsonl`, and `summary/index.md` into the run dir.
+
+## `file-run-issues` (tracker=beads, min_severity=high) — result
+
+This skill aggregates `findings.jsonl` into `assessment.json`; it does **not** create beads/GitHub issues (per its own constraints — the `tracker` param has no effect here). At `min_severity=high`, all 3 findings (info) are filtered out:
+
+- Severity counts (≥high): all 0
+- **penalty_score: 1.0000** (clean)
+- **requirement_coverage: 100%** (12/12)
+- model: `openrouter/z-ai/glm-5.2`
+- No findings at or above `high` to surface.
+
+`assessment.json` written atomically. Nothing at high+ severity means there's nothing to file to a tracker for this run — it's a clean repair.

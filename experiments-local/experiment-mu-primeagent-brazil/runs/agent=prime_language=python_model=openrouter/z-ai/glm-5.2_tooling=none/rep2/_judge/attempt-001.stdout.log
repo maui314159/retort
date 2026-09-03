@@ -1,0 +1,21 @@
+Both skills complete. Summary:
+
+## evaluate-run
+
+**Status: ok — PASS.** This is a *repair task* (`FEEDBACK.md`: prior attempt's build/tests didn't fully pass); rep2 fixed it.
+
+- **Requirements: 12/12 implemented** against the pinned `REQUIREMENTS.json` (R1–R12), 0 partial, 0 missing.
+- **Tests: 51 passed / 0 failed / 0 skipped**, coverage **96.15%** (`test_coverage=0.96`, `defect_rate` 0.847–1.0, `code_quality=0.667`, `maintainability=0.689`).
+- **R1 genuinely exercised**, not stubbed: `test_mcp_stdio_end_to_end` spawns the real MCP server (`-m brazilian_soccer_mcp`) over stdio and calls tools through the MCP client — so the `mcp` dependency is installed and the protocol layer works, not just direct function calls.
+- Clean 3-layer design (data → normalizer → queries → server), 16 tools registered, 1283 LOC src / 824 LOC tests.
+
+Scores were read from `scores.json`/`_sandbox_meta.json` per skill guidance (no toolchain re-run). Wrote `evaluation.md` + `findings.jsonl` (3 findings: 1 low lint, 2 info).
+
+## file-run-issues (min_severity=high)
+
+- **penalty_score = 1.0** (clean), **requirement_coverage = 1.0** (12/12), model `openrouter/z-ai/glm-5.2`.
+- All 3 findings are below `high` (1 low, 2 info), so severity counts are all zero. Wrote `assessment.json` atomically.
+
+**Two caveats worth flagging:**
+1. **`tracker=beads` has no effect here** — `file-run-issues` v2.0 only aggregates into `assessment.json`; it explicitly does *not* create beads or GitHub issues. If you actually wanted beads issues filed, that's a different tool/skill.
+2. `defect_rate` disagrees between `_container_scores.json` (1.0) and the final `scores.json` (0.847); `test_coverage=0.96` in both, so the test gate is satisfied either way — worth confirming which value your aggregator consumes.

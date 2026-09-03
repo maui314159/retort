@@ -1,0 +1,20 @@
+Both skills complete. Summary:
+
+## `evaluate-run` → PASS
+
+The run **passes both gates**. Wrote `evaluation.md` + `findings.jsonl`.
+
+- **Requirements: 12/12 implemented** (pinned `REQUIREMENTS.json`, constant denominator). Every R1–R12 backed by a specific symbol and a matching test in `tests/test_queries.py`.
+- **Tests: 44 passed / 0 failed / 0 skipped**, coverage **92.59%** (`test_coverage=0.92` in `scores.json` — read, not re-run per skill).
+- **All 6 Kaggle CSVs present** and loaded via `data_loader.py` (with a real source-priority merge to avoid double-counting).
+- Clean, well-documented implementation: MCP layer with a v1/v2 SDK shim, pure query layer, team-name canonicalization.
+
+**5 findings, none critical/high/medium:**
+- `[low]` R8 — per-skill player attributes are built (`_player_to_dict(detail=True)`) but no tool ever sets `detail=True`; ratings *are* returned so R8 still counts as met, only the "attributes" sub-clause isn't surfaced.
+- `[info]` ×4 — beyond-spec extra tools; pytest missing from `requirements.txt` (comment only); dead `gkdiving` field; and a harness quirk where `_sandbox_meta.json` says `tests_passed=0` despite 44 passing dots (trust coverage/dots, not that field).
+
+## `file-run-issues` (min_severity=high) → clean
+
+Wrote `assessment.json` (atomic): `penalty_score=1.0`, all severity counts 0 (the 1 low + 4 info filtered out by `min_severity=high`), `requirement_coverage=1.0`, `model=openrouter/z-ai/glm-5.2`.
+
+One caveat on your invocation: `file-run-issues` **v2.0 does not create beads issues or any tracker records** — it only aggregates findings into `assessment.json`. So `tracker=beads` had no effect. If you actually want beads issues filed for the findings, that's a different tool (the older `file-run-issues` behavior / a `bd`-backed step) — say the word and I can file the one `low` finding (and/or the infos) as beads manually, though at `min_severity=high` there's nothing that would qualify.

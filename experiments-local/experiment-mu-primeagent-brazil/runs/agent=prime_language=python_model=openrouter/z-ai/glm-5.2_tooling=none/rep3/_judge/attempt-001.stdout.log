@@ -1,0 +1,31 @@
+Both skills are complete. Here's the summary.
+
+## `evaluate-run` → `evaluation.md` + `findings.jsonl`
+
+**A clean, fully-passing run.** `prime` agent on `glm-5.2` implemented the Brazilian Soccer MCP server completely.
+
+- **Status:** ok — passes both gates
+- **Requirements:** **12/12 implemented** against the pinned `REQUIREMENTS.json` (0 partial, 0 missing)
+- **Tests:** **94 passed / 0 failed / 0 skipped** (coverage 94.22%), read from `scores.json` + `_sandbox_meta.json` — not re-run per skill guidance
+- **Scores:** test_coverage=0.94, code_quality=0.667, defect_rate=0.779, maintainability=0.688
+
+Evidence is solid, not stubbed: `queries.py` implements all query families, and the BDD tests assert real ground truth (Flamengo won 2019 Brasileirão, Palmeiras 2018, standings sorted by points). All 6 Kaggle CSVs present and loaded.
+
+**Findings (4, all minor):**
+- [low] `home_vs_away` is a thin alias of `average_goals` (`queries.py:528`)
+- [low] Non-standard MCP import `mcp.server.mcpserver.MCPServer` (`server.py:63`) — resolved and passed under the pinned sandbox image, but differs from the public SDK's `FastMCP`
+- [info] 19 tools exposed (beyond core spec) — enhancement
+- [info] Moderate code_quality/maintainability — advisory, non-gating
+
+*(The `run-summary` sub-skill wasn't invoked in this session; I inlined the module map instead.)*
+
+## `file-run-issues` (min_severity=high) → `assessment.json`
+
+None of the 4 findings reach **high**, so the filtered set is empty:
+
+- **Severity counts (≥high):** all 0
+- **Penalty score:** 1.0000 (clean)
+- **Requirement coverage:** 100% (12/12)
+- **Model:** openrouter/z-ai/glm-5.2
+
+Written atomically via `.tmp` rename. No trackers touched (the skill is aggregation-only despite the `tracker=beads` arg — it does not create beads/GitHub issues).

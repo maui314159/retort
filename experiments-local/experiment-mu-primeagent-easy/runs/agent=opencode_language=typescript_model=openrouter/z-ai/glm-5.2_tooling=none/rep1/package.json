@@ -1,0 +1,27 @@
+{
+  "name": "book-collection-api",
+  "version": "1.0.0",
+  "description": "REST API service for managing a book collection (TypeScript + Express + SQLite).",
+  "main": "dist/src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/src/server.js",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && node --test --test-reporter=spec dist/tests/*.test.js"
+  },
+  "keywords": ["books", "rest", "api", "typescript", "express", "sqlite"],
+  "license": "MIT",
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.5.0",
+    "@types/supertest": "^6.0.2",
+    "supertest": "^7.0.0",
+    "typescript": "^5.5.4"
+  }
+}

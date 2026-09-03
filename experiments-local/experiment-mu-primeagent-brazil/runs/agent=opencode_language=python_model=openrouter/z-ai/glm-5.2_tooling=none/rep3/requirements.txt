@@ -1,0 +1,7 @@
+# Runtime dependencies for the Brazilian Soccer MCP server.
+# Only the official MCP SDK is required at runtime; all data parsing uses the
+# Python standard library (csv, datetime, unicodedata, re, collections).
+mcp>=1.0
+
+# Test dependencies (install separately when running the BDD test suite):
+#   pytest>=8

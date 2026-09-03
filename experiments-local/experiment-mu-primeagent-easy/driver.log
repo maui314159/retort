@@ -1,0 +1,41 @@
+STAGE 2026-09-02 13:10:02 easy grid
+STAGE 2026-09-02 13:22:54 easy done spend=$0.41
+STAGE 2026-09-02 13:22:54 brazil grid
+STAGE 2026-09-02 15:54:04 brazil done spend=$9.31
+STAGE 2026-09-02 15:54:04 judge easy
+Eval preflight OK — judge claude-opus-4-8 reachable, evaluate-run skill present
+Re-evaluating 6 run(s) in experiments-local/experiment-mu-primeagent-easy (judge=claude-opus-4-8, 2 workers, second-opinion)
+  evaluating rep2 (judge=claude-code, model=claude-opus-4-8)...
+  evaluating rep1 (judge=claude-code, model=claude-opus-4-8)...
+  evaluating rep3 (judge=claude-code, model=claude-opus-4-8)...
+  glm-5.2_tooling=none/rep1: ReqCov=1.0 [PASS]
+  evaluating rep1 (judge=claude-code, model=claude-opus-4-8)...
+  glm-5.2_tooling=none/rep2: ReqCov=1.0 [PASS]
+  evaluating rep2 (judge=claude-code, model=claude-opus-4-8)...
+  glm-5.2_tooling=none/rep3: ReqCov=1.0 [PASS]
+  evaluating rep3 (judge=claude-code, model=claude-opus-4-8)...
+  glm-5.2_tooling=none/rep1: ReqCov=1.0 [PASS]
+  glm-5.2_tooling=none/rep2: ReqCov=1.0 [PASS]
+  glm-5.2_tooling=none/rep3: ReqCov=1.0 [PASS]
+Persisted requirement_coverage for 6/6 runs.
+Eval health: 6 archived runs | matched 6 (evaluated 6, already-covered 0, incomplete 0) | orphaned 0
+STAGE 2026-09-02 15:59:21 judge easy OK
+STAGE 2026-09-02 15:59:21 judge brazil
+Eval preflight OK — judge claude-opus-4-8 reachable, evaluate-run skill present
+Re-evaluating 4 run(s) in experiments-local/experiment-mu-primeagent-brazil (judge=claude-opus-4-8, 2 workers, second-opinion)
+  evaluating rep2 (judge=claude-code, model=claude-opus-4-8)...
+  evaluating rep1 (judge=claude-code, model=claude-opus-4-8)...
+  evaluating rep3 (judge=claude-code, model=claude-opus-4-8)...
+  glm-5.2_tooling=none/rep1: ReqCov=1.0 [PASS]
+  evaluating rep3 (judge=claude-code, model=claude-opus-4-8)...
+  glm-5.2_tooling=none/rep2: ReqCov=1.0 [PASS]
+  glm-5.2_tooling=none/rep3: ReqCov=1.0 [PASS]
+  glm-5.2_tooling=none/rep3: ReqCov=1.0 [PASS]
+Persisted requirement_coverage for 4/4 runs.
+Eval health: 6 archived runs | matched 6 (evaluated 4, already-covered 0, incomplete 2) | orphaned 0
+STAGE 2026-09-02 16:06:28 judge brazil OK
+STAGE 2026-09-02 16:06:28 aggregate
+Aggregated 376 runs from experiments-local/experiment-*/retort.db -> master-local.db
+Wrote CSV -> master-local.csv
+STAGE 2026-09-02 16:06:32 aggregate OK
+STAGE 2026-09-02 16:06:32 PRIMEAGENT CHAIN COMPLETE spend=$9.31

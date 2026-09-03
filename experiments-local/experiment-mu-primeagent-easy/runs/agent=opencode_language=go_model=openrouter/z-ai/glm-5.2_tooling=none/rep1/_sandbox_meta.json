@@ -1,0 +1,1 @@
+{"agent_exit": 0, "agent_seconds": 170.1, "image_digest": "sha256:27dddbf657430b8ae6e54cd6faa31f9dc9c3c5b0bc3f537ee6a75e7488cbdbaf", "env_id": "retort-sbx-5dbe285c6391", "language": "go", "model": "openrouter/z-ai/glm-5.2", "scored": false}

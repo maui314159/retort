@@ -1,0 +1,18 @@
+Both skills complete. Summary:
+
+## `evaluate-run` → `evaluation.md` + `findings.jsonl`
+
+**Status: ok — a clean PASS.** The GLM-5.2 / opencode / Go run fully implements the `rest-api-crud` spec.
+
+- **Requirements: 12/12 implemented, 0 partial, 0 missing.** All five CRUD routes + `?author=` filter, `/health`, SQLite persistence (`modernc.org/sqlite`, pure-Go, real schema), JSON with correct status codes (201/200/404/400/204), title/author validation, README, and 3 tests are all present with file:line evidence.
+- **Mechanical scores (from `scores.json`, not re-run):** `test_coverage=0.718` (build + all tests passed, 71.8% coverage), `code_quality=1.0`, `defect_rate=1.0`, `maintainability=0.89`.
+- **Tests: 3 functions, multi-assertion, 0 skips.** Cover the full create/get/list/delete lifecycle, validation (incl. PUT), author filter (hit + empty), and not-found/invalid-id paths.
+- **Findings: 3, all below high** — two `low` enhancements (PUT is 404-on-missing with no upsert; no `SetMaxOpenConns(1)` on the file DB → possible SQLITE_BUSY under concurrent writes) and one `info`. None are spec violations.
+
+## `file-run-issues` (min_severity=high) → `assessment.json`
+
+Filtered at `high`, **nothing survives**: severity counts all 0, `penalty_score=1.0`, empty `top_findings`, `requirement_coverage=1.0`, model `openrouter/z-ai/glm-5.2`. Written atomically via `.tmp` rename.
+
+Two notes on the invocation:
+- **`tracker=beads` was passed but is a no-op here.** The installed `file-run-issues` is v2.0, which explicitly *does not* create beads/GitHub tracker records — it only aggregates into `assessment.json`. So no beads issues were filed. If you actually want tracker issues opened, that's a different tool/version than this skill.
+- With `min_severity=high` there was nothing to file anyway — this run is clean at high severity.

@@ -1,0 +1,24 @@
+Both skills complete.
+
+## `evaluate-run` → clean pass
+
+**agent=prime · go · openrouter/z-ai/glm-5.2 · tooling=none · rep3** (sandbox lane, agent_exit=0, 370s)
+
+- **Requirements: 12/12 implemented** against the pinned `REQUIREMENTS.json` — full CRUD (POST/GET/GET-by-id/PUT/DELETE), `?author=` filter, SQLite persistence (`modernc.org/sqlite`, file-backed), title/author validation → 400, `/health`, README, and 6 tests.
+- **Mechanical scores** (from `scores.json`, not re-run): `code_quality=1.0`, `defect_rate=1.0`, `test_coverage=0.688` — build + all tests passed. 0 skipped tests.
+- Clean 4-file layout on the Go 1.22 stdlib method-routing mux; 439 source LOC, 247 test LOC.
+- Wrote `evaluation.md` + `findings.jsonl` (3 findings, all low/info — none at medium or above).
+
+## `file-run-issues` (min_severity=high)
+
+All 3 findings are below `high`, so they're filtered out. Wrote `assessment.json`:
+
+```
+Severity counts: critical=0 high=0 medium=0 low=0 info=0
+Penalty score:   1.0000  (clean)
+Req coverage:    100.0%
+Model:           openrouter/z-ai/glm-5.2
+Top finding:     (none at ≥high)
+```
+
+This rep is a genuine full pass — no harness confound (real tests ran, 68.8% coverage, non-trivial model time), consistent with the easy-arm expectation for this stack.

@@ -1,0 +1,11 @@
+{
+  "replicate": 1,
+  "run_config": {
+    "agent": "prime",
+    "language": "typescript",
+    "model": "openrouter/z-ai/glm-5.2",
+    "tooling": "none"
+  },
+  "succeeded": true,
+  "visibility": "private"
+}

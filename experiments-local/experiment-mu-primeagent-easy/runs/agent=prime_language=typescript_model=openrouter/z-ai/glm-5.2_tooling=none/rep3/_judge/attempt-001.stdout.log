@@ -1,0 +1,20 @@
+Both skills done. Summary:
+
+## `evaluate-run` → clean pass
+
+**agent=prime · typescript · glm-5.2 · rep3** (rest-api-crud REPAIR variant)
+
+- **Status: ok** — `test_coverage=1.0` from `scores.json` (build + all 23 tests pass, no re-run needed).
+- **Requirements: 12/12 implemented** — full CRUD (`POST/GET/PUT/DELETE /books`), `?author=` filter, `GET /books/:id` with 404, `node:sqlite` persistence, title/author validation → 400, `/health`, README, and 23 tests (≥3).
+- **Tests: 23 passed / 0 failed / 0 skipped.** (The one grep "skip" hit was a false positive — `process.exit(` matching `xit(`.)
+- **What the repair actually fixed:** the prior attempt failed only on a corrupted `node_modules` / stale lockfile (vitest couldn't load `@vitest/runner`); prime did a clean reinstall, **no source changes**. This is the known TS `node:sqlite` gate-risk zone — but the gate passed cleanly here.
+- Wrote `evaluation.md` + `findings.jsonl` (2 info-only notes: node:sqlite ≥22.5/experimental; lenient numeric-string year — both documented & tested, no action).
+
+## `file-run-issues` (tracker=beads, min_severity=high)
+
+Note: this skill is **v2.0** — it aggregates into `assessment.json` and explicitly does **not** create beads/GitHub tracker issues (the `tracker=beads` param has no effect in this version). Wrote `assessment.json`:
+
+- **Severity counts (≥high): critical=0, high=0** (the 2 info findings filtered out).
+- **Penalty score: 1.0000** (clean).
+- **Requirement coverage: 100.0%.**
+- No high/critical issues to file — nothing to escalate.

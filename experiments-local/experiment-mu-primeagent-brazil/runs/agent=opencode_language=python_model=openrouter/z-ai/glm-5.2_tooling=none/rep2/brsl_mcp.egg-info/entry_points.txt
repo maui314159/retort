@@ -1,0 +1,2 @@
+[console_scripts]
+brsl-server = brsl.server:main

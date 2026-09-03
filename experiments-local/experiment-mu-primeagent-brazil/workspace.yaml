@@ -1,0 +1,56 @@
+# experiment-mu-primeagent-brazil — §0b: prime-agent vs opencode, hard grid (brazil-bench).
+# FIRST PRODUCTION EXPERIMENT ON THE SANDBOX LANE (§0c IN USE). Model fixed
+# glm-5.2; agent is the only variable. n=3 x 2 arms, python.
+#
+# BOTH ARMS UNPINNED (design decision 2026-09-02): prime-agent v0.7.2 cannot
+# pass OpenRouter provider routing, so pinning only the opencode control would
+# make provider a hidden second factor. Both arms share default (price-sorted)
+# routing; served providers recorded post-hoc via the management-key activity
+# API. Cross-lane note: earlier opencode x glm-5.2 cells (July, exp-mu-glm53)
+# ran on the LOCAL lane — durations are not comparable across lanes; the
+# in-experiment control is the comparison that counts.
+experiment:
+  name: exp-mu-primeagent-brazil
+  visibility: private
+factors:
+  language:
+    levels: [python, go]          # design schedules python only
+  agent:
+    levels: [prime, opencode]
+  model:
+    levels:
+      - "openrouter/z-ai/glm-5.2"
+      - "openrouter/z-ai/glm-5.3-flash"   # registry-minimum second level
+responses:
+  - code_quality
+  - test_coverage
+  - defect_rate
+  - build_time
+  - maintainability
+  - token_efficiency
+tasks:
+  - source: github://brazil-bench/benchmark-template/brazilian-soccer-mcp-guide.md
+playpen:
+  runner: sandbox
+  replicates: 3
+  timeout_minutes: 90
+  stall_minutes: 25
+  max_turns: 100
+  local_agents:
+    prime:
+      harness: prime
+    opencode:
+      harness: opencode
+  sandbox:
+    s3_bucket: retort-sandbox-artifacts-047719634604
+    job_queue: retort-sandbox
+    job_definition_prefix: retort-sandbox
+    region: us-east-1
+    score_in_container: true
+    image_digests:
+      python: sha256:f59c3b0b9a8adcc0e18a781ab1bc7041d6a6e063f69385686a85fdfb9a6e72b0
+design:
+  screening_resolution: 3
+  significance_threshold: 0.10
+evaluation:
+  enabled: false
