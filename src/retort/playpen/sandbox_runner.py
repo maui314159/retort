@@ -354,6 +354,15 @@ class SandboxRunner:
             "sandbox_memory_mb": str(self.spec.memory_mb),
             "sandbox_queue_seconds": _queue_seconds(detail),
         }
+        # EFFECTIVE image identity, from what Batch says actually ran — not from
+        # the config. The job definition is addressed by NAME (latest active
+        # revision) and references its image by TAG, so the configured digest
+        # and the running image can silently diverge (register a new revision,
+        # forget the yaml). That is the config-vs-effective gap the project's
+        # first principle exists to close; the mismatch is checked below once
+        # the artifacts are pulled, so the workspace stays diagnosable.
+        image_meta, image_error = self._verify_image(detail, digest)
+        base_meta.update(image_meta)
 
         if status == "TIMEOUT":
             try:
@@ -391,6 +400,16 @@ class SandboxRunner:
                 metadata=base_meta,
             )
 
+        if image_error is not None:
+            # HARNESS failure, never a data point: the cell ran on an image
+            # other than the one provenance would have recorded.
+            return RunArtifacts(
+                output_dir=info.workspace,
+                stderr=f"HARNESS: {image_error}",
+                exit_code=1,
+                metadata=base_meta,
+            )
+
         meta_file = info.workspace / "_sandbox_meta.json"
         if not meta_file.exists():
             return RunArtifacts(
@@ -414,6 +433,19 @@ class SandboxRunner:
             if k in sandbox_meta
         }
         base_meta.update(score_meta)
+        # In-container witnesses written by entrypoint.sh: the image id the
+        # ECS agent reports (an image CONFIG digest — a second, independent
+        # identity, not comparable to the ECR manifest digest above), and the
+        # hardware the task landed on. Fargate places tasks on mixed instance
+        # generations; recording the CPU model is what lets build_time be
+        # grouped by hardware instead of carrying it as an unrecorded factor.
+        for src_key, dst_key in (
+            ("container_image_id", "sandbox_container_image_id"),
+            ("cpu_model", "sandbox_cpu_model"),
+            ("availability_zone", "sandbox_az"),
+        ):
+            if sandbox_meta.get(src_key):
+                base_meta[dst_key] = str(sandbox_meta[src_key])
         if (info.workspace / "_container_scores.json").exists():
             base_meta["sandbox_container_scores"] = "_container_scores.json"
 
@@ -497,6 +529,75 @@ class SandboxRunner:
             f"SandboxRunner supports the opencode and prime harnesses; "
             f"agent {stack.agent!r} resolves to {harness!r}"
         )
+
+    def _verify_image(
+        self, job_detail: dict[str, Any], configured_digest: str
+    ) -> tuple[dict[str, str], str | None]:
+        """Resolve the image the job ACTUALLY ran and compare it to the config.
+
+        Returns ``(metadata, error)``. ``metadata`` always carries
+        ``sandbox_job_definition`` (``name:revision``) and
+        ``sandbox_image_digest_effective`` when they could be determined.
+        ``error`` is set when a digest was configured and the effective one is
+        different or could not be established — fail closed; an unverifiable
+        pin is no pin. With no configured digest (``"unpinned"``) the effective
+        digest is recorded and nothing fails: that is the honest state.
+        """
+        meta: dict[str, str] = {}
+        jobdef = str(job_detail.get("jobDefinition") or "")
+        if jobdef:
+            # arn:aws:batch:…:job-definition/retort-sandbox-python:8
+            meta["sandbox_job_definition"] = jobdef.rsplit("/", 1)[-1]
+        container = job_detail.get("container") or {}
+        image_uri = str(container.get("image") or "")
+        pinned = configured_digest not in ("", "unpinned")
+
+        if not image_uri:
+            if pinned:
+                return meta, (
+                    "Batch reported no container image for the job; the "
+                    f"configured digest {configured_digest} cannot be verified"
+                )
+            return meta, None
+
+        try:
+            effective = self._resolve_image_digest(image_uri)
+        except RuntimeError as exc:
+            if pinned:
+                return meta, f"could not resolve image {image_uri!r} to a digest: {exc}"
+            logger.warning("image digest unresolved for %s: %s", image_uri, exc)
+            return meta, None
+        if effective:
+            meta["sandbox_image_digest_effective"] = effective
+        if pinned and effective != configured_digest:
+            jobdef_label = meta.get("sandbox_job_definition", "?")
+            return meta, (
+                f"image mismatch — job definition {jobdef_label} "
+                f"ran {image_uri} = {effective or 'unknown'}, but the workspace "
+                f"pins {configured_digest}. Update playpen.sandbox.image_digests "
+                "or re-register the job definition; the two must agree."
+            )
+        return meta, None
+
+    def _resolve_image_digest(self, image_uri: str) -> str:
+        """``repo@sha256:…`` is already a digest; ``repo:tag`` is looked up in ECR.
+
+        Only the ECR registry the job definition points at is consulted — the
+        tag is resolved against the same repository Batch pulled from.
+        """
+        if "@sha256:" in image_uri:
+            return image_uri.split("@", 1)[1]
+        # <account>.dkr.ecr.<region>.amazonaws.com/<repo>:<tag>
+        path = image_uri.split("/", 1)[1] if "/" in image_uri else image_uri
+        repo, _, tag = path.rpartition(":")
+        if not repo or not tag:
+            raise RuntimeError(f"unrecognised image reference {image_uri!r}")
+        resp = self._aws([
+            "ecr", "describe-images", "--repository-name", repo,
+            "--image-ids", f"imageTag={tag}",
+        ])
+        details = resp.get("imageDetails") or []
+        return str(details[0].get("imageDigest", "")) if details else ""
 
     def _poll_job(self, job_id: str) -> tuple[str, dict[str, Any]]:
         """Poll DescribeJobs until terminal or deadline.

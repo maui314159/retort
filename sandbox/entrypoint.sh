@@ -50,6 +50,38 @@ try:
     meta["kill_reason"] = open("/tmp/kill_reason").read().strip()
 except Exception:
     pass
+# Witnesses of what ACTUALLY ran, independent of anything the runner passed
+# in. RETORT_IMAGE_DIGEST above is the CONFIGURED digest; the ECS agent's
+# ImageID is the image's config digest (a different identity from the ECR
+# manifest digest — recorded as a second witness, never compared to it).
+# Fargate lands tasks on mixed instance generations, so the CPU model and AZ
+# are recorded to let build_time be grouped by hardware rather than carry it
+# as an unrecorded factor. All best-effort: a missing witness is a missing
+# key, never a crash.
+import urllib.request
+def _get(url):
+    with urllib.request.urlopen(url, timeout=3) as r:
+        return json.load(r)
+uri = os.environ.get("ECS_CONTAINER_METADATA_URI_V4")
+if uri:
+    try:
+        c = _get(uri)
+        meta["container_image_id"] = c.get("ImageID", "")
+        meta["container_image"] = c.get("Image", "")
+    except Exception:
+        pass
+    try:
+        t = _get(uri + "/task")
+        meta["availability_zone"] = t.get("AvailabilityZone", "")
+    except Exception:
+        pass
+try:
+    for line in open("/proc/cpuinfo"):
+        if line.lower().startswith("model name"):
+            meta["cpu_model"] = line.split(":", 1)[1].strip()
+            break
+except Exception:
+    pass
 open(sys.argv[1], "w").write(json.dumps(meta))
 EOF
   tar -C "$WS" -czf /tmp/out.tar.gz . || true

@@ -24,6 +24,16 @@ _STEP_FINISH = (
 )
 
 
+_ECR = "1.dkr.ecr.us-east-1.amazonaws.com"
+# tag -> digest, as `aws ecr describe-images --image-ids imageTag=<tag>` would
+# answer. python-v4c is the tag the default fake job definition names, and it
+# resolves to the digest _make_runner pins — the happy path.
+_ECR_TAGS = {
+    "imageTag=python-v4c": "sha256:abc123",
+    "imageTag=python-v5": "sha256:def456",
+}
+
+
 def _stack(agent: str = "opencode") -> StackConfig:
     return StackConfig(
         language="python", agent=agent, framework="stdlib",
@@ -64,7 +74,14 @@ def _wire_success(runner: SandboxRunner, *, artifacts: dict[str, str],
                   job_detail: dict | None = None) -> list[list[str]]:
     """Mock _aws for the happy path; returns the recorded call list."""
     calls: list[list[str]] = []
-    detail = {"status": "SUCCEEDED", "createdAt": 1000, "startedAt": 31000}
+    # What Batch reports for a real job: the job definition it resolved (name +
+    # revision) and the image URI that definition names — by TAG, which is the
+    # whole reason the runner has to resolve it against ECR.
+    detail = {
+        "status": "SUCCEEDED", "createdAt": 1000, "startedAt": 31000,
+        "jobDefinition": "arn:aws:batch:r:1:job-definition/retort-sandbox-python:8",
+        "container": {"image": f"{_ECR}/retort-sandbox:python-v4c"},
+    }
     detail.update(job_detail or {})
 
     def fake_aws(args: list[str], *, parse_json: bool = True) -> dict:
@@ -73,6 +90,9 @@ def _wire_success(runner: SandboxRunner, *, artifacts: dict[str, str],
             return {"jobId": "job-1"}
         if args[:2] == ["batch", "describe-jobs"]:
             return {"jobs": [detail]}
+        if args[:2] == ["ecr", "describe-images"]:
+            return {"imageDetails": [{"imageDigest": _ECR_TAGS.get(
+                args[args.index("--image-ids") + 1], "")}]}
         if args[:2] == ["s3", "cp"] and args[2].startswith("s3://"):
             _artifact_tar(Path(args[3]), artifacts)  # download out.tar.gz
             return {}
@@ -361,6 +381,112 @@ class TestTimeoutAndStallParity:
         assert art.duration_seconds == 1810.0
         # Usage still parsed — a killed agent's spend is real spend.
         assert art.token_count == 300
+
+
+class TestImageIdentity:
+    """The digest in provenance must be what RAN, not what the yaml says.
+
+    Job definitions name images by tag and the runner submits the latest
+    revision, so the configured digest and the running image can diverge
+    silently. Every path here is the config-vs-effective check.
+    """
+
+    def test_effective_digest_and_jobdef_recorded(self, tmp_path):
+        runner = _make_runner(tmp_path)
+        env_id = runner.provision(_stack(), _task())
+        _wire_success(runner, artifacts={
+            "_sandbox_meta.json": _META, "_agent_stdout.log": _STEP_FINISH,
+        })
+        art = runner.execute(env_id, _stack(), _task())
+
+        assert art.exit_code == 0
+        assert art.metadata["sandbox_image_digest"] == "sha256:abc123"
+        assert art.metadata["sandbox_image_digest_effective"] == "sha256:abc123"
+        assert art.metadata["sandbox_job_definition"] == "retort-sandbox-python:8"
+
+    def test_mismatch_is_a_harness_failure(self, tmp_path):
+        # Someone registered revision 9 with python-v5 and forgot the yaml.
+        runner = _make_runner(tmp_path)
+        env_id = runner.provision(_stack(), _task())
+        _wire_success(runner, artifacts={
+            "_sandbox_meta.json": _META, "_agent_stdout.log": _STEP_FINISH,
+        }, job_detail={
+            "jobDefinition": "arn:aws:batch:r:1:job-definition/retort-sandbox-python:9",
+            "container": {"image": f"{_ECR}/retort-sandbox:python-v5"},
+        })
+        art = runner.execute(env_id, _stack(), _task())
+
+        assert art.exit_code == 1
+        assert art.stderr.startswith("HARNESS:")
+        assert "image mismatch" in art.stderr
+        assert "retort-sandbox-python:9" in art.stderr
+        # Both identities recorded so the archive shows exactly what diverged.
+        assert art.metadata["sandbox_image_digest"] == "sha256:abc123"
+        assert art.metadata["sandbox_image_digest_effective"] == "sha256:def456"
+        # Never a data point: no duration, no usage.
+        assert art.duration_seconds == 0.0
+        assert art.token_count == 0
+        # The workspace was still pulled, so the cell stays diagnosable.
+        assert (art.output_dir / "_sandbox_meta.json").exists()
+
+    def test_unverifiable_pin_fails_closed(self, tmp_path):
+        runner = _make_runner(tmp_path)
+        env_id = runner.provision(_stack(), _task())
+        _wire_success(runner, artifacts={
+            "_sandbox_meta.json": _META, "_agent_stdout.log": _STEP_FINISH,
+        }, job_detail={"container": {}})
+        art = runner.execute(env_id, _stack(), _task())
+
+        assert art.exit_code == 1
+        assert "cannot be verified" in art.stderr
+
+    def test_unpinned_records_effective_without_failing(self, tmp_path):
+        # No configured digest: the honest state is "unpinned, and here is what
+        # ran" — recorded, not hidden, and not an error.
+        runner = _make_runner(tmp_path, image_digests={})
+        env_id = runner.provision(_stack(), _task())
+        _wire_success(runner, artifacts={
+            "_sandbox_meta.json": _META, "_agent_stdout.log": _STEP_FINISH,
+        })
+        art = runner.execute(env_id, _stack(), _task())
+
+        assert art.exit_code == 0
+        assert art.metadata["sandbox_image_digest"] == "unpinned"
+        assert art.metadata["sandbox_image_digest_effective"] == "sha256:abc123"
+
+    def test_digest_reference_needs_no_ecr_lookup(self, tmp_path):
+        # A job definition registered BY DIGEST (the bootstrap's new default)
+        # carries the identity in the URI itself.
+        runner = _make_runner(tmp_path)
+        env_id = runner.provision(_stack(), _task())
+        calls = _wire_success(runner, artifacts={
+            "_sandbox_meta.json": _META, "_agent_stdout.log": _STEP_FINISH,
+        }, job_detail={
+            "container": {"image": f"{_ECR}/retort-sandbox@sha256:abc123"},
+        })
+        art = runner.execute(env_id, _stack(), _task())
+
+        assert art.exit_code == 0
+        assert art.metadata["sandbox_image_digest_effective"] == "sha256:abc123"
+        assert not any(c[:2] == ["ecr", "describe-images"] for c in calls)
+
+    def test_container_witnesses_surface_in_metadata(self, tmp_path):
+        meta = json.dumps({
+            "agent_exit": 0, "agent_seconds": 10.0,
+            "container_image_id": "sha256:cfg999",
+            "cpu_model": "Intel(R) Xeon(R) Platinum 8259CL CPU @ 2.50GHz",
+            "availability_zone": "us-east-1c",
+        })
+        runner = _make_runner(tmp_path)
+        env_id = runner.provision(_stack(), _task())
+        _wire_success(runner, artifacts={
+            "_sandbox_meta.json": meta, "_agent_stdout.log": _STEP_FINISH,
+        })
+        art = runner.execute(env_id, _stack(), _task())
+
+        assert art.metadata["sandbox_container_image_id"] == "sha256:cfg999"
+        assert art.metadata["sandbox_cpu_model"].startswith("Intel(R) Xeon")
+        assert art.metadata["sandbox_az"] == "us-east-1c"
 
 
 class TestModelResolution:
