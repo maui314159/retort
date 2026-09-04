@@ -2,6 +2,8 @@
 
 **Status:** built, validated, and in production use on this fork. Not yet offered upstream.
 **Audience:** whoever picks up the harness work, and — for the sections marked *upstream* — adrianco.
+**Pressure-tested 2026-09-04 — see [cloud-lane-plan.md](cloud-lane-plan.md).** Corrections there supersede this text where they differ: authoritative scores are HOST-side (§1 overstates in-container scoring); prime `message_end` events DO carry usage/cost/stopReason, so `_parse_prime_usage` never needed `message_update` (§5's rationale is inverted); rebase conflicts are in the two `docs/*experiments.md` files, not `cli.py`/`test_coverage.py` (§6); PR D depends on C and, as committed, contains part of E (§6); the configured image digest is recorded but never verified against the running image (missing from §4).
+
 **Written:** 2026-09-04. **Fork state at writing:** `main` is 21 commits ahead of `upstream/main`, 24 behind.
 
 This document exists so that harness work can be handed off independently of experiment
