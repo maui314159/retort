@@ -179,6 +179,62 @@ class SandboxRunner:
         payload: dict[str, Any] = json.loads(proc.stdout)
         return payload
 
+    # ------------------------------------------------------------ preflight --
+
+    #: Harnesses this lane can run headless in its images.
+    _SUPPORTED_HARNESSES = frozenset({"opencode", "oc", "prime"})
+
+    def check_design(self, run_configs: list[dict[str, str]]) -> list[str]:
+        """Fail-closed design preflight: every factor level this lane cannot
+        HONOUR, before a single job is submitted.
+
+        A level the runner silently ignores is worse than one it rejects — the
+        cell runs, the level is recorded, and the experiment reports an effect
+        (or a null) for a factor that never varied. Today this lane builds the
+        plain prompt (no ``prompts/<level>.md`` injection), runs no ``tooling``
+        pre-run hook, exports no stack preset, and neither of its harness
+        commands takes an effort/thinking flag — so each of those is refused
+        here rather than dropped there. Returns human-readable problems, one
+        per distinct offending level; empty means the design is runnable.
+        """
+        problems: set[str] = set()
+        for rc in run_configs:
+            agent = rc.get("agent", "unknown") or "unknown"
+            profile = self.local_agents.get(agent)
+            harness = profile.harness if profile is not None else agent
+            if harness not in self._SUPPORTED_HARNESSES:
+                problems.add(
+                    f"agent={agent!r} resolves to harness {harness!r}; the sandbox "
+                    f"images carry only {sorted(self._SUPPORTED_HARNESSES - {'oc'})}"
+                )
+            prompt = rc.get("prompt", "none") or "none"
+            if prompt != "none":
+                problems.add(
+                    f"prompt={prompt!r}: the sandbox lane does not inject "
+                    f"prompts/{prompt}.md — the cell would run the PLAIN prompt and "
+                    f"record {prompt!r}"
+                )
+            tooling = rc.get("tooling", "none") or "none"
+            if tooling != "none":
+                problems.add(
+                    f"tooling={tooling!r}: no pre-run hook runs in the container and "
+                    "the images carry no tooling CLIs — the level would be a label"
+                )
+            if rc.get("stack"):
+                problems.add(
+                    f"stack={rc['stack']!r}: stack presets (serving reload, "
+                    "LCM_CONTEXT_THRESHOLD) are a local-lane mechanism"
+                )
+            for factor in ("effort", "thinking"):
+                level = rc.get(factor, "") or ""
+                if level and level != "none":
+                    problems.add(
+                        f"{factor}={level!r}: neither the opencode nor the prime "
+                        "command takes an effort/thinking flag — the level would be "
+                        "recorded but not applied"
+                    )
+        return sorted(problems)
+
     # ------------------------------------------------------------ provision --
 
     def provision(self, stack: StackConfig, task: TaskSpec) -> str:

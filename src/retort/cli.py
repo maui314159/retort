@@ -893,10 +893,49 @@ def run_experiments(
             max_turns=workspace_config.playpen.max_turns,
             default_model=workspace_config.playpen.model,
         )
-    else:
+    elif runner_type == "docker":
+        # DockerRunner falls back to _simulate_run() — RANDOM token counts and
+        # a 10% random failure rate — when `docker` is absent. That must never
+        # be reachable from `retort run`: a grid of simulated cells looks like
+        # data. (It is also the schema DEFAULT, so a fresh `retort init` lands
+        # here unless workspace.yaml says otherwise.)
+        if shutil.which("docker") is None:
+            raise click.ClickException(
+                "runner: docker requested but `docker` is not on PATH. Refusing "
+                "to run: without docker the DockerRunner SIMULATES results with "
+                "random metrics. Set `playpen.runner: local` (the supported "
+                "path) or install docker."
+            )
         runner = DockerRunner(timeout_minutes=workspace_config.playpen.timeout_minutes)
+    else:
+        # `cloud` is a reserved name in the schema with no runner behind it;
+        # anything else is a typo. Both used to fall through to DockerRunner —
+        # i.e. to simulated results. Fail closed.
+        from retort.config.schema import RunnerType
+        _implemented = [r.value for r in RunnerType if r.value != "cloud"]
+        raise click.ClickException(
+            f"runner: {runner_type!r} has no implementation. Choose one of "
+            f"{' | '.join(_implemented)}. (`cloud` is a reserved schema name — "
+            "the AWS Batch/Fargate lane is `sandbox`, see docs/sandbox-runner.md.)"
+        )
     metric_names = [r.name for r in workspace_config.responses]
     collector = ScoreCollector(metrics=metric_names)
+
+    # LANE PREFLIGHT. A runner that silently ignores a factor level records the
+    # level as run — the experiment then reports an effect (or a null) for a
+    # factor that never varied, which is the set-but-not-verified failure this
+    # project keeps re-learning. Runners that know which levels they cannot
+    # honour expose check_design(); refuse the whole grid before any cell runs.
+    _check_design = getattr(runner, "check_design", None)
+    if _check_design is not None:
+        _problems = _check_design(list(design.run_configs()))
+        if _problems:
+            raise click.ClickException(
+                f"LANE PREFLIGHT FAILED — `runner: {runner_type}` cannot honour "
+                "this design:\n  - " + "\n  - ".join(_problems) + "\n"
+                "  A level the lane ignores would still be RECORDED as run. Remove "
+                "the level, or run it on `runner: local`."
+            )
 
     # A `tooling: graphify` cell whose agent never opened the graph is a
     # `tooling: none` cell wearing a label, and its null is worthless. The

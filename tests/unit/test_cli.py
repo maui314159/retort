@@ -1614,6 +1614,85 @@ def test_every_command_is_registered_and_imports():
     assert len(cli.commands) >= 10
 
 
+class TestRunnerSelectionFailsClosed:
+    """`retort run` must never reach DockerRunner._simulate_run (random metrics)
+    through a default, a typo, or the reserved `cloud` name — and a lane that
+    cannot honour a factor level refuses the grid before any cell runs."""
+
+    def _ws(self, tmp_path: Path, playpen: str, factors: str = "") -> Path:
+        cfg = tmp_path / "workspace.yaml"
+        cfg.write_text(
+            "experiment:\n  name: test\n  visibility: private\n"
+            "factors:\n  language:\n    levels: [python, go]\n"
+            "  model:\n    levels: [opus, sonnet]\n" + factors +
+            "responses:\n  - code_quality\n"
+            "tasks:\n  - source: bundled://rest-api-crud\n"
+            "playpen:\n" + playpen + "  replicates: 1\n"
+            "evaluation:\n  enabled: false\n")
+        return cfg
+
+    def _design(self, tmp_path: Path, row: dict) -> Path:
+        import pandas as pd
+        path = tmp_path / "design.csv"
+        pd.DataFrame([row]).to_csv(path, index_label="run")
+        return path
+
+    def _stub(self, monkeypatch):
+        from retort.playpen.runner import TaskSpec
+        monkeypatch.setattr("retort.playpen.task_loader.load_task",
+            lambda source: TaskSpec(name="t", description="d", prompt="Do it."))
+
+    def _run(self, cfg: Path, design: Path):
+        return CliRunner().invoke(cli, ["run", "--phase", "screening",
+                                        "--config", str(cfg), "--design", str(design)])
+
+    _ROW = {"language": "python", "model": "opus"}
+
+    @staticmethod
+    def _no_cell_ran(tmp_path: Path) -> bool:
+        # `runs/` itself is created during setup; a cell leaves a rep* dir.
+        return not list((tmp_path / "runs").rglob("rep*"))
+
+    def test_cloud_name_is_refused(self, tmp_path, monkeypatch):
+        self._stub(monkeypatch)
+        cfg = self._ws(tmp_path, "  runner: cloud\n")
+        res = self._run(cfg, self._design(tmp_path, self._ROW))
+        assert res.exit_code != 0
+        assert "no implementation" in res.output
+        assert "sandbox" in res.output
+        assert self._no_cell_ran(tmp_path)
+
+    def test_docker_without_binary_is_refused(self, tmp_path, monkeypatch):
+        self._stub(monkeypatch)
+        monkeypatch.setattr("retort.cli.shutil.which", lambda name: None)
+        cfg = self._ws(tmp_path, "  runner: docker\n")
+        res = self._run(cfg, self._design(tmp_path, self._ROW))
+        assert res.exit_code != 0
+        assert "SIMULATES" in res.output
+        assert self._no_cell_ran(tmp_path)
+
+    def test_sandbox_refuses_a_level_it_would_ignore(self, tmp_path, monkeypatch):
+        self._stub(monkeypatch)
+
+        # No AWS call may happen: the preflight fires before the cell loop.
+        def _no_aws(*a, **k):
+            raise AssertionError("aws called during preflight")
+        monkeypatch.setattr("retort.playpen.sandbox_runner.SandboxRunner._aws", _no_aws)
+        cfg = self._ws(
+            tmp_path,
+            "  runner: sandbox\n  sandbox:\n    s3_bucket: bkt\n",
+            factors=("  agent:\n    levels: [opencode, prime]\n"
+                     "  prompt:\n    levels: [none, bdd]\n"),
+        )
+        design = self._design(tmp_path, {"language": "python", "model": "opus",
+                                         "agent": "opencode", "prompt": "bdd"})
+        res = self._run(cfg, design)
+        assert res.exit_code != 0, res.output
+        assert "LANE PREFLIGHT FAILED" in res.output
+        assert "prompt='bdd'" in res.output
+        assert self._no_cell_ran(tmp_path)
+
+
 class TestRunExecutionPath:
     """Cover the `run` command's execute -> score -> gate -> persist -> archive
     loop (the core that stays in cli.py). The runner/scorer/spec-gate are mocked

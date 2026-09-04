@@ -489,6 +489,62 @@ class TestImageIdentity:
         assert art.metadata["sandbox_az"] == "us-east-1c"
 
 
+class TestDesignPreflight:
+    """check_design(): refuse every factor level the lane would silently drop."""
+
+    def test_runnable_design_has_no_problems(self, tmp_path):
+        runner = _make_runner(tmp_path)
+        rcs = [
+            {"language": "python", "agent": "opencode", "model": "m",
+             "tooling": "none"},
+            {"language": "go", "agent": "prime", "model": "m", "prompt": "none"},
+        ]
+        assert runner.check_design(rcs) == []
+
+    def test_prompt_level_is_refused_not_dropped(self, tmp_path):
+        runner = _make_runner(tmp_path)
+        problems = runner.check_design([
+            {"language": "python", "agent": "opencode", "prompt": "bdd"},
+        ])
+        assert len(problems) == 1
+        assert "prompt='bdd'" in problems[0]
+        assert "PLAIN prompt" in problems[0]
+
+    def test_tooling_stack_effort_thinking_refused(self, tmp_path):
+        runner = _make_runner(tmp_path)
+        problems = runner.check_design([
+            {"agent": "opencode", "tooling": "graphify"},
+            {"agent": "opencode", "stack": "q35-8bit"},
+            {"agent": "opencode", "effort": "low"},
+            {"agent": "prime", "thinking": "high"},
+        ])
+        joined = "\n".join(problems)
+        assert "tooling='graphify'" in joined
+        assert "stack='q35-8bit'" in joined
+        assert "effort='low'" in joined
+        assert "thinking='high'" in joined
+        assert len(problems) == 4
+
+    def test_unknown_agent_refused_and_profile_harness_honoured(self, tmp_path):
+        from retort.config.schema import LocalAgentConfig
+        runner = _make_runner(tmp_path, local_agents={
+            "oc-pinned": LocalAgentConfig(harness="opencode"),
+            "hermes-local": LocalAgentConfig(harness="hermes"),
+        })
+        assert runner.check_design([{"agent": "oc-pinned"}]) == []
+        problems = runner.check_design(
+            [{"agent": "hermes-local"}, {"agent": "claude-code"}]
+        )
+        assert len(problems) == 2
+        assert any("hermes-local" in p and "'hermes'" in p for p in problems)
+        assert any("claude-code" in p for p in problems)
+
+    def test_problems_deduplicated_across_cells(self, tmp_path):
+        runner = _make_runner(tmp_path)
+        rcs = [{"agent": "opencode", "prompt": "tdd"}] * 12
+        assert len(runner.check_design(rcs)) == 1
+
+
 class TestModelResolution:
     def test_profile_model_fallback(self, tmp_path):
         from retort.config.schema import LocalAgentConfig
