@@ -512,6 +512,11 @@ zero duplicate submissions. Shakedown agreed with the local lane 3/3. Parity che
 three would-be false-zero bugs before they could touch a result. Cross-lane rule stands:
 durations never pool across lanes.
 
+**HANDOFF DOC (2026-09-04):** the harness side of this lane — what is built, the image-versioning
+and rebuild-provenance defect, the large-log finding, and the upstream PR decomposition — is written
+up in [cloud-execution-handoff.md](cloud-execution-handoff.md). Harness work is tracked there, not
+here; this entry stays about the methodology.
+
 **UPDATE 2026-09-02 — prime-agent discharged.** exp-mu-primeagent ran the first production family on
 this lane across three languages and two tasks with zero host-side fixes (see
 [past-experiments](past-experiments.md)); the key-attribution question was settled by the dedicated
