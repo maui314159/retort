@@ -120,7 +120,7 @@ class SandboxRunner:
         local_agents: dict[str, LocalAgentConfig] | None = None,
         default_model: str | None = None,
         model_options: dict[str, Any] | None = None,
-        score_in_container: bool = False,
+        score_in_container: bool = True,
         score_metrics: list[str] | None = None,
         queue_grace_seconds: int = _DEFAULT_QUEUE_GRACE_SECONDS,
         poll_seconds: float = _DEFAULT_POLL_SECONDS,

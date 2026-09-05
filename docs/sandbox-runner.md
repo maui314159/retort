@@ -16,7 +16,7 @@ Docker)"* under **Not yet** — this is that runner, under the name `sandbox` (s
 | 1 | **The `sandbox` playpen runner** | `src/retort/playpen/sandbox_runner.py` | Implemented; selected by `playpen.runner: sandbox` + a `playpen.sandbox` block; `check_design()` preflight refuses factor levels the lane cannot honour (Phase 0, 2026-09-04) |
 | 2 | **Per-language images** | `sandbox/Dockerfile.*` → ECR `retort-sandbox` | Implemented for python, go, typescript (opencode + prime-agent); **rebuild provenance incomplete** (§4) |
 | 3 | **In-container entrypoint + watchdog** | `sandbox/entrypoint.sh` (inline Python) | Implemented; a **second implementation** of the local progress guard (§5.3) |
-| 4 | **In-container scoring** | `sandbox/score_full.py`, `score_gate.py` → `_container_scores.json` | **Advisory only.** The authoritative `scores.json` is computed on the HOST (§3.4) |
+| 4 | **In-container scoring** | `sandbox/score_full.py`, `score_gate.py` → `_container_scores.json` | **Authoritative for container lanes since Phase 2 (2026-09-05):** `cli._collect_scores` takes the file as `scores.json`; the host never rescores; a completed cell with no file is HARNESS BROKEN (§3.4). `score_in_container` defaults on |
 | 5 | **Image identity in provenance** | `sandbox_image_digest[_effective]`, `sandbox_job_definition`, `_sandbox_meta.json` witnesses | **Verified per job** against Batch's container image since Phase 0 (2026-09-04); mismatch or unverifiable pin fails the cell as HARNESS (§5.1) |
 | 6 | **Parallelism** | `retort run --shard i/N` processes sharing one `retort.db` | Implemented; design point **16 concurrent cells** (§6) |
 | 7 | **Bootstrap** | `scripts/sandbox_bootstrap_aws.sh` | Implemented; registers job-defs **by digest** (Phase 0); still hard-codes the account id (Phase 4) |
@@ -144,12 +144,24 @@ Metadata keys on every sandbox run: `runner_lane=sandbox`, `sandbox_job_id`,
 `sandbox_container_scores=_container_scores.json` when present, plus the usage keys from the shared
 parsers. Watchdog kills surface as exit 124 + `kill_reason`, like the local guard.
 
-### 3.4 Where scoring happens — advisory in-container, authoritative host
+### 3.4 Where scoring happens — in-container is authoritative (Phase 2, 2026-09-05)
 
-[DIRECT] After `execute()` returns, the run loop (`cli.py:1101`) calls the host `ScoreCollector`
-on the pulled workspace for **every** lane, and that result is `scores.json`. The container's
-`_container_scores.json` is written by `score_full.py` and **consumed by nothing** in `src/`; its
-own docstring says promoting it is "a host-side pipeline decision deliberately NOT made here".
+**Now:** `cli._collect_scores` decides per cell. Local lane: the host collector, unchanged.
+Container lanes (`runner_lane` ∈ {`sandbox`, `docker-local`}): `_container_scores.json` **is**
+`scores.json`; the host does not rescore. A `null` in the file is a scorer's "not applicable"
+(left NULL, as the collector would); an absent metric is recorded as `scored_missing` and left
+NULL (images built before 2026-09-05 omit N/A metrics instead of writing `null`; `score_full.py`
+now writes every requested key). A cell that completed but left no file is **HARNESS BROKEN** and
+stops the run — never a silent host fallback. A crashed cell scores on the host, stamped
+`scored_lane=host`, and is a retry, not a data point. `retort rescore` stamps
+`rescored_lane: host` into a container-lane archive's `_meta.json`. `score_in_container` defaults
+to true. Six unit tests pin the branches.
+
+**Before (the finding that motivated it):** [DIRECT] After `execute()` returned, the run loop
+called the host `ScoreCollector` on the pulled workspace for **every** lane, and that result was
+`scores.json`. The container's `_container_scores.json` was written by `score_full.py` and
+**consumed by nothing** in `src/`; its own docstring said promoting it was "a host-side pipeline
+decision deliberately NOT made here".
 
 Consequences: a sandbox run's `build_time` is a **host** measurement of a workspace built elsewhere;
 the host still needs every language toolchain (a `csharp` image does not remove the need for
@@ -157,12 +169,25 @@ the host still needs every language toolchain (a `csharp` image does not remove 
 `go test` / `pytest` / `npm test` per returning cell, on the shared machine. Making the in-container
 scores authoritative is Phase 2 of the plan (§7).
 
-### 3.5 Experiment-level provenance
+### 3.5 Provenance — the per-run metadata was never persisted at all (fixed 2026-09-05)
 
 [DIRECT] `provenance.json` for a sandbox experiment has keys `agent_config, agents, harness, host,
 models, retort, serving, stack_presets, tools` — no image digests, job-definition revisions, vCPU
-or memory, and `host` describes the M4, not the lane. The lane's tuning parameters exist only in
-per-run metadata today.
+or memory, and `host` describes the M4, not the lane.
+
+Worse, and found only while wiring Phase 2: **`RunArtifacts.metadata` was not written anywhere.**
+The DB row (`experiment_runs`) keeps status, timestamps and `run_config_json`; `run_results` keeps
+metric values; `_meta.json` kept four fields (`visibility`, `run_config`, `replicate`,
+`succeeded`). A grep of the whole `exp-mu-primeagent-easy` tree for `sandbox_image_digest` or
+`runner_lane` finds **nothing**. So the handoff's "the digest lands in every run's provenance" was
+false: image digest, job id, queue seconds, vCPU/memory, `kill_reason`, `tool_refusal`,
+`wrote_nothing` and the usage breakdown existed only in process memory for every cell ever run
+on either lane. Only `_sandbox_meta.json` inside the workspace (written by the container, not the
+runner) survived, which is what the earlier spot-check read.
+
+**Fix:** `_archive_run_workspace` now writes `runner_lane`, `scored_lane` and the full
+`metadata` dict into `_meta.json` — the archive is the durable record. An experiment-level
+`sandbox:` block in `provenance.py` (digests, job-def revisions, spec) remains Phase 1.4.
 
 ---
 
@@ -431,7 +456,13 @@ in-container compaction once an image is rebuilt with the new `entrypoint.sh`.
 - **1.4 Experiment-level provenance** `sandbox:` block (§3.5): digests, job-def revisions,
   vCPU/memory, lane; `host` states the lane.
 
-### Phase 2 — in-container scores become authoritative (~1 day + parity smoke)
+### Phase 2 — in-container scores become authoritative — DONE 2026-09-05 (code; parity smoke owed)
+
+Landed: `_collect_scores` (both collect sites in the run loop), `scored_lane`/`runner_lane` and
+the **full per-run metadata** in `_meta.json` (§3.5 — it had never been persisted), the rescore
+lane stamp, `score_in_container` default on, `score_full.py` writing explicit nulls. Owed: one
+Fargate cell per language on rebuilt images to see `scored_lane=sandbox` and a complete
+`_container_scores.json` land in a real archive (2.2 below).
 
 - **2.1** When `runner_lane == sandbox` and `_container_scores.json` covers every metric in
   `responses`, **that is `scores.json`**; the host does not rescore. Missing metric → HARNESS

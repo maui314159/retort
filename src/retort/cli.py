@@ -10,10 +10,15 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import click
 
 from retort import __version__
+
+if TYPE_CHECKING:
+    from retort.playpen.runner import RunArtifacts, StackConfig
+    from retort.scoring.collector import ScoreCollector, ScoreVector
 from retort.analysis.anova import run_all_responses, run_anova
 from retort.analysis.residuals import check_residuals
 from retort.design.factors import FactorRegistry
@@ -1145,7 +1150,7 @@ def run_experiments(
                     else:
                         no_write_streak = 0
 
-                    scores = collector.collect(artifacts, stack)
+                    scores = _collect_scores(collector, artifacts, stack, metric_names)
 
                     # Conformance gate: an agent-succeeded run whose tests never
                     # executed is not a valid success — record it as failed.
@@ -1231,7 +1236,7 @@ def run_experiments(
                             )
                             a2 = runner.execute(env_id2, stack, task)
                             if not a2.usage_limited:
-                                s2 = collector.collect(a2, stack)
+                                s2 = _collect_scores(collector, a2, stack, metric_names)
                                 tf2 = _tests_did_not_run(s2)
                                 arch2 = _archive_run_workspace(
                                     archive_root, run_config, rep, a2,
@@ -1856,11 +1861,25 @@ def _archive_run_workspace(
                        err=True)
             return None
 
+    _run_md: dict[str, str] = dict(getattr(artifacts, "metadata", None) or {})
     meta = {
         "visibility": visibility,
         "run_config": run_config,
         "replicate": replicate,
         "succeeded": artifacts.succeeded,
+        # Which lane ran the cell and which lane produced scores.json. A
+        # container-lane archive rescored on the host later gets
+        # `rescored_lane: host` stamped beside these (retort rescore), so a
+        # host-rescored sandbox run is never mistaken for an in-container one.
+        "runner_lane": _run_md.get("runner_lane", "local"),
+        "scored_lane": _run_md.get("scored_lane", "host"),
+        # The runner's per-run metadata, verbatim. Until 2026-09-05 this dict
+        # lived only in process memory: the DB row keeps status + metrics, and
+        # _meta.json kept four fields — so sandbox_image_digest, the job id,
+        # queue seconds, kill_reason and the usage breakdown of every
+        # exp-mu-primeagent cell were never written anywhere. The archive is
+        # the durable record; this is where the effective stack goes.
+        "metadata": dict(_run_md),
     }
     try:
         (dest / "_meta.json").write_text(json.dumps(meta, indent=2, sort_keys=True))
@@ -2757,6 +2776,76 @@ def _persist_design_matrix(
         config_to_row_id[json.dumps(run_config, sort_keys=True)] = existing_row.id
 
     return matrix.id, config_to_row_id
+
+
+#: Lanes whose cells are built and scored inside a container. Their scores
+#: come from the container, never from the host.
+_CONTAINER_LANES = frozenset({"sandbox", "docker-local"})
+_CONTAINER_SCORES = "_container_scores.json"
+
+
+def _collect_scores(
+    collector: ScoreCollector,
+    artifacts: RunArtifacts,
+    stack: StackConfig,
+    metric_names: list[str],
+) -> ScoreVector:
+    """The authoritative score vector for one cell.
+
+    Local lane: the host ``ScoreCollector``, as always. Container lanes
+    (``runner_lane`` in :data:`_CONTAINER_LANES`): the scores the container
+    computed with the SAME collector — ``_container_scores.json`` — are the
+    result, and the host does not rescore. Host scoring of a workspace built
+    elsewhere is wrong three ways: it needs every language toolchain on the
+    host, it re-creates the host contention the lane exists to remove (16
+    cells returning at once = 16 concurrent ``go test``), and its
+    ``build_time`` measures the host. A ``null`` in the file is a scorer's
+    "not applicable" (left NULL, exactly as the collector would); an ABSENT
+    metric is recorded in metadata as ``scored_missing`` and left NULL. A
+    container lane whose cell completed but produced NO file is a HARNESS
+    failure and stops the run — never a silent host fallback. A crashed cell
+    (no artifacts) has nothing to score in either lane; the host collector
+    runs on whatever came back, stamped ``scored_lane=host``, and the row is
+    a retry, not a data point.
+    """
+    from retort.scoring.collector import ScoreResult
+    from retort.scoring.collector import ScoreVector as _ScoreVector
+
+    lane = artifacts.metadata.get("runner_lane", "local")
+    if lane not in _CONTAINER_LANES:
+        artifacts.metadata["scored_lane"] = "host"
+        return collector.collect(artifacts, stack)
+
+    path = artifacts.output_dir / _CONTAINER_SCORES if artifacts.output_dir else None
+    if path is None or not path.is_file():
+        if artifacts.succeeded:
+            raise click.ClickException(
+                f"HARNESS BROKEN — `runner_lane={lane}` cell completed but left no "
+                f"{_CONTAINER_SCORES} in {artifacts.output_dir}.\n"
+                "  Container lanes score IN the container; the host will not "
+                "rescore a workspace built elsewhere (wrong toolchain, wrong "
+                "hardware, host contention). Set playpen.sandbox."
+                "score_in_container: true (the default) and make sure the image "
+                "carries retort's scorer suite (score_full.py). Nothing was "
+                "recorded for this cell; --resume re-runs it."
+            )
+        # Crashed before scoring could run: not a data point either way.
+        artifacts.metadata["scored_lane"] = "host"
+        return collector.collect(artifacts, stack)
+
+    data = json.loads(path.read_text())
+    missing = [m for m in metric_names if m not in data]
+    if missing:
+        artifacts.metadata["scored_missing"] = ",".join(missing)
+        click.echo(
+            f" ⚠️  container scored no value for {missing} (left NULL)",
+            err=True, nl=False,
+        )
+    artifacts.metadata["scored_lane"] = lane
+    return _ScoreVector(scores=[
+        ScoreResult(metric_name=m, value=data[m])
+        for m in metric_names if data.get(m) is not None
+    ])
 
 
 def _tests_did_not_run(scores) -> bool:

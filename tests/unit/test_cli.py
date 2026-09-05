@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from pathlib import Path
 
+import click
+import pytest
 from click.testing import CliRunner
 
 from retort.cli import main as cli
@@ -1691,6 +1694,100 @@ class TestRunnerSelectionFailsClosed:
         assert "LANE PREFLIGHT FAILED" in res.output
         assert "prompt='bdd'" in res.output
         assert self._no_cell_ran(tmp_path)
+
+
+class TestContainerLaneScoring:
+    """_collect_scores: container lanes are scored IN the container; the host
+    never rescores a workspace built elsewhere, and never falls back silently."""
+
+    class _Collector:
+        def __init__(self):
+            self.calls = 0
+
+        def collect(self, artifacts, stack):
+            from retort.scoring.collector import ScoreResult, ScoreVector
+            self.calls += 1
+            return ScoreVector(scores=[ScoreResult("code_quality", 0.5)])
+
+    def _artifacts(self, tmp_path, lane, *, scores=None, exit_code=0):
+        from retort.playpen.runner import RunArtifacts
+        ws = tmp_path / "ws"
+        ws.mkdir(exist_ok=True)
+        if scores is not None:
+            (ws / "_container_scores.json").write_text(json.dumps(scores))
+        md = {"runner_lane": lane} if lane else {}
+        return RunArtifacts(output_dir=ws, exit_code=exit_code, metadata=md)
+
+    def test_local_lane_uses_host_collector(self, tmp_path):
+        from retort.cli import _collect_scores
+        from retort.playpen.runner import StackConfig
+        col = self._Collector()
+        art = self._artifacts(tmp_path, None)
+        sv = _collect_scores(col, art, StackConfig("python", "a", "f"),
+                             ["code_quality"])
+        assert col.calls == 1 and sv.get("code_quality") == 0.5
+        assert art.metadata["scored_lane"] == "host"
+
+    def test_sandbox_lane_takes_container_scores_and_skips_host(self, tmp_path):
+        from retort.cli import _collect_scores
+        from retort.playpen.runner import StackConfig
+        col = self._Collector()
+        art = self._artifacts(tmp_path, "sandbox", scores={
+            "code_quality": 0.9, "test_coverage": 0.8, "runtime": None,
+        })
+        sv = _collect_scores(col, art, StackConfig("go", "a", "f"),
+                             ["code_quality", "test_coverage", "runtime"])
+        assert col.calls == 0                       # host did NOT rescore
+        assert sv.to_dict() == {"code_quality": 0.9, "test_coverage": 0.8}
+        assert sv.get("runtime") is None            # null = not applicable, stays NULL
+        assert art.metadata["scored_lane"] == "sandbox"
+        assert "scored_missing" not in art.metadata
+
+    def test_absent_metric_is_recorded_not_invented(self, tmp_path):
+        from retort.cli import _collect_scores
+        from retort.playpen.runner import StackConfig
+        col = self._Collector()
+        art = self._artifacts(tmp_path, "docker-local", scores={"code_quality": 0.9})
+        sv = _collect_scores(col, art, StackConfig("go", "a", "f"),
+                             ["code_quality", "test_coverage"])
+        assert col.calls == 0
+        assert sv.to_dict() == {"code_quality": 0.9}
+        assert art.metadata["scored_missing"] == "test_coverage"
+        assert art.metadata["scored_lane"] == "docker-local"
+
+    def test_completed_cell_without_scores_file_is_harness_broken(self, tmp_path):
+        from retort.cli import _collect_scores
+        from retort.playpen.runner import StackConfig
+        col = self._Collector()
+        art = self._artifacts(tmp_path, "sandbox")   # succeeded, no file
+        with pytest.raises(click.ClickException, match="HARNESS BROKEN"):
+            _collect_scores(col, art, StackConfig("go", "a", "f"), ["code_quality"])
+        assert col.calls == 0                        # no silent host fallback
+
+    def test_crashed_cell_without_scores_file_scores_on_host_as_retry(self, tmp_path):
+        from retort.cli import _collect_scores
+        from retort.playpen.runner import StackConfig
+        col = self._Collector()
+        art = self._artifacts(tmp_path, "sandbox", exit_code=124)
+        _collect_scores(col, art, StackConfig("go", "a", "f"), ["code_quality"])
+        assert col.calls == 1
+        assert art.metadata["scored_lane"] == "host"
+
+    def test_rescore_stamps_container_archive(self, tmp_path):
+        from retort.commands.scoring import _stamp_rescored_lane
+        rep = tmp_path / "rep1"
+        rep.mkdir()
+        (rep / "_meta.json").write_text(json.dumps(
+            {"runner_lane": "sandbox", "scored_lane": "sandbox"}))
+        _stamp_rescored_lane(rep)
+        assert json.loads((rep / "_meta.json").read_text())["rescored_lane"] == "host"
+        # local-lane archives and pre-lane archives are untouched
+        (rep / "_meta.json").write_text(json.dumps({"runner_lane": "local"}))
+        _stamp_rescored_lane(rep)
+        assert "rescored_lane" not in json.loads((rep / "_meta.json").read_text())
+        (rep / "_meta.json").write_text(json.dumps({"replicate": 1}))
+        _stamp_rescored_lane(rep)
+        assert "rescored_lane" not in json.loads((rep / "_meta.json").read_text())
 
 
 class TestRunExecutionPath:

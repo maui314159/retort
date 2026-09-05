@@ -42,7 +42,13 @@ def main() -> int:
     )
     collector = ScoreCollector(metrics=metrics)
     vector = collector.collect(artifacts, stack)
-    scores = {s.metric_name: s.value for s in vector.scores}
+    # EVERY requested metric appears as a key. `null` means the scorer ran and
+    # said "not applicable" (ScoreCollector omits those — e.g. runtime with no
+    # probe); an ABSENT key means the scorer never ran. The host treats the
+    # file as authoritative for container lanes and needs that distinction to
+    # tell a NULL data point from a harness gap.
+    scored = {s.metric_name: s.value for s in vector.scores}
+    scores = {m: scored.get(m) for m in metrics}
     (ws / "_container_scores.json").write_text(json.dumps(scores, indent=2))
     print(f"score_full: wrote _container_scores.json {scores}")
     return 0

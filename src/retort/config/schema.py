@@ -221,11 +221,15 @@ class SandboxConfig(BaseModel):
     score_in_container: Annotated[
         bool,
         Field(
-            default=False,
+            default=True,
             description=(
-                "Run the v1 mechanical gate (pytest+coverage, python only) "
-                "inside the container. Off until the §0c scorer-parity smoke "
-                "passes for the image in use."
+                "Run retort's scorer suite INSIDE the container and make its "
+                "_container_scores.json the authoritative scores for the cell "
+                "(host toolchains, host contention and a host build_time are "
+                "all wrong for a workspace built elsewhere). On by default since "
+                "the §0c parity check passed for python/go/typescript; a "
+                "container lane that produces no scores file is a HARNESS "
+                "failure, never a silent host fallback."
             ),
         ),
     ]

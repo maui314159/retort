@@ -302,12 +302,22 @@ class TestInContainerScoring:
         env = {e["name"]: e["value"] for e in overrides["environment"]}
         assert env["RETORT_SCORE_IN_CONTAINER"] == "1"
 
-    def test_scoring_defaults_off(self, tmp_path):
+    def test_scoring_defaults_on_and_can_be_disabled(self, tmp_path):
+        # In-container scores are authoritative for container lanes (Phase 2),
+        # so scoring in the container is the default; off is an explicit choice.
         runner = _make_runner(tmp_path)
         calls = _wire_success(runner, artifacts={"_sandbox_meta.json": _META})
         env_id = runner.provision(_stack(), _task())
         runner.execute(env_id, _stack(), _task())
+        submit = next(c for c in calls if c[:2] == ["batch", "submit-job"])
+        overrides = json.loads(submit[submit.index("--container-overrides") + 1])
+        env = {e["name"]: e["value"] for e in overrides["environment"]}
+        assert env["RETORT_SCORE_IN_CONTAINER"] == "1"
 
+        runner = _make_runner(tmp_path, score_in_container=False)
+        calls = _wire_success(runner, artifacts={"_sandbox_meta.json": _META})
+        env_id = runner.provision(_stack(), _task())
+        runner.execute(env_id, _stack(), _task())
         submit = next(c for c in calls if c[:2] == ["batch", "submit-job"])
         overrides = json.loads(submit[submit.index("--container-overrides") + 1])
         env = {e["name"]: e["value"] for e in overrides["environment"]}

@@ -455,12 +455,14 @@ def rescore(experiment_dir, config, languages, only_failed, metrics_only, worker
             counts["updated"] += 1
             click.echo(f"  {label}: " + " ".join(f"{k}={v:.2f}" for k, v in scores.items())
                        + " (metrics-only)")
+            _stamp_rescored_lane(rep)
             return
         new_status = cli._persist_rescore(db_path, run_config, replicate, scores)
         try:
             (rep / "scores.json").write_text(json.dumps(scores))
         except OSError:
             pass
+        _stamp_rescored_lane(rep)
         if new_status == "completed":
             counts["updated"] += 1
         gate = "" if tc is None else (" RECOVERED" if tc > 0 else " still-fails-gate")
@@ -632,6 +634,31 @@ def diagnose(experiment_dir, as_json):
         click.echo(f"\n→ {len(interrupted)} interrupted run(s) just need re-running:\n"
                    f"    retort run … --config {experiment_dir}/workspace.yaml "
                    "--resume --retry-failed")
+
+
+def _stamp_rescored_lane(rep: Path) -> None:
+    """Mark a container-lane archive whose scores.json the HOST just rewrote.
+
+    In-container scores are authoritative for `sandbox` / `docker-local` cells
+    (see cli._collect_scores). A host rescore replaces them with numbers from
+    the host's toolchain and hardware — legitimate for recovering a scorer
+    false-failure, but the archive must say so, or a host-rescored sandbox run
+    is indistinguishable from an in-container one and its build_time pools
+    with the wrong lane. No-op for local-lane archives and for archives that
+    predate the lane fields.
+    """
+    meta_path = rep / "_meta.json"
+    try:
+        meta = json.loads(meta_path.read_text())
+    except (OSError, ValueError):
+        return
+    if meta.get("runner_lane", "local") not in cli._CONTAINER_LANES:
+        return
+    meta["rescored_lane"] = "host"
+    try:
+        meta_path.write_text(json.dumps(meta, indent=2, sort_keys=True))
+    except OSError:
+        pass
 
 
 def _nonpassing_languages(exp: Path) -> list[str]:
