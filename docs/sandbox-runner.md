@@ -95,6 +95,13 @@ from the pipeline.
 > ***upstream:*** worth a small issue on its own — the default runner path, and the documented
 > `cloud` name, silently yield simulated results. They should fail closed.
 
+**Decision (2026-09-04): do not repair `DockerRunner`; replace it.** Even with docker installed it
+produces no data — stock images with no agent CLI, no auth, no usage parser, no in-container
+scoring, so every cell exits non-zero and scores zero. Phase 1.2b gives `SandboxRunner` a local
+`docker` backend that runs the sandbox images themselves, then deletes `docker_runner.py`. Upstream
+gets two one-line asks independent of any AWS code: make `local` the schema default, and delete
+`_simulate_run` (§8).
+
 ---
 
 ## 3. Components and the contract
@@ -376,6 +383,18 @@ in-container compaction once an image is rebuilt with the new `entrypoint.sh`.
   `ScoreCollector`; writes `_sandbox_meta.json` + `_container_scores.json` + hardware/cost fields
   (§5.4). `entrypoint.sh` shrinks to pull → exec module → push. Unit-testable with a directory
   standing in for S3.
+- **1.2b `docker` backend, replacing `DockerRunner`** (decision 2026-09-04). The images already
+  *are* the cell; only S3 transfer and Batch submission are Fargate-specific. Add a `backend` seam to
+  `SandboxRunner` — `batch` (today's path) and `docker` (`docker run --platform linux/amd64` with
+  the workspace bind-mounted at `/workspace` and the same `RETORT_*` environment) — so the same
+  image and entrypoint run locally. What it buys: a **$0 smoke of every entrypoint/image change**
+  (the container side Phase 0 could not verify), an offline integration test of the container
+  contract for CI, and one runner with two backends as the upstream story. Guardrails: the local
+  backend stamps `runner_lane=docker-local` (arm64 emulating amd64 — timings are meaningless and
+  must never pool), and it never touches AWS. When it passes the sandbox test suite, **delete
+  `docker_runner.py`** and its two tests. Not chosen: repairing `DockerRunner` (it would re-solve
+  agent install, auth, usage parsing and scoring the images already solved) or deleting it with no
+  replacement (loses the smoke path).
 - **1.3 Registry visibility**: register `sandbox` via a factory so `retort plugin list/show` names
   it; keep the cli branch. Add `sandbox` to the README command reference and `workspace.yaml` docs.
 - **1.4 Experiment-level provenance** `sandbox:` block (§3.5): digests, job-def revisions,
@@ -431,12 +450,13 @@ and the `data/maui-experiments` branch never go upstream, and that branch is nev
 | **D** | **SandboxRunner** — lane, images, bootstrap, in-container scoring | 15 files, +2257 | **C** (`profile.model_options`); as committed on main also contains E's prime branch in `sandbox_runner.py` — strip it, or land E-local first |
 | **E** | prime-agent harness — local lane (`schema.py` + `local_runner.py`, +198) independent; sandbox half (+62, `Dockerfile.python-v4`) needs D | | E-sandbox → D |
 | **F** | log handling — reader fix standalone; write-time filter needs E | | F-filter → E |
+| **G** | runner hygiene: `local` becomes the schema default; `_simulate_run` deleted; `cloud`/unknown fail closed | 3 files, tiny | — (sends first; needs no AWS code and no opinion on D) |
 
 A, B, C and F-reader are independently useful upstream: A fixes a Hermes version he runs; C is the
 provider pin behind the `exp-mu-glm53-provider` result; B hardens local-lane scorers; F-reader
 bounds reads regardless of which agent wrote the log.
 
-**Order:** A → C → B → F-reader (small, independent), then D **after Phases 0–1 and 4** — a reviewer
+**Order:** G → A → C → B → F-reader (small, independent), then D **after Phases 0–1 and 4** — a reviewer
 reading `sandbox_runner.py` today sees copied `LocalRunner` code and an unverified digest — then E,
 then F-filter. **Rebase on `upstream/main` first**: a trial `git merge-tree` shows `cli.py` and
 `test_coverage.py` auto-merge; the only conflicts are `docs/future-experiments.md` and
@@ -451,7 +471,8 @@ ahead/behind counts here.
    evidence it agrees with the local lane 3/3. Offer, not fait accompli.
 2. **Naming.** `sandbox` beside the dead `cloud` enum value — retire `cloud`, alias it, or rename?
    (`cloud` already means "hosted model" in your experiment data, so we avoided it.)
-3. **The `DockerRunner` default and fall-through** (§2) — fix, remove, or leave?
+3. **The `DockerRunner` default and fall-through** (§2) — PR G proposes `local` as default and
+   deleting `_simulate_run`; the lane PR later offers a working local `docker` backend in its place.
 4. **Image distribution.** Our images live in our ECR. Upstream use needs a public registry or a
    documented build-your-own path; the Dockerfiles build from source, so build-your-own is viable
    once Phase 4 lands.
