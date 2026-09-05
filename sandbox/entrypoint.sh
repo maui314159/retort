@@ -23,6 +23,13 @@
 #     failed run stays diagnosable.
 set -euo pipefail
 
+# No core dumps. A crashing agent runtime (Bun segfaulted under amd64
+# emulation, 2026-09-05) otherwise writes a core into its cwd — the
+# WORKSPACE — at gigabytes per minute: 64 GB in ten minutes, and the growing
+# file counted as "progress" so the stall guard never fired. On Fargate the
+# same would fill the ephemeral disk and break the artifact upload.
+ulimit -c 0
+
 WS=/workspace
 mkdir -p "$WS"
 cd "$WS"

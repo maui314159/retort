@@ -410,9 +410,22 @@ in-container compaction once an image is rebuilt with the new `entrypoint.sh`.
   (`70d259e5` fixes and pins it). Second run: `compact_prime_log: 18002906 -> 506 bytes`, 0
   `message_update` lines left, both `message_end` events intact, `cpu_arch=x86_64` recorded,
   `agent_seconds` 10.5. This is exactly the $0 smoke the docker lane exists for. Three earlier
-  rebuild attempts had died on PyPI/npm read timeouts (network, not the recipe). **Still owed:** a
-  real agent cell on the docker lane (needs an OpenRouter key and spends tokens), after which
-  `docker_runner.py` goes.
+  rebuild attempts had died on PyPI/npm read timeouts (network, not the recipe).
+  **2026-09-05, first real agent cell (opencode × glm-5.3-flash, rest-api-crud) through
+  `retort run` on the docker lane — HARNESS failure, and two findings.** (1) opencode is a Bun
+  binary and **Bun requires AVX**; the docker host here is Colima (aarch64 VM, Virtualization
+  framework, sshfs mounts) emulating amd64 through QEMU user-mode, which exposes no AVX —
+  opencode segfaulted at startup (`CPU lacks AVX support … Bun has crashed`) after one
+  `step_finish` ($0.0004). So **the docker lane cannot run opencode cells under QEMU**; prime-agent
+  (node) should be unaffected. Fix options, in order: enable Rosetta in Colima (`colima start
+  --vz-rosetta`; Rosetta supports AVX2 on macOS ≥ 15 and is much faster) — a host setting, the
+  user's call; or build arm64 images for the local lane (weakens "same image"). (2) The crashing
+  runtime wrote a QEMU core file into the workspace at ~6 GB/min — **64 GB in ten minutes** — and
+  the growing file counted as workspace progress, so the stall guard never fired; the cell was
+  killed by hand. `entrypoint.sh` now sets `ulimit -c 0` (also protects Fargate's ephemeral disk
+  and the artifact upload). The seeding, provision, `docker run` shape, secret forwarding and
+  `retort run` wiring all worked; the cell died inside the agent binary. **Still owed:** the same
+  cell after Rosetta is enabled (or with prime-agent), then `docker_runner.py` goes.
 - **1.3 Registry visibility**: register `sandbox` via a factory so `retort plugin list/show` names
   it; keep the cli branch. Add `sandbox` to the README command reference and `workspace.yaml` docs.
 - **1.4 Experiment-level provenance** `sandbox:` block (§3.5): digests, job-def revisions,
