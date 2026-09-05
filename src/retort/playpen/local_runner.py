@@ -650,6 +650,15 @@ class LocalRunner:
                 )
             )
 
+            # prime-agent's --mode json stream is ~90% message_update snapshots
+            # that the record never needs (see agent_log.compact_prime_log for
+            # the measurement). Compact the persisted transcript now — before
+            # the kill-path return too — so the archive carries evidence, not
+            # bulk. stdout_text in memory is untouched; the parsers read it.
+            if self._resolve_harness(stack) == "prime":
+                from retort.playpen.agent_log import compact_prime_log
+                compact_prime_log(info.workspace / "_agent_stdout.log")
+
             if kill_reason is not None:
                 # Killed by a guard. The workspace still holds whatever code the
                 # agent wrote, so it is scored downstream; the run is recorded
@@ -1331,20 +1340,18 @@ def agent_consulted(run_dir: Path, *patterns: str) -> bool | None:
     True/False. Use it to verify e.g. that a ``tooling: graphify`` cell actually
     read ``GRAPH_REPORT.md`` / ran ``graphify`` before trusting a graphify signal.
     """
-    import re as _re
+    from retort.playpen import agent_log
 
-    blobs: list[str] = []
-    for name in ("_hermes_session.jsonl", "_agent_stdout.log"):
-        p = run_dir / name
-        if p.is_file():
-            try:
-                blobs.append(p.read_text(errors="replace"))
-            except OSError:
-                pass
-    if not blobs:
+    # Streams each transcript (plain or .gz) instead of read_text()-ing it: a
+    # prime-agent stdout log reached 193 MB, and this ran on the host for every
+    # graphify cell.
+    logs = [
+        p for name in ("_hermes_session.jsonl", "_agent_stdout.log")
+        if (p := agent_log.find_agent_log(run_dir, name)) is not None
+    ]
+    if not logs:
         return None
-    blob = "\n".join(blobs)
-    return any(_re.search(_re.escape(pat), blob, _re.IGNORECASE) for pat in patterns)
+    return any(agent_log.contains_any(p, *patterns) for p in logs)
 
 
 def _persist_agent_output(workspace: Path, stdout: str, stderr: str) -> None:

@@ -186,6 +186,20 @@ set -e
 T1=$(python3 -c 'import time; print(time.monotonic())')
 AGENT_SECONDS=$(python3 -c "print(f'{$T1 - $T0:.1f}')")
 
+# prime-agent's --mode json transcript is ~90% message_update snapshots the
+# record never needs (retort.playpen.agent_log.compact_prime_log documents the
+# measurement: 193 MB -> ~21 MB, usage/cost/stopReason all on message_end).
+# Compact here so the artifact tarball, S3 and the host never carry the bulk.
+# Outside the timed window; best-effort; the host compacts again if needed.
+python3 - <<'EOF' || true
+import json, os
+from retort.playpen.agent_log import compact_prime_log
+cmd = json.loads(os.environ.get("RETORT_AGENT_CMD", "[]"))
+if cmd and "prime" in os.path.basename(cmd[0]):
+    before, after = compact_prime_log("/workspace/_agent_stdout.log")
+    print(f"compact_prime_log: {before} -> {after} bytes")
+EOF
+
 # ---- scoring ---------------------------------------------------------------
 # Full scorer parity (v3): the image carries retort itself, and score_full.py
 # runs the REAL ScoreCollector over the workspace for the metrics named in

@@ -168,14 +168,14 @@ def _live_context_tokens(
     # output). Imported here because this path (live context for an in-flight
     # cell) was unreachable until the run-process detection was fixed to match by
     # cwd, so the missing import never fired.
+    from retort.playpen import agent_log
     from retort.playpen.local_runner import _turn_context
 
-    log = workspace / "_agent_stdout.log"
-    if log.is_file():
-        try:
-            tail = log.read_bytes()[-400_000:].decode("utf-8", "replace")
-        except OSError:
-            tail = ""
+    log = agent_log.find_agent_log(workspace)
+    if log is not None:
+        # Seeks to the tail (or streams a rolling window for .gz); never loads
+        # the whole transcript.
+        tail = agent_log.read_tail(log)
         latest: int | None = None
         peak = 0
         for line in tail.splitlines():
@@ -275,10 +275,15 @@ def _harness_failure(rep_dir: Path) -> str | None:
         "agent wrote NO source files — a model that cannot do the task still writes "
         "something. Suspect the harness before the model."
     )
-    log = rep_dir / "_agent_stdout.log"
-    if log.is_file():
+    from retort.playpen import agent_log
+
+    log = agent_log.find_agent_log(rep_dir)
+    if log is not None:
+        # Line-by-line (the refusal signatures are single-line) over .log or
+        # .log.gz — `retort diagnose` walks every failed archive, and one prime
+        # transcript was 193 MB.
         try:
-            m = _TOOL_REFUSAL_RE.search(log.read_text(errors="replace"))
+            m = agent_log.search(log, _TOOL_REFUSAL_RE)
         except OSError:
             m = None
         if m:

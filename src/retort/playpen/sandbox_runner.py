@@ -45,6 +45,7 @@ from pathlib import Path
 from typing import Any
 
 from retort.config.schema import LocalAgentConfig
+from retort.playpen import agent_log as _agent_log
 from retort.playpen import local_runner as _local
 from retort.playpen.runner import (
     RunArtifacts,
@@ -505,11 +506,20 @@ class SandboxRunner:
         if (info.workspace / "_container_scores.json").exists():
             base_meta["sandbox_container_scores"] = "_container_scores.json"
 
-        stdout_text = _read_text(info.workspace / "_agent_stdout.log")
+        harness = self._resolve_harness(stack)
+        stdout_log = info.workspace / "_agent_stdout.log"
+        if harness == "prime":
+            # ~90% of a prime transcript is message_update snapshots the record
+            # never needs (agent_log.compact_prime_log has the measurement).
+            # Compact BEFORE reading so the parse below is tens of MB, not
+            # hundreds — this ran on the host for every prime cell. Images
+            # built after this change compact in-container too; doing it here
+            # as well covers the images already in use.
+            _agent_log.compact_prime_log(stdout_log)
+        stdout_text = _agent_log.read_text(stdout_log)
         stderr_text = _read_text(info.workspace / "_agent_stderr.log")
         token_count, usage_meta = _local._parse_agent_usage(
-            self._resolve_harness(stack), stdout_text, info.workspace,
-            self._model_for(stack),
+            harness, stdout_text, info.workspace, self._model_for(stack),
         )
 
         # Watchdog kills surface exactly like the local progress guard: exit
@@ -527,7 +537,7 @@ class SandboxRunner:
                 msg = f"Timeout after {agent_seconds:.0f}s (in-container wall)"
             return RunArtifacts(
                 output_dir=info.workspace,
-                stdout=stdout_text,
+                stdout=stdout_text[-10000:],
                 stderr=(stderr_text[-5000:] + "\n" + msg) if stderr_text else msg,
                 exit_code=124,
                 duration_seconds=agent_seconds,
@@ -535,10 +545,15 @@ class SandboxRunner:
                 metadata={**usage_meta, **base_meta},
             )
 
+        # Same bound as LocalRunner (stdout[-10000:], stderr[-5000:]): the full
+        # transcript lives in the workspace file; RunArtifacts carries a tail.
+        # Bounding it identically also keeps token_efficiency's text-length
+        # fallback comparable across lanes, which an unbounded sandbox stdout
+        # silently was not.
         return RunArtifacts(
             output_dir=info.workspace,
-            stdout=stdout_text,
-            stderr=stderr_text,
+            stdout=stdout_text[-10000:],
+            stderr=stderr_text[-5000:] if stderr_text else "",
             exit_code=agent_exit,
             duration_seconds=agent_seconds,
             token_count=token_count,
