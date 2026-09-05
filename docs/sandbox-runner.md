@@ -402,10 +402,17 @@ in-container compaction once an image is rebuilt with the new `entrypoint.sh`.
   transfers skipped cleanly, the in-container compaction guard held (`|| true`) when the old
   image lacked `retort.playpen.agent_log`. Learned: `work_dir` must be under a Docker-Desktop-shared
   path (`~/.retort-sandbox` is; `/private/tmp` mounts appear empty); an emulated `/proc/cpuinfo`
-  has no `model name`, so `cpu_arch` is now recorded too. **Still owed:** a local image rebuild
-  (three attempts on 09-04/05 all died on PyPI/npm read timeouts inside the emulated build, one
-  after 2.3 h — network, not the recipe; the wheel + import check with the new module passed) and
-  then a real agent cell on the docker lane, after which `docker_runner.py` goes.
+  has no `model name`, so `cpu_arch` is now recorded too.
+  **2026-09-05, locally built image (`retort-sandbox:python-local`, this worktree's wheel):** the
+  echo cell ran through the image's own entrypoint. First run **caught a real bug** the unit tests
+  missed — the entrypoint passed a `str` to `compact_prime_log`, which `.stat()`-ed it; the
+  `|| true` guard swallowed the crash and an 18 MB seed transcript came back uncompacted
+  (`70d259e5` fixes and pins it). Second run: `compact_prime_log: 18002906 -> 506 bytes`, 0
+  `message_update` lines left, both `message_end` events intact, `cpu_arch=x86_64` recorded,
+  `agent_seconds` 10.5. This is exactly the $0 smoke the docker lane exists for. Three earlier
+  rebuild attempts had died on PyPI/npm read timeouts (network, not the recipe). **Still owed:** a
+  real agent cell on the docker lane (needs an OpenRouter key and spends tokens), after which
+  `docker_runner.py` goes.
 - **1.3 Registry visibility**: register `sandbox` via a factory so `retort plugin list/show` names
   it; keep the cli branch. Add `sandbox` to the README command reference and `workspace.yaml` docs.
 - **1.4 Experiment-level provenance** `sandbox:` block (§3.5): digests, job-def revisions,
