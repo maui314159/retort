@@ -113,7 +113,7 @@ def contains_any(path: Path, *needles: str) -> bool:
 _MESSAGE_UPDATE_HINT = b'"message_update"'
 
 
-def compact_prime_log(path: Path) -> tuple[int, int]:
+def compact_prime_log(path: Path | str) -> tuple[int, int]:
     """Drop ``message_update`` events from a prime-agent ``--mode json``
     transcript, in place. Returns ``(bytes_before, bytes_after)``.
 
@@ -127,8 +127,11 @@ def compact_prime_log(path: Path) -> tuple[int, int]:
     other event are kept verbatim: they are the evidence that identified the
     zero-write failure. Non-JSON lines are kept. Idempotent; a file with no
     ``message_update`` lines is left untouched. Works on ``.log`` and ``.log.gz``
-    (output keeps the input's form).
+    (output keeps the input's form). Accepts a str because the in-container
+    caller (entrypoint.sh) passes one — the first local echo cell (2026-09-05)
+    hit ``'str' object has no attribute 'stat'`` here and silently skipped.
     """
+    path = Path(path)
     try:
         before = path.stat().st_size
     except OSError:

@@ -206,11 +206,11 @@ AGENT_SECONDS=$(python3 -c "print(f'{$T1 - $T0:.1f}')")
 # Compact here so the artifact tarball, S3 and the host never carry the bulk.
 # Outside the timed window; best-effort; the host compacts again if needed.
 python3 - <<'EOF' || true
-import json, os
+import json, os, pathlib
 from retort.playpen.agent_log import compact_prime_log
 cmd = json.loads(os.environ.get("RETORT_AGENT_CMD", "[]"))
 if cmd and "prime" in os.path.basename(cmd[0]):
-    before, after = compact_prime_log("/workspace/_agent_stdout.log")
+    before, after = compact_prime_log(pathlib.Path("/workspace/_agent_stdout.log"))
     print(f"compact_prime_log: {before} -> {after} bytes")
 EOF
 

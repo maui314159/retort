@@ -163,6 +163,12 @@ class TestCompactPrimeLog:
     def test_missing_file_is_a_noop(self, tmp_path: Path):
         assert agent_log.compact_prime_log(tmp_path / "absent.log") == (0, 0)
 
+    def test_accepts_str_path(self, plain_log: Path):
+        # entrypoint.sh passes a str; the first in-container run crashed on
+        # `.stat()` and silently skipped compaction (2026-09-05).
+        before, after = agent_log.compact_prime_log(str(plain_log))
+        assert before > after > 0
+
     def test_substring_hint_does_not_drop_other_events(self, tmp_path: Path):
         # An event that merely MENTIONS message_update (e.g. a tool result
         # echoing a log) is not a message_update event.
