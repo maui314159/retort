@@ -21,6 +21,7 @@ Docker)"* under **Not yet** — this is that runner, under the name `sandbox` (s
 | 6 | **Parallelism** | `retort run --shard i/N` processes sharing one `retort.db` | Implemented; design point **16 concurrent cells** (§6) |
 | 7 | **Bootstrap** | `scripts/sandbox_bootstrap_aws.sh` | Implemented; registers job-defs **by digest** (Phase 0); still hard-codes the account id (Phase 4) |
 | 9 | **Transcript readers** | `src/retort/playpen/agent_log.py` | Bounded, `.gz`-aware, streaming (Phase 0); prime transcripts compacted at write time, 193 MB → 21 MB measured (§5.5) |
+| 10 | **`docker` backend** (local lane) | `SandboxRunner(backend="docker")`, `playpen.sandbox.backend: docker` + `docker_images` | Implemented 2026-09-04 (Phase 1.2b): same image + entrypoint under `docker run`, bind-mounted workspace, no AWS; stamps `runner_lane=docker-local` (never pooled). Replaces `DockerRunner`, which is deleted once this lane has run a real cell |
 | 8 | **Parity harness** | `sandbox/parity_check.py` | Implemented; caught three would-be false-zero bugs before the first grid |
 
 ---
