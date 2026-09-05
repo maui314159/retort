@@ -865,8 +865,9 @@ def run_experiments(
         _sbx = workspace_config.playpen.sandbox
         if _sbx is None:
             raise click.ClickException(
-                "runner: sandbox requires a playpen.sandbox block "
-                "(s3_bucket at minimum) — see docs/future-experiments.md §0c."
+                "runner: sandbox requires a playpen.sandbox block (s3_bucket for "
+                "backend=batch; docker_images for backend=docker) — see "
+                "docs/sandbox-runner.md."
             )
         # The opencode profile's model_options (e.g. the OpenRouter provider
         # pin) rides along exactly as in the local lane; profiles + the
@@ -875,6 +876,8 @@ def run_experiments(
         # watchdog so a hung agent dies in minutes, not the whole Batch wall.
         _oc_profile = (workspace_config.playpen.local_agents or {}).get("opencode")
         runner = SandboxRunner(
+            backend=_sbx.backend,
+            docker_images=_sbx.docker_images,
             s3_bucket=_sbx.s3_bucket,
             job_queue=_sbx.job_queue,
             job_definition_prefix=_sbx.job_definition_prefix,

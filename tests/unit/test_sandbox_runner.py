@@ -9,8 +9,11 @@ from __future__ import annotations
 
 import io
 import json
+import subprocess
 import tarfile
 from pathlib import Path
+
+import pytest
 
 from retort.playpen.runner import StackConfig, TaskSpec
 from retort.playpen.sandbox_runner import SandboxRunner, SandboxSpec
@@ -487,6 +490,178 @@ class TestImageIdentity:
         assert art.metadata["sandbox_container_image_id"] == "sha256:cfg999"
         assert art.metadata["sandbox_cpu_model"].startswith("Intel(R) Xeon")
         assert art.metadata["sandbox_az"] == "us-east-1c"
+
+
+class _FakeProc:
+    def __init__(self, returncode: int = 0, stdout: str = "", stderr: str = ""):
+        self.returncode, self.stdout, self.stderr = returncode, stdout, stderr
+
+
+_INSPECT_OK = f"{_ECR}/retort-sandbox@sha256:abc123|sha256:cfg1"
+_INSPECT_OTHER = f"{_ECR}/retort-sandbox@sha256:def456|sha256:cfg2"
+
+
+def _wire_docker(runner: SandboxRunner, *, meta: str | None = _META,
+                 stdout_log: str = _STEP_FINISH, inspect: str = _INSPECT_OK,
+                 run_rc: int = 0,
+                 run_raises: Exception | None = None) -> list[list[str]]:
+    """Mock the docker seam: `image inspect` answers `inspect`; `run` writes
+    the files the entrypoint would have left in the bind-mounted workspace."""
+    calls: list[list[str]] = []
+
+    def fake_docker(args: list[str], *, timeout: float):
+        calls.append(args)
+        if args[:2] == ["image", "inspect"]:
+            return _FakeProc(0, inspect + "\n")
+        if args[0] == "run":
+            if run_raises is not None:
+                raise run_raises
+            ws = Path(args[args.index("-v") + 1].split(":", 1)[0])
+            if meta is not None:
+                (ws / "_sandbox_meta.json").write_text(meta)
+            (ws / "_agent_stdout.log").write_text(stdout_log)
+            return _FakeProc(run_rc, "", "container stderr")
+        return _FakeProc(0)
+
+    runner._docker = fake_docker  # type: ignore[method-assign]
+    return calls
+
+
+class TestDockerBackend:
+    """backend=docker: the same image + entrypoint under a local `docker run`,
+    workspace bind-mounted, no AWS, its own lane stamp."""
+
+    def _runner(self, tmp_path, **kw):
+        defaults = dict(backend="docker", s3_bucket="",
+                        docker_images={"python": "retort-sandbox:python-v4c"})
+        defaults.update(kw)
+        return _make_runner(tmp_path, **defaults)
+
+    def test_invalid_backend_rejected(self, tmp_path):
+        with pytest.raises(ValueError, match="backend"):
+            _make_runner(tmp_path, backend="fargate-ish")
+
+    def test_run_command_shape_and_no_aws(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("OPENROUTER_API_KEY", "sk-secret")
+        runner = self._runner(tmp_path)
+
+        def no_aws(*a, **k):
+            raise AssertionError("aws called under backend=docker")
+        runner._aws = no_aws  # type: ignore[method-assign]
+
+        env_id = runner.provision(_stack(), _task())
+        calls = _wire_docker(runner)
+        art = runner.execute(env_id, _stack(), _task())
+
+        assert art.exit_code == 0
+        run = next(c for c in calls if c[0] == "run")
+        assert run[1:3] == ["--rm", "--name"] and run[3] == env_id
+        assert run[run.index("--platform") + 1] == "linux/amd64"
+        assert run[run.index("--cpus") + 1] == "2.0"
+        assert run[run.index("--memory") + 1] == "8192m"
+        assert run[run.index("-v") + 1] == f"{runner.work_dir / env_id}:/workspace"
+        assert run[-1] == "retort-sandbox:python-v4c"
+        env = {}
+        for i, tok in enumerate(run):
+            if tok == "-e" and "=" in run[i + 1]:
+                k, v = run[i + 1].split("=", 1)
+                env[k] = v
+        # Same RETORT_* contract as the Batch lane, minus the S3 locations.
+        assert "RETORT_S3_IN" not in env and "RETORT_S3_OUT" not in env
+        assert env["RETORT_ENV_ID"] == env_id
+        assert env["RETORT_IMAGE_DIGEST"] == "sha256:abc123"
+        assert json.loads(env["RETORT_AGENT_CMD"])[:2] == ["opencode", "run"]
+        # The secret is forwarded by NAME only — never its value on argv.
+        assert "OPENROUTER_API_KEY" in run
+        assert not any("sk-secret" in tok for tok in run)
+
+    def test_lane_stamp_and_collect_parity_with_batch(self, tmp_path):
+        runner = self._runner(tmp_path)
+        env_id = runner.provision(_stack(), _task())
+        _wire_docker(runner)
+        art = runner.execute(env_id, _stack(), _task())
+
+        md = art.metadata
+        assert md["runner_lane"] == "docker-local"      # never pooled
+        assert md["sandbox_job_id"] == env_id
+        assert md["sandbox_docker_image"] == "retort-sandbox:python-v4c"
+        assert md["sandbox_container_exit"] == "0"
+        assert art.duration_seconds == 42.5              # in-container, from meta
+        assert art.token_count == 300                    # shared usage parser
+        stderr_log = art.output_dir / "_container_stderr.log"
+        assert stderr_log.read_text() == "container stderr"
+
+    def test_effective_digest_from_inspect_and_mismatch_blocks_run(self, tmp_path):
+        runner = self._runner(tmp_path)
+        env_id = runner.provision(_stack(), _task())
+        calls = _wire_docker(runner, inspect=_INSPECT_OTHER)
+        art = runner.execute(env_id, _stack(), _task())
+
+        assert art.exit_code == 1
+        assert "image mismatch" in art.stderr
+        assert art.metadata["sandbox_image_digest_effective"] == "sha256:def456"
+        assert art.metadata["sandbox_container_image_id"] == "sha256:cfg2"
+        assert not any(c[0] == "run" for c in calls)    # refused BEFORE running
+
+    def test_local_build_unpinned_ok_pinned_refused(self, tmp_path):
+        # A locally built image has no RepoDigests: fine unpinned, refused pinned.
+        runner = self._runner(tmp_path, image_digests={})
+        env_id = runner.provision(_stack(), _task())
+        _wire_docker(runner, inspect="|sha256:localcfg")
+        art = runner.execute(env_id, _stack(), _task())
+        assert art.exit_code == 0
+        assert art.metadata["sandbox_image_digest"] == "unpinned"
+        assert art.metadata["sandbox_container_image_id"] == "sha256:localcfg"
+        assert "sandbox_image_digest_effective" not in art.metadata
+
+        pinned = self._runner(tmp_path)
+        env_id = pinned.provision(_stack(), _task())
+        _wire_docker(pinned, inspect="|sha256:localcfg")
+        art = pinned.execute(env_id, _stack(), _task())
+        assert art.exit_code == 1 and "local build" in art.stderr
+
+    def test_missing_image_for_language_is_harness(self, tmp_path):
+        runner = self._runner(tmp_path, docker_images={"go": "retort-sandbox:go-v3b"})
+        env_id = runner.provision(_stack(), _task())
+        _wire_docker(runner)
+        art = runner.execute(env_id, _stack(), _task())
+        assert art.exit_code == 1 and "no docker image configured" in art.stderr
+
+    def test_timeout_kills_container(self, tmp_path):
+        runner = self._runner(tmp_path)
+        env_id = runner.provision(_stack(), _task())
+        calls = _wire_docker(runner, run_raises=subprocess.TimeoutExpired("docker", 1))
+        art = runner.execute(env_id, _stack(), _task())
+        assert art.exit_code == 124
+        assert ["kill", env_id] in calls
+
+    def test_missing_meta_is_harness_failure(self, tmp_path):
+        runner = self._runner(tmp_path)
+        env_id = runner.provision(_stack(), _task())
+        _wire_docker(runner, meta=None, run_rc=137)
+        art = runner.execute(env_id, _stack(), _task())
+        assert art.exit_code == 1
+        assert "exited 137" in art.stderr
+        assert "entrypoint did not complete" in art.stderr
+
+    def test_teardown_touches_no_s3(self, tmp_path):
+        runner = self._runner(tmp_path)
+
+        def no_aws(*a, **k):
+            raise AssertionError("aws called in docker teardown")
+        runner._aws = no_aws  # type: ignore[method-assign]
+        env_id = runner.provision(_stack(), _task())
+        runner.teardown(env_id)
+        assert not (runner.work_dir / env_id).exists()
+
+    def test_schema_backend_requirements(self):
+        from retort.config.schema import SandboxConfig
+        SandboxConfig(backend="docker", docker_images={"python": "img"})
+        SandboxConfig(s3_bucket="bkt")
+        with pytest.raises(ValueError, match="s3_bucket"):
+            SandboxConfig()
+        with pytest.raises(ValueError, match="docker_images"):
+            SandboxConfig(backend="docker")
 
 
 class TestDesignPreflight:

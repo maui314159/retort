@@ -2,8 +2,10 @@
 # retort sandbox container entrypoint — one experiment cell, then exit.
 #
 # Contract with sandbox_runner.py (env, all required unless noted):
-#   RETORT_S3_IN        s3://... input workspace tarball
-#   RETORT_S3_OUT       s3://... where to upload the artifacts tarball
+#   RETORT_S3_IN        s3://... input workspace tarball (Batch lane; unset
+#                       under the docker-local backend, where /workspace is a
+#                       bind mount and no transfer happens)
+#   RETORT_S3_OUT       s3://... where to upload the artifacts tarball (same)
 #   RETORT_AGENT_CMD    JSON array: the headless agent command
 #   RETORT_ENV_ID       cell id (logging only)
 #   RETORT_LANGUAGE     language factor (scoring stage)
@@ -84,14 +86,21 @@ except Exception:
     pass
 open(sys.argv[1], "w").write(json.dumps(meta))
 EOF
-  tar -C "$WS" -czf /tmp/out.tar.gz . || true
-  aws s3 cp /tmp/out.tar.gz "$RETORT_S3_OUT" || true
+  # Batch lane: ship the workspace back through S3. docker-local lane: the
+  # workspace is a bind mount, the host already has it — no transfer.
+  if [ -n "${RETORT_S3_OUT:-}" ]; then
+    tar -C "$WS" -czf /tmp/out.tar.gz . || true
+    aws s3 cp /tmp/out.tar.gz "$RETORT_S3_OUT" || true
+  fi
 }
 trap finish EXIT
 
 # ---- pull the workspace ----------------------------------------------------
-aws s3 cp "$RETORT_S3_IN" /tmp/in.tar.gz
-tar -C "$WS" -xzf /tmp/in.tar.gz
+# RETORT_S3_IN unset => docker-local lane, workspace bind-mounted at $WS.
+if [ -n "${RETORT_S3_IN:-}" ]; then
+  aws s3 cp "$RETORT_S3_IN" /tmp/in.tar.gz
+  tar -C "$WS" -xzf /tmp/in.tar.gz
+fi
 
 # ---- opencode auth + isolation --------------------------------------------
 # Key material comes from the job definition's Secrets Manager wiring; it is

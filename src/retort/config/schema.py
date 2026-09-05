@@ -167,7 +167,36 @@ class SandboxConfig(BaseModel):
     identical across the arms of one experiment.
     """
 
-    s3_bucket: Annotated[str, Field(min_length=3, description="Artifacts bucket (runs/ prefix)")]
+    backend: Annotated[
+        Literal["batch", "docker"],
+        Field(
+            default="batch",
+            description=(
+                "Where the cell's container runs. `batch`: AWS Batch on Fargate "
+                "via S3 (the production lane). `docker`: the SAME image and "
+                "entrypoint under a local `docker run` with the workspace "
+                "bind-mounted — a $0 smoke/test lane that stamps "
+                "runner_lane=docker-local; its timings (amd64 emulated on the "
+                "host) never pool with anything."
+            ),
+        ),
+    ]
+    s3_bucket: Annotated[
+        str,
+        Field(default="", description="Artifacts bucket (runs/ prefix); required for backend=batch"),
+    ]
+    docker_images: Annotated[
+        dict[str, str],
+        Field(
+            default_factory=dict,
+            description=(
+                "backend=docker only: language -> local image reference "
+                "(e.g. retort-sandbox:python-v5, or <ecr>/retort-sandbox@sha256:...). "
+                "A pinned image_digests entry is verified against the image's "
+                "RepoDigests; local builds have none, so run them unpinned."
+            ),
+        ),
+    ]
     job_queue: Annotated[str, Field(default="retort-sandbox")]
     job_definition_prefix: Annotated[
         str,
@@ -200,6 +229,17 @@ class SandboxConfig(BaseModel):
             ),
         ),
     ]
+
+    @model_validator(mode="after")
+    def _backend_requirements(self) -> SandboxConfig:
+        if self.backend == "batch" and len(self.s3_bucket) < 3:
+            raise ValueError("playpen.sandbox.s3_bucket is required for backend=batch")
+        if self.backend == "docker" and not self.docker_images:
+            raise ValueError(
+                "playpen.sandbox.docker_images (language -> image) is required "
+                "for backend=docker"
+            )
+        return self
 
 
 class LocalInferenceCost(BaseModel):
