@@ -515,6 +515,11 @@ class SandboxRunner:
         entrypoint skips the transfers). Secrets are forwarded by NAME only.
         ``runner_lane`` is ``docker-local``; the host emulates linux/amd64, so
         nothing measured here is comparable to either real lane.
+
+        ``work_dir`` must be under a path Docker Desktop shares into its VM
+        (the default ``~/.retort-sandbox`` is; ``/private/tmp`` is NOT — a
+        mount from there appears EMPTY inside the container, observed
+        2026-09-05).
         """
         env_id = info.env_id
         base_meta = {
@@ -696,6 +701,7 @@ class SandboxRunner:
         for src_key, dst_key in (
             ("container_image_id", "sandbox_container_image_id"),
             ("cpu_model", "sandbox_cpu_model"),
+            ("cpu_arch", "sandbox_cpu_arch"),
             ("availability_zone", "sandbox_az"),
         ):
             if sandbox_meta.get(src_key):

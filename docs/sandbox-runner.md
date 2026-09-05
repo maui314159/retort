@@ -21,7 +21,7 @@ Docker)"* under **Not yet** — this is that runner, under the name `sandbox` (s
 | 6 | **Parallelism** | `retort run --shard i/N` processes sharing one `retort.db` | Implemented; design point **16 concurrent cells** (§6) |
 | 7 | **Bootstrap** | `scripts/sandbox_bootstrap_aws.sh` | Implemented; registers job-defs **by digest** (Phase 0); still hard-codes the account id (Phase 4) |
 | 9 | **Transcript readers** | `src/retort/playpen/agent_log.py` | Bounded, `.gz`-aware, streaming (Phase 0); prime transcripts compacted at write time, 193 MB → 21 MB measured (§5.5) |
-| 10 | **`docker` backend** (local lane) | `SandboxRunner(backend="docker")`, `playpen.sandbox.backend: docker` + `docker_images` | Implemented 2026-09-04 (Phase 1.2b): same image + entrypoint under `docker run`, bind-mounted workspace, no AWS; stamps `runner_lane=docker-local` (never pooled). Replaces `DockerRunner`, which is deleted once this lane has run a real cell |
+| 10 | **`docker` backend** (local lane) | `SandboxRunner(backend="docker")`, `playpen.sandbox.backend: docker` + `docker_images` | Implemented 2026-09-04 (Phase 1.2b): same image + entrypoint under `docker run`, bind-mounted workspace, no AWS; stamps `runner_lane=docker-local` (never pooled). **$0 echo cell passed 2026-09-05** on python-v4c with the new entrypoint mounted in (file round-trip, meta written, S3 skipped). Replaces `DockerRunner`, deleted once this lane has run a real agent cell |
 | 8 | **Parity harness** | `sandbox/parity_check.py` | Implemented; caught three would-be false-zero bugs before the first grid |
 
 ---
@@ -396,6 +396,16 @@ in-container compaction once an image is rebuilt with the new `entrypoint.sh`.
   `docker_runner.py`** and its two tests. Not chosen: repairing `DockerRunner` (it would re-solve
   agent install, auth, usage parsing and scoring the images already solved) or deleting it with no
   replacement (loses the smoke path).
+  **Status 2026-09-05:** implemented (`f06dfb35`), 54 sandbox unit tests green. Echo-cell smoke
+  passed against python-v4c with the new `entrypoint.sh` bind-mounted: `hello.txt` came back
+  through the mount, `_sandbox_meta.json` written (`agent_seconds` 11.2 under emulation), S3
+  transfers skipped cleanly, the in-container compaction guard held (`|| true`) when the old
+  image lacked `retort.playpen.agent_log`. Learned: `work_dir` must be under a Docker-Desktop-shared
+  path (`~/.retort-sandbox` is; `/private/tmp` mounts appear empty); an emulated `/proc/cpuinfo`
+  has no `model name`, so `cpu_arch` is now recorded too. **Still owed:** a local image rebuild
+  (three attempts on 09-04/05 all died on PyPI/npm read timeouts inside the emulated build, one
+  after 2.3 h — network, not the recipe; the wheel + import check with the new module passed) and
+  then a real agent cell on the docker lane, after which `docker_runner.py` goes.
 - **1.3 Registry visibility**: register `sandbox` via a factory so `retort plugin list/show` names
   it; keep the cli branch. Add `sandbox` to the README command reference and `workspace.yaml` docs.
 - **1.4 Experiment-level provenance** `sandbox:` block (§3.5): digests, job-def revisions,

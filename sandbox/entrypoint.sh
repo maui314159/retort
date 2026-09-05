@@ -77,9 +77,14 @@ if uri:
         meta["availability_zone"] = t.get("AvailabilityZone", "")
     except Exception:
         pass
+import platform
+meta["cpu_arch"] = platform.machine()  # x86_64 on Fargate; tells emulation apart
 try:
+    # x86 exposes "model name"; arm64 (and an emulated amd64 container on an
+    # arm64 host, whose /proc/cpuinfo is the host's) exposes none — so the
+    # key is present only when a real model string exists, never invented.
     for line in open("/proc/cpuinfo"):
-        if line.lower().startswith("model name"):
+        if line.lower().startswith(("model name", "hardware")):
             meta["cpu_model"] = line.split(":", 1)[1].strip()
             break
 except Exception:
