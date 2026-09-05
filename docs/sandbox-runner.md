@@ -13,13 +13,14 @@ Docker)"* under **Not yet** — this is that runner, under the name `sandbox` (s
 
 | # | Component | Lives in | Status |
 |---|---|---|---|
-| 1 | **The `sandbox` playpen runner** | `src/retort/playpen/sandbox_runner.py` (590 lines) | Implemented; selected by `playpen.runner: sandbox` + a `playpen.sandbox` block; 30 unit tests |
+| 1 | **The `sandbox` playpen runner** | `src/retort/playpen/sandbox_runner.py` | Implemented; selected by `playpen.runner: sandbox` + a `playpen.sandbox` block; `check_design()` preflight refuses factor levels the lane cannot honour (Phase 0, 2026-09-04) |
 | 2 | **Per-language images** | `sandbox/Dockerfile.*` → ECR `retort-sandbox` | Implemented for python, go, typescript (opencode + prime-agent); **rebuild provenance incomplete** (§4) |
 | 3 | **In-container entrypoint + watchdog** | `sandbox/entrypoint.sh` (inline Python) | Implemented; a **second implementation** of the local progress guard (§5.3) |
 | 4 | **In-container scoring** | `sandbox/score_full.py`, `score_gate.py` → `_container_scores.json` | **Advisory only.** The authoritative `scores.json` is computed on the HOST (§3.4) |
-| 5 | **Image identity in provenance** | `sandbox_image_digest` metadata, `_sandbox_meta.json` | Recorded but **never verified** against the running image (§5.1) |
+| 5 | **Image identity in provenance** | `sandbox_image_digest[_effective]`, `sandbox_job_definition`, `_sandbox_meta.json` witnesses | **Verified per job** against Batch's container image since Phase 0 (2026-09-04); mismatch or unverifiable pin fails the cell as HARNESS (§5.1) |
 | 6 | **Parallelism** | `retort run --shard i/N` processes sharing one `retort.db` | Implemented; design point **16 concurrent cells** (§6) |
-| 7 | **Bootstrap** | `scripts/sandbox_bootstrap_aws.sh` | Implemented; hard-codes the account id; job-defs by tag |
+| 7 | **Bootstrap** | `scripts/sandbox_bootstrap_aws.sh` | Implemented; registers job-defs **by digest** (Phase 0); still hard-codes the account id (Phase 4) |
+| 9 | **Transcript readers** | `src/retort/playpen/agent_log.py` | Bounded, `.gz`-aware, streaming (Phase 0); prime transcripts compacted at write time, 193 MB → 21 MB measured (§5.5) |
 | 8 | **Parity harness** | `sandbox/parity_check.py` | Implemented; caught three would-be false-zero bugs before the first grid |
 
 ---
@@ -84,9 +85,12 @@ Checked across upstream's full history, not just its current tree.
 `docker_runner.py` (211 lines, untouched since Phase 1). When `docker` is not on PATH, `execute()`
 falls through to `_simulate_run()`, which sleeps 10 ms and returns **random** metrics
 (`exit_code=0 if random.random() > 0.1 else 1`, `token_count=random.randint(500, 5000)`).
-`RunnerType.docker` is the **schema default**, and `cli.py`'s `else` branch constructs a
+`RunnerType.docker` is the **schema default**, and `cli.py`'s `else` branch used to construct a
 `DockerRunner` for it *and for `cloud` and any other unmatched value* — yet all 81 of upstream's
 `workspace.yaml` files set `runner: local`. `SandboxRunner` does not import, subclass or reuse it.
+**On this fork since Phase 0 (2026-09-04), `retort run` fails closed:** `docker` without a docker
+binary, `cloud`, and unknown names all raise before any cell runs; `_simulate_run` is unreachable
+from the pipeline.
 
 > ***upstream:*** worth a small issue on its own — the default runner path, and the documented
 > `cloud` name, silently yield simulated results. They should fail closed.
@@ -203,7 +207,14 @@ multi-arch manifest (real work, and durations never pool across lanes anyway). D
 Ordered by how directly each violates *"verify tuning parameters — the effective value, not the
 configured one"*.
 
-### 5.1 The recorded image digest is the configured one, never the effective one
+### 5.1 The recorded image digest is the configured one, never the effective one — FIXED 2026-09-04
+
+**Fix (Phase 0.1):** `execute()` reads `container.image` and the job-definition revision from
+`describe-jobs`, resolves a tag to its digest via `ecr describe-images`, records
+`sandbox_image_digest_effective` + `sandbox_job_definition`, and fails the cell as HARNESS when a
+pinned digest differs or cannot be verified. Unpinned stays allowed and now records what ran. The
+bootstrap registers job definitions by digest. `entrypoint.sh` writes the ECS agent's `ImageID`, CPU
+model and AZ into `_sandbox_meta.json` as independent witnesses (§5.4). The original finding follows.
 
 [DIRECT] Job definitions reference images **by tag** (`…/retort-sandbox:python-v4c`); the runner
 submits `--job-definition retort-sandbox-<lang>` with **no revision** (= latest ACTIVE); and both
@@ -213,7 +224,11 @@ run records v4c while v5 executes — the Hermes-context-length failure, verbati
 thing making tag≈digest true is the ECR repository's IMMUTABLE setting, an out-of-band invariant no
 test checks.
 
-### 5.2 Design factors silently ignored on the sandbox lane
+### 5.2 Design factors silently ignored on the sandbox lane — REFUSED since 2026-09-04
+
+**Mitigation (Phase 0.2):** `SandboxRunner.check_design()` lists every level the lane cannot honour
+(`prompt`, `tooling`, `stack`, `effort`, `thinking`, unsupported agents) and `retort run` refuses the
+grid with the list before any cell runs. Honouring `prompt`/`effort` is Phase 1.1. The finding:
 
 [DIRECT] `SandboxRunner._build_agent_command` calls `_build_agent_prompt(stack)` with **no
 `prompt_injection`**, and cli.py passes no `prompts_dir`; `LocalRunner` loads `prompts/<level>.md`
@@ -246,7 +261,15 @@ switch the Batch compute environment to EC2 with a single pinned instance type �
 job definitions, same runner; spin-up lands in `sandbox_queue_seconds`. Spot is out (interruptions
 corrupt timing). Fargate task cost is also not recorded beside token cost.
 
-### 5.5 Unbounded log reads
+### 5.5 Unbounded log reads — FIXED 2026-09-04
+
+**Fix (Phase 0.4):** `retort.playpen.agent_log` — `find_agent_log` (`.log` or `.log.gz`),
+`read_tail`, `search`, `contains_any`, all streaming or bounded — now backs `agent_consulted`, the
+diagnose refusal scan, the live-context tail and `SandboxRunner`; sandbox `RunArtifacts.stdout` is
+bounded like the local lane's. `compact_prime_log` drops `message_update` events in place: on the
+real 193 MB log, **193.3 → 21.0 MB in 0.6 s with `_parse_prime_usage` output identical**. Applied
+post-run locally, in-container by `entrypoint.sh`, and on extraction by the runner. `gunzip -k` is no
+longer needed after a data-branch clone. The finding:
 
 [DIRECT] `agent_consulted()` (`local_runner.py:1323`) and the diagnose helper (`cli.py:279`)
 `read_text()` the whole `_agent_stdout.log`; `sandbox_runner.py::_read_text` loads it into
@@ -299,7 +322,7 @@ deterministic hash of (cell, replicate), so shards never coordinate through the 
 | Batch capacity | exactly the 32-vCPU cap | nothing; raise `maxvCpus` only with a new design point |
 | polling | 16 `aws batch describe-jobs` subprocesses per 15 s ≈ 1/s | nothing |
 | SQLite writers | 16 rows landing over minutes | nothing; WAL + busy_timeout cover it |
-| host memory | 16 × full stdout strings (193 MB each, worst case) | **Phase 0.4** bounded reads |
+| host memory | 16 × full stdout strings (193 MB each, worst case) | done — Phase 0.4 bounded reads + compaction |
 | host-side scoring | 16 concurrent `go test`/`pytest`/`npm test` on the M4 | **Phase 2** — the only real blocker |
 | judge | up to 16 concurrent `claude -p` judge calls | pace or accept retries; watch on the first 16-wide grid |
 
@@ -318,7 +341,11 @@ Work happens in `../retort-cloudlane` (`feat/cloud-lane`); the main checkout is 
 experiments run. Each phase ends with unit tests plus **one paid one-cell smoke on Fargate**, queued
 behind any live run per the one-experiment rule.
 
-### Phase 0 — fail closed (~1 day; do first)
+### Phase 0 — fail closed — DONE 2026-09-04 (`feat/cloud-lane`, four commits; unit suite green)
+
+Smoke still owed: one paid one-cell Fargate run to see `sandbox_image_digest_effective`,
+`sandbox_job_definition` and the container witnesses land in a real archive, and to confirm the
+in-container compaction once an image is rebuilt with the new `entrypoint.sh`.
 
 - **0.1 Effective image identity** (§5.1): read `container.image` + `jobDefinition` revision from
   `describe-jobs`, resolve tag → digest via `ecr describe-images`, **assert equality with the
