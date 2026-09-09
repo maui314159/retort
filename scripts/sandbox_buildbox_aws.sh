@@ -18,7 +18,7 @@
 #     scripts/sandbox_buildbox_aws.sh destroy   # terminate + delete role/profile
 #
 # Creates (all named retort-sandbox-build, tagged Name=retort-sandbox-build,
-# Project=retort, project=retort-sandbox):
+# project=retort-sandbox, matching sandbox_bootstrap_aws.sh):
 #   * EC2 instance        t3.medium, 30 GB gp3 root, latest Amazon Linux 2023
 #                         x86_64 AMI (resolved via the SSM public parameter),
 #                         default VPC/subnet, public IP, NO key pair
@@ -43,7 +43,7 @@ ROOT_GB="${BUILDBOX_ROOT_GB:-30}"
 SHUTDOWN_MINUTES="${BUILDBOX_SHUTDOWN_MINUTES:-240}"
 AMI_PARAM=/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
 SECRET_NAME=retort/openrouter-opencode
-TAG_SPEC="{Key=Name,Value=${NAME}},{Key=Project,Value=retort},{Key=project,Value=retort-sandbox}"
+TAG_SPEC="{Key=Name,Value=${NAME}},{Key=project,Value=retort-sandbox}"
 
 say() { echo "[$MODE] $*"; }
 die() { echo "FATAL: $*" >&2; exit 1; }
@@ -101,7 +101,7 @@ cmd_create() {
   if ! aws iam get-role --role-name "$NAME" >/dev/null 2>&1; then
     say "create role $NAME"
     aws iam create-role --role-name "$NAME" --assume-role-policy-document "$assume" \
-      --tags "Key=Name,Value=${NAME}" "Key=Project,Value=retort" "Key=project,Value=retort-sandbox" >/dev/null
+      --tags "Key=Name,Value=${NAME}" "Key=project,Value=retort-sandbox" >/dev/null
   else say "role $NAME exists"; fi
   for pol in AmazonSSMManagedInstanceCore AmazonEC2ContainerRegistryPowerUser; do
     aws iam attach-role-policy --role-name "$NAME" \
@@ -122,7 +122,7 @@ cmd_create() {
   if ! aws iam get-instance-profile --instance-profile-name "$NAME" >/dev/null 2>&1; then
     say "create instance profile $NAME"
     aws iam create-instance-profile --instance-profile-name "$NAME" \
-      --tags "Key=Name,Value=${NAME}" "Key=Project,Value=retort" >/dev/null
+      --tags "Key=Name,Value=${NAME}" "Key=project,Value=retort-sandbox" >/dev/null
   else say "instance profile $NAME exists"; fi
   if ! aws iam get-instance-profile --instance-profile-name "$NAME" \
         --query 'InstanceProfile.Roles[].RoleName' --output text | grep -qw "$NAME"; then
