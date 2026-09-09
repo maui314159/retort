@@ -21,7 +21,7 @@ Docker)"* under **Not yet** — this is that runner, under the name `sandbox` (s
 | 6 | **Parallelism** | `retort run --shard i/N` processes sharing one `retort.db` | Implemented; design point **16 concurrent cells** (§6) |
 | 7 | **Bootstrap** | `scripts/sandbox_bootstrap_aws.sh` | Implemented; registers job-defs **by digest** (Phase 0); still hard-codes the account id (Phase 4) |
 | 9 | **Transcript readers** | `src/retort/playpen/agent_log.py` | Bounded, `.gz`-aware, streaming (Phase 0); prime transcripts compacted at write time, 193 MB → 21 MB measured (§5.5) |
-| 10 | **`docker` backend** (local lane) | `SandboxRunner(backend="docker")`, `playpen.sandbox.backend: docker` + `docker_images` | Implemented 2026-09-04 (Phase 1.2b): same image + entrypoint under `docker run`, bind-mounted workspace, no AWS; stamps `runner_lane=docker-local` (never pooled). **$0 echo cell passed 2026-09-05** on python-v4c with the new entrypoint mounted in (file round-trip, meta written, S3 skipped). Replaces `DockerRunner`, deleted once this lane has run a real agent cell |
+| 10 | **`docker` backend** (local lane) | `SandboxRunner(backend="docker")`, `playpen.sandbox.backend: docker` + `docker_images` | Implemented 2026-09-04 (Phase 1.2b): same image + entrypoint under `docker run`, bind-mounted workspace, no AWS; stamps `runner_lane=docker-local` (never pooled). **$0 echo cell passed 2026-09-05** on python-v4c with the new entrypoint mounted in (file round-trip, meta written, S3 skipped). **Real agent cell passed 2026-09-08** (opencode × GLM-5.3-flash × python on `retort-sandbox:python-local` under Colima+Rosetta: 15/15 tests, coverage 0.98, 160 s, `scored_lane=docker-local`, witnesses `cpu_arch=x86_64`). `DockerRunner` deleted the same day; `runner: docker` is now the alias for this backend |
 | 8 | **Parity harness** | `sandbox/parity_check.py` | Implemented; caught three would-be false-zero bugs before the first grid |
 
 ---
@@ -451,8 +451,20 @@ in-container compaction once an image is rebuilt with the new `entrypoint.sh`.
   and the artifact upload). The seeding, provision, `docker run` shape, secret forwarding and
   `retort run` wiring all worked; the cell died inside the agent binary. **Still owed:** the same
   cell after Rosetta is enabled (or with prime-agent), then `docker_runner.py` goes.
-- **1.3 Registry visibility**: register `sandbox` via a factory so `retort plugin list/show` names
-  it; keep the cli branch. Add `sandbox` to the README command reference and `workspace.yaml` docs.
+  **Status 2026-09-08: DONE.** Rosetta enabled in Colima (`rosetta: true`; AVX/AVX2 visible in an
+  amd64 container; home-dir sshfs mounts unaffected; the VM restart took 30 s). The same cell then
+  ran end to end on `retort-sandbox:python-local`: opencode × GLM-5.3-flash, 160 s, 15/15 tests,
+  `_container_scores.json` = `scores.json` = {code_quality 0.67, test_coverage 0.98},
+  `runner_lane=scored_lane=docker-local`, `sandbox_cpu_arch=x86_64`,
+  `sandbox_cpu_model="VirtualApple @ 2.50GHz"`, `sandbox_image_digest_effective` = the local image
+  id. `docker_runner.py` and its tests are deleted; `runner: docker` (still the schema default) is
+  now an alias for `runner: sandbox` with `backend: docker` and refuses to run without a
+  `playpen.sandbox` block that says so. The integration test that relied on simulated cells uses
+  a canned stub runner instead.
+- **1.3 Registry visibility** — DONE 2026-09-08 for the registry half: `create_default_runner_registry`
+  registers `sandbox` and `docker` (= `SandboxRunner(backend="docker")`) so `retort plugin list/show`
+  names them; the cli branch stays. Still owed: `sandbox` in the README command reference and the
+  `workspace.yaml` docs. Add `sandbox` to the README command reference and `workspace.yaml` docs.
 - **1.4 Experiment-level provenance** `sandbox:` block (§3.5): digests, job-def revisions,
   vCPU/memory, lane; `host` states the lane.
 
@@ -559,6 +571,38 @@ aws ecr describe-images --repository-name retort-sandbox --region us-east-1 \
 aws batch describe-job-definitions --job-definition-name retort-sandbox-python --status ACTIVE \
     --query 'jobDefinitions[].[revision,containerProperties.image]'   # by TAG, not digest
 ```
+
+### 9.1 The x86_64 build/smoke box (`scripts/sandbox_buildbox_aws.sh`)
+
+The Mac can only build the amd64 images under emulation and cannot run Bun/opencode at all
+(Bun needs AVX, which Rosetta/QEMU do not provide), so image builds and one-cell smokes of the
+`docker` backend at the Fargate shape (2 vCPU / 8 GB) run on a small x86_64 EC2 instance:
+`retort-sandbox-build`, a t3.medium with a 30 GB gp3 root on the latest Amazon Linux 2023
+x86_64 AMI (resolved at create time from the SSM public parameter), in the same region and
+account as the ECR repo. Access is **SSM Session Manager only** — no key pair, no inbound
+security-group rules. Its instance profile (`retort-sandbox-build`) carries
+`AmazonSSMManagedInstanceCore`, `AmazonEC2ContainerRegistryPowerUser` (push/pull to
+`retort-sandbox`) and `GetSecretValue` on `retort/openrouter-opencode` only, so a smoke cell can
+fetch the same key the Fargate lane uses. User data installs docker, git, the buildx plugin and
+the AWS CLI, and adds `ec2-user` to the docker group. **It is not part of any experiment lane**:
+timings from it are docker-local, never pooled with Fargate cells.
+
+```bash
+scripts/sandbox_buildbox_aws.sh create    # role + profile + egress-only SG + instance (idempotent)
+scripts/sandbox_buildbox_aws.sh status    # instance id, state, public IP, SSM PingStatus
+scripts/sandbox_buildbox_aws.sh ssm       # prints the `aws ssm start-session` command
+scripts/sandbox_buildbox_aws.sh stop      # stop when done — only the root volume bills
+scripts/sandbox_buildbox_aws.sh start     # resume (new public IP; auto-shutdown re-arms)
+scripts/sandbox_buildbox_aws.sh destroy   # terminate + delete role/profile/SG (asks first)
+```
+
+**4-hour auto-shutdown.** Every boot arms `shutdown -h +240`, so a forgotten box powers itself
+off after four hours (`BUILDBOX_SHUTDOWN_MINUTES` overrides it at create time). A stopped
+instance keeps its root volume and its docker layer cache; `start` brings it back with a fresh
+four-hour budget. `AWS_REGION` defaults to `us-east-1`, matching `sandbox_bootstrap_aws.sh`.
+Verify a fresh box before trusting it: `docker info` works for `ec2-user`, `grep -c avx
+/proc/cpuinfo` is non-zero, and `docker buildx version` prints a version — the same three
+checks the bootstrap run recorded.
 
 Related: [future-experiments.md §0c](future-experiments.md) (pre-registered methodology, IN USE),
 [past-experiments](past-experiments.md) (`exp-mu-primeagent`, first production family on this lane).

@@ -255,9 +255,11 @@ class TestRunnerRegistry:
         reg.register("fake", FakeRunner())
         assert len(reg) == 1
 
-    def test_default_registry_has_docker(self):
+    def test_default_registry_has_builtin_runners(self):
         reg = create_default_runner_registry()
-        assert "docker" in reg
+        for name in ("local", "sandbox", "docker"):
+            assert name in reg
+        assert reg.get("docker").backend == "docker"
 
 
 # ---------------------------------------------------------------------------

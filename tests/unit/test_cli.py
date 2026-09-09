@@ -1618,7 +1618,7 @@ def test_every_command_is_registered_and_imports():
 
 
 class TestRunnerSelectionFailsClosed:
-    """`retort run` must never reach DockerRunner._simulate_run (random metrics)
+    """`retort run` must never simulate a cell (the deleted DockerRunner did)
     through a default, a typo, or the reserved `cloud` name — and a lane that
     cannot honour a factor level refuses the grid before any cell runs."""
 
@@ -1671,7 +1671,7 @@ class TestRunnerSelectionFailsClosed:
         cfg = self._ws(tmp_path, "  runner: docker\n")
         res = self._run(cfg, self._design(tmp_path, self._ROW))
         assert res.exit_code != 0
-        assert "SIMULATES" in res.output
+        assert "not on PATH" in res.output
         assert self._no_cell_ran(tmp_path)
 
     def test_sandbox_refuses_a_level_it_would_ignore(self, tmp_path, monkeypatch):

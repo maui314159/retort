@@ -17,7 +17,9 @@ import click
 from retort import __version__
 
 if TYPE_CHECKING:
+    from retort.config.schema import WorkspaceConfig
     from retort.playpen.runner import RunArtifacts, StackConfig
+    from retort.playpen.sandbox_runner import SandboxRunner
     from retort.scoring.collector import ScoreCollector, ScoreVector
 from retort.analysis.anova import run_all_responses, run_anova
 from retort.analysis.residuals import check_residuals
@@ -406,6 +408,42 @@ def _load_from_stdin() -> FactorRegistry:
     return FactorRegistry.from_dict(data)
 
 
+def _build_sandbox_runner(workspace_config: WorkspaceConfig) -> SandboxRunner:
+    """SandboxRunner from playpen.sandbox (``runner: sandbox``, or
+    ``runner: docker`` as the alias for backend=docker).
+
+    The opencode profile's model_options (e.g. the OpenRouter provider pin)
+    ride along exactly as in the local lane; profiles + the playpen default
+    model give the sandbox the SAME model-resolution chain as LocalRunner, and
+    stall_minutes reaches the in-container watchdog so a hung agent dies in
+    minutes, not the whole Batch wall.
+    """
+    from retort.playpen.sandbox_runner import SandboxRunner, SandboxSpec
+
+    _sbx = workspace_config.playpen.sandbox
+    assert _sbx is not None
+    _oc_profile = (workspace_config.playpen.local_agents or {}).get("opencode")
+    return SandboxRunner(
+        backend=_sbx.backend,
+        docker_images=_sbx.docker_images,
+        s3_bucket=_sbx.s3_bucket,
+        job_queue=_sbx.job_queue,
+        job_definition_prefix=_sbx.job_definition_prefix,
+        image_digests=_sbx.image_digests,
+        spec=SandboxSpec(vcpu=_sbx.vcpu, memory_mb=_sbx.memory_mb),
+        region=_sbx.region,
+        timeout_minutes=workspace_config.playpen.timeout_minutes,
+        stall_minutes=workspace_config.playpen.stall_minutes,
+        local_agents=workspace_config.playpen.local_agents,
+        default_model=workspace_config.playpen.model,
+        model_options=(
+            _oc_profile.model_options if _oc_profile is not None else None
+        ),
+        score_in_container=_sbx.score_in_container,
+        score_metrics=[r.name for r in workspace_config.responses],
+    )
+
+
 @main.command("run")
 @click.option(
     "--phase",
@@ -534,7 +572,6 @@ def run_experiments(
     import yaml as _yaml
 
     from retort.config.loader import load_workspace
-    from retort.playpen.docker_runner import DockerRunner
     from retort.playpen.local_runner import LocalRunner
     from retort.playpen.runner import StackConfig, TaskSpec
     from retort.playpen.task_loader import load_task, task_requirements_path
@@ -866,39 +903,13 @@ def run_experiments(
         # ephemeral container. duration_seconds is the IN-CONTAINER agent time
         # and metadata carries runner_lane=sandbox — never pool duration or
         # build_time across lanes.
-        from retort.playpen.sandbox_runner import SandboxRunner, SandboxSpec
-        _sbx = workspace_config.playpen.sandbox
-        if _sbx is None:
+        if workspace_config.playpen.sandbox is None:
             raise click.ClickException(
                 "runner: sandbox requires a playpen.sandbox block (s3_bucket for "
                 "backend=batch; docker_images for backend=docker) — see "
                 "docs/sandbox-runner.md."
             )
-        # The opencode profile's model_options (e.g. the OpenRouter provider
-        # pin) rides along exactly as in the local lane; profiles + the
-        # playpen default model give the sandbox the SAME model-resolution
-        # chain as LocalRunner, and stall_minutes reaches the in-container
-        # watchdog so a hung agent dies in minutes, not the whole Batch wall.
-        _oc_profile = (workspace_config.playpen.local_agents or {}).get("opencode")
-        runner = SandboxRunner(
-            backend=_sbx.backend,
-            docker_images=_sbx.docker_images,
-            s3_bucket=_sbx.s3_bucket,
-            job_queue=_sbx.job_queue,
-            job_definition_prefix=_sbx.job_definition_prefix,
-            image_digests=_sbx.image_digests,
-            spec=SandboxSpec(vcpu=_sbx.vcpu, memory_mb=_sbx.memory_mb),
-            region=_sbx.region,
-            timeout_minutes=workspace_config.playpen.timeout_minutes,
-            stall_minutes=workspace_config.playpen.stall_minutes,
-            local_agents=workspace_config.playpen.local_agents,
-            default_model=workspace_config.playpen.model,
-            model_options=(
-                _oc_profile.model_options if _oc_profile is not None else None
-            ),
-            score_in_container=_sbx.score_in_container,
-            score_metrics=[r.name for r in workspace_config.responses],
-        )
+        runner = _build_sandbox_runner(workspace_config)
     elif runner_type == "metaharness":
         from retort.playpen.metaharness_runner import MetaHarnessRunner
         runner = MetaHarnessRunner(
@@ -907,19 +918,24 @@ def run_experiments(
             default_model=workspace_config.playpen.model,
         )
     elif runner_type == "docker":
-        # DockerRunner falls back to _simulate_run() — RANDOM token counts and
-        # a 10% random failure rate — when `docker` is absent. That must never
-        # be reachable from `retort run`: a grid of simulated cells looks like
-        # data. (It is also the schema DEFAULT, so a fresh `retort init` lands
-        # here unless workspace.yaml says otherwise.)
+        # `docker` is an alias for the sandbox runner's local docker backend:
+        # the SAME image + entrypoint as the Fargate lane under `docker run`,
+        # lane docker-local. (The former DockerRunner simulated results with
+        # random metrics when docker was absent; it is gone.) `docker` is still
+        # the schema DEFAULT, so a fresh `retort init` lands here.
         if shutil.which("docker") is None:
             raise click.ClickException(
-                "runner: docker requested but `docker` is not on PATH. Refusing "
-                "to run: without docker the DockerRunner SIMULATES results with "
-                "random metrics. Set `playpen.runner: local` (the supported "
-                "path) or install docker."
+                "runner: docker requested but `docker` is not on PATH. Set "
+                "`playpen.runner: local` (the supported path) or install docker."
             )
-        runner = DockerRunner(timeout_minutes=workspace_config.playpen.timeout_minutes)
+        _sbx = workspace_config.playpen.sandbox
+        if _sbx is None or _sbx.backend != "docker":
+            raise click.ClickException(
+                "runner: docker needs a playpen.sandbox block with "
+                "`backend: docker` and `docker_images: {<language>: <image>}` "
+                "— see docs/sandbox-runner.md §7 (1.2b)."
+            )
+        runner = _build_sandbox_runner(workspace_config)
     else:
         # `cloud` is a reserved name in the schema with no runner behind it;
         # anything else is a typo. Both used to fall through to DockerRunner —

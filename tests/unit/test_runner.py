@@ -1,4 +1,4 @@
-"""Tests for playpen runner types and DockerRunner."""
+"""Tests for playpen runner types and LocalRunner."""
 
 from __future__ import annotations
 
@@ -9,7 +9,6 @@ from pathlib import Path
 import pytest
 
 from retort.playpen.runner import PlaypenRunner, RunArtifacts, StackConfig, TaskSpec
-from retort.playpen.docker_runner import DockerRunner
 
 
 def _fake_guard(stdout="", stderr="", returncode=0, elapsed=60.0, kill_reason=None):
@@ -80,46 +79,6 @@ class TestRunArtifacts:
         a = RunArtifacts(exit_code=0)
         j = a.to_json()
         assert '"exit_code": 0' in j
-
-
-class TestDockerRunner:
-    def test_implements_protocol(self):
-        runner = DockerRunner()
-        assert isinstance(runner, PlaypenRunner)
-
-    def test_provision_creates_workspace(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            runner = DockerRunner(work_dir=Path(tmpdir))
-            stack = StackConfig(language="python", agent="test", framework="fastapi")
-            task = TaskSpec(name="test-task", description="Test", prompt="Do something")
-
-            env_id = runner.provision(stack, task)
-            assert env_id.startswith("retort-")
-
-            # Check workspace was created
-            env_dir = Path(tmpdir) / env_id
-            assert env_dir.exists()
-            assert (env_dir / "TASK.md").exists()
-            assert (env_dir / "stack.json").exists()
-
-            runner.teardown(env_id)
-            assert not env_dir.exists()
-
-    def test_simulate_run(self):
-        """When Docker isn't available, runner falls back to simulation."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            runner = DockerRunner(work_dir=Path(tmpdir))
-            stack = StackConfig(language="python", agent="test", framework="fastapi")
-            task = TaskSpec(name="test-task", description="Test", prompt="Do something")
-
-            env_id = runner.provision(stack, task)
-            artifacts = runner.execute(env_id, stack, task)
-
-            # In CI/test environments without Docker, we get simulated results
-            assert artifacts.duration_seconds >= 0
-            assert isinstance(artifacts.exit_code, int)
-
-            runner.teardown(env_id)
 
 
 class TestLocalRunnerSupportFiles:

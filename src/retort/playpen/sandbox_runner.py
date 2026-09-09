@@ -27,7 +27,7 @@ Design invariants (each one is a tuning parameter or a comparability rule):
   * ``runner_lane`` is stamped into metadata: duration/build_time must never be
     pooled across lanes (different hardware).
 
-Like docker_runner, this shells out to the ``aws`` CLI rather than depending
+This shells out to the ``aws`` CLI rather than depending
 on boto3 — no new dependency, and tests monkeypatch one seam (``_aws``).
 """
 
