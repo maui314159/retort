@@ -14,7 +14,7 @@ Docker)"* under **Not yet** — this is that runner, under the name `sandbox` (s
 | # | Component | Lives in | Status |
 |---|---|---|---|
 | 1 | **The `sandbox` playpen runner** | `src/retort/playpen/sandbox_runner.py` | Implemented; selected by `playpen.runner: sandbox` + a `playpen.sandbox` block; `check_design()` preflight refuses factor levels the lane cannot honour (Phase 0, 2026-09-04) |
-| 2 | **Per-language images** | `sandbox/Dockerfile.*` → ECR `retort-sandbox` | Implemented for python, go, typescript (opencode + prime-agent); **rebuild provenance incomplete** (§4) |
+| 2 | **Per-language images** | `sandbox/Dockerfile.{python,go,typescript}`, `sandbox/build_images.sh`, `sandbox/images.lock.json` → ECR `retort-sandbox` | **v5 generation built 2026-09-10** on the x86_64 box (§9.1) from one reproducible recipe per language (Phase 4): OCI labels carry commit/dirty/prime version/bundle sha; the lock file records every pushed digest with its inputs; no account id in the tree |
 | 3 | **In-container entrypoint + watchdog** | `sandbox/entrypoint.sh` (inline Python) | Implemented; a **second implementation** of the local progress guard (§5.3) |
 | 4 | **In-container scoring** | `sandbox/score_full.py`, `score_gate.py` → `_container_scores.json` | **Authoritative for container lanes since Phase 2 (2026-09-05):** `cli._collect_scores` takes the file as `scores.json`; the host never rescores; a completed cell with no file is HARNESS BROKEN (§3.4). `score_in_container` defaults on |
 | 5 | **Image identity in provenance** | `sandbox_image_digest[_effective]`, `sandbox_job_definition`, `_sandbox_meta.json` witnesses | **Verified per job** against Batch's container image since Phase 0 (2026-09-04); mismatch or unverifiable pin fails the cell as HARNESS (§5.1) |
@@ -376,9 +376,13 @@ behind any live run per the one-experiment rule.
 
 ### Phase 0 — fail closed — DONE 2026-09-04 (`feat/cloud-lane`, four commits; unit suite green)
 
-Smoke still owed: one paid one-cell Fargate run to see `sandbox_image_digest_effective`,
-`sandbox_job_definition` and the container witnesses land in a real archive, and to confirm the
-in-container compaction once an image is rebuilt with the new `entrypoint.sh`.
+**Smoke DONE 2026-09-10** on the v5 images: three Fargate cells (python×prime, go×opencode,
+typescript×opencode, GLM-5.3-flash, $0.07 total) all completed; every archive carries
+`sandbox_image_digest_effective` equal to the pinned digest, `sandbox_container_image_id`,
+`sandbox_cpu_arch=x86_64`, `sandbox_cpu_model` and `sandbox_az`. The witnesses already earned
+their keep: the go cell ran on an **AMD EPYC 9R14** and the other two on **Xeon Platinum 8259CL**
+(§5.4 is real, and now visible per cell). Prime's transcript came back at 90 KB (compacted
+in-container).
 
 - **0.1 Effective image identity** (§5.1): read `container.image` + `jobDefinition` revision from
   `describe-jobs`, resolve tag → digest via `ecr describe-images`, **assert equality with the
@@ -468,13 +472,18 @@ in-container compaction once an image is rebuilt with the new `entrypoint.sh`.
 - **1.4 Experiment-level provenance** `sandbox:` block (§3.5): digests, job-def revisions,
   vCPU/memory, lane; `host` states the lane.
 
-### Phase 2 — in-container scores become authoritative — DONE 2026-09-05 (code; parity smoke owed)
+### Phase 2 — in-container scores become authoritative — DONE 2026-09-05 (code), verified on Fargate 2026-09-10
 
 Landed: `_collect_scores` (both collect sites in the run loop), `scored_lane`/`runner_lane` and
 the **full per-run metadata** in `_meta.json` (§3.5 — it had never been persisted), the rescore
-lane stamp, `score_in_container` default on, `score_full.py` writing explicit nulls. Owed: one
-Fargate cell per language on rebuilt images to see `scored_lane=sandbox` and a complete
-`_container_scores.json` land in a real archive (2.2 below).
+lane stamp, `score_in_container` default on, `score_full.py` writing explicit nulls.
+**Verified 2026-09-10:** all three v5 Fargate cells archived `scored_lane=sandbox` with
+`scores.json` equal to `_container_scores.json` (the retired `build_time` metric comes back
+`null` in the file and is dropped as NULL on the host — list `_duration_seconds` telemetry
+instead; a workspace that still names `build_time` gets a null column, not an error). Two
+naming warts noticed, not bugs: `_sandbox_meta.json`'s `scored`/`tests_*` fields come from the
+python-only pytest fast path (`score_gate.py`) and read false/absent for go and typescript even
+though `score_full.py` scored them; the zone lands as `sandbox_az`.
 
 - **2.1** When `runner_lane == sandbox` and `_container_scores.json` covers every metric in
   `responses`, **that is `scores.json`**; the host does not rescore. Missing metric → HARNESS
@@ -487,7 +496,19 @@ Fargate cell per language on rebuilt images to see `scored_lane=sandbox` and a c
 A shard driver script (`scripts/sandbox_drive.sh`) that launches and reaps 16 `retort run --shard`
 processes. The protocol extension is shelved (§6).
 
-### Phase 4 — image reproducibility (~1 day)
+### Phase 4 — image reproducibility — DONE 2026-09-10 (`473add27`, `a7eadd49`)
+
+**Landed:** `Dockerfile.{python,go,typescript}` each carry the whole recipe (scorer suite,
+opencode 1.18.20, node 22, prime-agent bundle + kernel venv, entrypoint) — the `-v3`/`-v4`
+files `FROM` a hard-coded account digest are gone, and with them the account id in the tree
+(the registry is derived at build time, so `ECR_REGISTRY` is an env override, not a
+build-arg). `build_images.sh {stage|build|push} <gen> <lang>…` stages the bundle, passes
+`RETORT_COMMIT/RETORT_DIRTY/PRIME_AGENT_VERSION/PRIME_BUNDLE_SHA256` as build-args into OCI
+labels, pushes, and appends to `sandbox/images.lock.json`. v5 was built on the x86_64 box from
+a tarball of the clean `473add27` tree (30 min for three images on a t3.medium). Not done:
+validating `image_digests` in workspace.yaml against the lock file, and the `parity` field.
+
+Original plan:
 
 One Dockerfile per language with the prime layer as a build stage/arg (instead of `-v3`/`-v4`
 files `FROM` a hard-coded digest); `LABEL org.opencontainers.image.revision=<commit>` and
