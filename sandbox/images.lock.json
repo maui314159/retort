@@ -1,0 +1,44 @@
+[
+  {
+    "tag": "python-v5",
+    "language": "python",
+    "generation": "v5",
+    "digest": "sha256:3b49454f32528a866e5f981625a215011810071154afcfe00162a71a7b5d52b5",
+    "image_id": "sha256:2368c6de35567c07f768de3540fb660a7010b802f2a751d4959353fdedcacc3c",
+    "retort_commit": "473add27ac",
+    "retort_dirty": false,
+    "prime_agent_version": "v0.7.2",
+    "prime_bundle_sha256": "17d2765862f51650866f40fa93475c1ede6c288ae3ec597617c16fc3b57f1d54",
+    "dockerfile_sha256": "cd76772ba5e6869de7e5a33216a45f9216dea2c111dcc9e9dc9d59e0f23e3446",
+    "built_at": "2026-09-10T20:02:46Z",
+    "pushed": true
+  },
+  {
+    "tag": "go-v5",
+    "language": "go",
+    "generation": "v5",
+    "digest": "sha256:997a860a6815761909ad1886ae9a63eb16719db7f256aeebf12f2137e9c765be",
+    "image_id": "sha256:e45c02903528d516788f74f53c913ab98dde9384f62bc59a1d93151299aaeab6",
+    "retort_commit": "473add27ac",
+    "retort_dirty": false,
+    "prime_agent_version": "v0.7.2",
+    "prime_bundle_sha256": "17d2765862f51650866f40fa93475c1ede6c288ae3ec597617c16fc3b57f1d54",
+    "dockerfile_sha256": "5c62f438d4f61b65b4b4581402df5f1d22d5f4abab3dab2a5a9f0c87817ce76b",
+    "built_at": "2026-09-10T20:06:29Z",
+    "pushed": true
+  },
+  {
+    "tag": "typescript-v5",
+    "language": "typescript",
+    "generation": "v5",
+    "digest": "sha256:235847d2ab850fc9b2701571575a7dd1157f0d8ba5bbde52b842b83fb3f15811",
+    "image_id": "sha256:97ca9f14d447dea68bc2a80c3c168d30e03fd892c6cf8a4d751e3c296c9d0bbd",
+    "retort_commit": "473add27ac",
+    "retort_dirty": false,
+    "prime_agent_version": "v0.7.2",
+    "prime_bundle_sha256": "17d2765862f51650866f40fa93475c1ede6c288ae3ec597617c16fc3b57f1d54",
+    "dockerfile_sha256": "18e9daf35fef80a4072bb6a008b4077c6e706f0eb58ab7b30af1a493569749b4",
+    "built_at": "2026-09-10T20:09:48Z",
+    "pushed": true
+  }
+]

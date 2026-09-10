@@ -161,7 +161,7 @@ else say "Job queue $NAME exists"; fi
 # Override the tags with SANDBOX_TAGS="python:python-v5 go:go-v4 ...".
 # A lane whose tag has never been pushed is skipped with a note — bootstrap
 # must stay runnable before the first image build.
-TAGS_DEFAULT="python:python-v4c go:go-v3b typescript:typescript-v3"
+TAGS_DEFAULT="python:python-v5 go:go-v5 typescript:typescript-v5"
 # shellcheck disable=SC2086  # word-splitting the lane list is intended
 for LANG_TAG in ${SANDBOX_TAGS:-$TAGS_DEFAULT}; do
   LANG="${LANG_TAG%%:*}"; TAG="${LANG_TAG##*:}"
