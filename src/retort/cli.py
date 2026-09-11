@@ -69,7 +69,7 @@ tasks:
   - source: bundled://rest-api-crud
 
 playpen:
-  runner: docker
+  runner: local            # `docker` / `sandbox` also need a playpen.sandbox block
   replicates: 3
   timeout_minutes: 30
   local_agents:
@@ -245,6 +245,35 @@ def _live_context_tokens(
     return None, None
 
 
+#: Files the harness itself writes into a rep dir, by exact name. Anything
+#: underscore- or dot-prefixed is harness-owned by convention (``_meta.json``,
+#: ``_agent_stdout.log``, ``_sandbox_meta.json``, ``_container_scores.json``,
+#: ``_score_stdout.log``, ...), so this set only needs the names that do NOT
+#: follow that convention. ``opencode.json`` is the per-run agent config the
+#: opencode harness drops into the workspace.
+_HARNESS_FILES = frozenset({
+    "TASK.md", "stack.json", "REQUIREMENTS.json", "scores.json",
+    "evaluation.md", "assessment.json", "findings.jsonl", "FEEDBACK.md",
+    "README.md", "prompts.txt", "opencode.json",
+})
+
+
+def _harness_owned_file(name: str) -> bool:
+    """True when ``name`` is something the harness (not the agent) wrote.
+
+    Rule, not list: underscore/dot-prefixed names, the explicit
+    ``_HARNESS_FILES``, and the ``.gz`` form of any of those (the data branch
+    gzips logs over 1 MB). The zero-write HARNESS classification below depends
+    on this being complete — a container-lane archive always carries
+    ``_sandbox_meta.json`` + ``_container_scores.json``, and a gzipped archive
+    ``_agent_stdout.log.gz``; before this rule covered them, ``produced`` was
+    never empty for such runs and a blocked file tool was labelled GENUINE.
+    """
+    if name.endswith(".gz"):
+        name = name[: -len(".gz")]
+    return name.startswith(("_", ".")) or name in _HARNESS_FILES
+
+
 def _harness_failure(rep_dir: Path) -> str | None:
     """Was the agent PREVENTED from working in this archived run?
 
@@ -264,15 +293,9 @@ def _harness_failure(rep_dir: Path) -> str | None:
     """
     from retort.playpen.local_runner import _TOOL_REFUSAL_RE
 
-    _SKIP = {
-        "TASK.md", "stack.json", "REQUIREMENTS.json", "_meta.json", "scores.json",
-        "evaluation.md", "assessment.json", "findings.jsonl", "FEEDBACK.md",
-        "_agent_stdout.log", "_agent_stderr.log", "README.md", "prompts.txt",
-    }
     produced = [
         p for p in rep_dir.rglob("*")
-        if p.is_file() and p.name not in _SKIP
-        and not p.name.startswith(".")
+        if p.is_file() and not _harness_owned_file(p.name)
         and "summary" not in p.parts and "data" not in p.parts
     ]
     if produced:
@@ -291,7 +314,7 @@ def _harness_failure(rep_dir: Path) -> str | None:
         # transcript was 193 MB.
         try:
             m = agent_log.search(log, _TOOL_REFUSAL_RE)
-        except OSError:
+        except agent_log.READ_ERRORS:  # search() already swallows; belt and braces
             m = None
         if m:
             why += (
@@ -2909,7 +2932,25 @@ def _collect_scores(
                 "recorded for this cell; --resume re-runs it."
             )
 
-    data = json.loads(path.read_text())
+    try:
+        data = json.loads(path.read_text())
+    except (ValueError, OSError) as exc:
+        raise click.ClickException(
+            f"HARNESS BROKEN — `runner_lane={lane}` cell left an unreadable "
+            f"{_CONTAINER_SCORES} in {artifacts.output_dir}: {exc}\n"
+            "  The container's scorer (score_full.py) must write a JSON object "
+            "of metric -> value. Nothing was recorded for this cell; --resume "
+            "re-runs it."
+        ) from exc
+    if not isinstance(data, dict):
+        raise click.ClickException(
+            f"HARNESS BROKEN — `runner_lane={lane}` cell left a "
+            f"{_CONTAINER_SCORES} in {artifacts.output_dir} that is not a JSON "
+            f"object (got {type(data).__name__}).\n"
+            "  The container's scorer (score_full.py) must write a JSON object "
+            "of metric -> value. Nothing was recorded for this cell; --resume "
+            "re-runs it."
+        )
     missing = [m for m in metric_names if m not in data]
     if missing:
         artifacts.metadata["scored_missing"] = ",".join(missing)
