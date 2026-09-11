@@ -60,6 +60,11 @@ def main() -> int:
         duration_seconds=_float_env("RETORT_AGENT_SECONDS", 0.0),
         token_count=token_count,
     )
+    print(
+        f"score_full: artifacts exit={exit_code} "
+        f"seconds={artifacts.duration_seconds} tokens={token_count} "
+        f"kill_reason={os.environ.get('RETORT_KILL_REASON', '') or '-'}"
+    )
     collector = ScoreCollector(metrics=metrics)
     vector = collector.collect(artifacts, stack)
     # EVERY requested metric appears as a key. `null` means the scorer ran and
