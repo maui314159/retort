@@ -1858,26 +1858,26 @@ class TestContainerLaneScoring:
         assert art.metadata["scored_lane"] == "docker-local"
 
     def test_malformed_scores_file_is_harness_broken(self, tmp_path):
-        from retort.cli import _collect_scores
+        from retort.cli import _HarnessStopError, _collect_scores
         from retort.playpen.runner import StackConfig
         col = self._Collector()
         art = self._artifacts(tmp_path, "sandbox")
         (art.output_dir / "_container_scores.json").write_text('{"code_quality": 0.9')
-        with pytest.raises(click.ClickException, match="HARNESS BROKEN") as ei:
+        with pytest.raises(_HarnessStopError, match="HARNESS BROKEN") as ei:
             _collect_scores(col, art, StackConfig("go", "a", "f"), ["code_quality"])
-        assert "_container_scores.json" in ei.value.message
-        assert "Expecting" in ei.value.message        # the json parse error, named
+        assert "_container_scores.json" in str(ei.value)
+        assert "Expecting" in str(ei.value)        # the json parse error, named
         assert col.calls == 0                          # no silent host fallback
 
     def test_non_object_scores_file_is_harness_broken(self, tmp_path):
-        from retort.cli import _collect_scores
+        from retort.cli import _HarnessStopError, _collect_scores
         from retort.playpen.runner import StackConfig
         col = self._Collector()
         art = self._artifacts(tmp_path, "docker-local", scores=[0.9, 0.8])
-        with pytest.raises(click.ClickException, match="HARNESS BROKEN") as ei:
+        with pytest.raises(_HarnessStopError, match="HARNESS BROKEN") as ei:
             _collect_scores(col, art, StackConfig("go", "a", "f"), ["code_quality"])
-        assert "not a JSON object" in ei.value.message
-        assert "list" in ei.value.message
+        assert "not a JSON object" in str(ei.value)
+        assert "list" in str(ei.value)
         assert col.calls == 0
 
     def test_completed_cell_without_scores_file_is_harness_broken(self, tmp_path):

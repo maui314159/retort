@@ -944,8 +944,8 @@ def run_experiments(
         # `docker` is an alias for the sandbox runner's local docker backend:
         # the SAME image + entrypoint as the Fargate lane under `docker run`,
         # lane docker-local. (The former DockerRunner simulated results with
-        # random metrics when docker was absent; it is gone.) `docker` is still
-        # the schema DEFAULT, so a fresh `retort init` lands here.
+        # random metrics when docker was absent; it is gone.) The schema
+        # default and the `retort init` template are `local`.
         if shutil.which("docker") is None:
             raise click.ClickException(
                 "runner: docker requested but `docker` is not on PATH. Set "
@@ -2935,7 +2935,7 @@ def _collect_scores(
     try:
         data = json.loads(path.read_text())
     except (ValueError, OSError) as exc:
-        raise click.ClickException(
+        raise _HarnessStopError(
             f"HARNESS BROKEN — `runner_lane={lane}` cell left an unreadable "
             f"{_CONTAINER_SCORES} in {artifacts.output_dir}: {exc}\n"
             "  The container's scorer (score_full.py) must write a JSON object "
@@ -2943,7 +2943,7 @@ def _collect_scores(
             "re-runs it."
         ) from exc
     if not isinstance(data, dict):
-        raise click.ClickException(
+        raise _HarnessStopError(
             f"HARNESS BROKEN — `runner_lane={lane}` cell left a "
             f"{_CONTAINER_SCORES} in {artifacts.output_dir} that is not a JSON "
             f"object (got {type(data).__name__}).\n"
