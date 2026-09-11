@@ -533,6 +533,30 @@ are the prerequisites for running 16 wide; Phase 1 is consistency work and not o
 
 ---
 
+## 7b. Adversarial review — 2026-09-11 (PR #1 on the fork)
+
+Two independent reviews of the branch at `6f14f781`: Claude Code's `/code-review` at high effort
+(8 findings, all confirmed by its verifier, 4 reproduced) and `trusty-review` with GLM-5.2 via
+Fireworks (24 raw findings; its Bedrock verifier failed on transport, so its `APPROVE*` verdict
+was unverified — 2 of its findings were false positives, 1 was refuted by the Fargate run, 1 was
+real and minor). Everything below is FIXED on the branch (`e7b990c6`, `7f2c5e40`, `c95b1e95`).
+
+| # | finding | fix |
+|---|---|---|
+| 1 | Batch digest verified AFTER the job ran and artifacts were extracted; a mismatch became a crash row while the wrong-image `_container_scores.json` was still adopted | `check_design()` resolves each pinned language's job-definition image once BEFORE any submit and refuses the grid; the run loop stops on any `HARNESS:` artifact; a non-succeeded cell never has its container scores adopted |
+| 2 | "HARNESS BROKEN" raised before archive → teardown deleted the evidence | `_HarnessStopError` + `_stop_with_evidence()`: archive, then stop, message names the archive |
+| 3 | `score_full.py` scored with `exit_code=0`, no tokens, no duration → killed cells scored as success, `token_efficiency` fell back to transcript length | entrypoint passes `RETORT_AGENT_EXIT/SECONDS/KILL_REASON`; `score_full` mirrors `_collect` (parsed tokens, 124 on kill, bounded tails). Verified: in-container `token_efficiency` 0.0224 == host parsed value (fallback gave 1.0); simulated stall → exit 124, `runtime=null` |
+| 4 | `_harness_failure` skip-list lacked harness-owned files → `retort diagnose` labelled zero-write sandbox cells GENUINE | `_harness_owned_file()` rule (underscore/dot prefix, explicit names, `.gz` forms) |
+| 5 | pinned digest resolved via ECR per cell AFTER the job; `TimeoutExpired` uncaught | resolved once at preflight and cached; `_aws` converts timeouts to `RuntimeError` |
+| 6 | `retort init` template and schema default still `runner: docker`, which now hard-fails | both default to `local` |
+| 7 | truncated `.gz` transcripts raised `EOFError` past every `except OSError` | `agent_log.READ_ERRORS`; gz paths iterate by line (`GzipFile.read(n)` discards inflated bytes on EOFError) |
+| 8 | hung docker daemon at `image inspect` escaped `execute()` | caught alongside `RuntimeError`, at preflight too |
+| t4 | malformed `_container_scores.json` → bare traceback | HARNESS BROKEN via the same archive-first stop |
+
+Also: `score_in_container: false` on a container lane is refused at preflight (the host never
+rescores a container workspace); `_make_runner` in the sandbox tests refuses real AWS calls by
+default — the first preflight test reached the account.
+
 ## 8. Upstream
 
 Convention: outside contributors send **code-only** PRs. `experiments-local/`, `master-local.*`
