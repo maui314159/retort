@@ -86,7 +86,8 @@ Checked across upstream's full history, not just its current tree.
 `docker_runner.py` (211 lines, untouched since Phase 1). When `docker` is not on PATH, `execute()`
 falls through to `_simulate_run()`, which sleeps 10 ms and returns **random** metrics
 (`exit_code=0 if random.random() > 0.1 else 1`, `token_count=random.randint(500, 5000)`).
-`RunnerType.docker` is the **schema default**, and `cli.py`'s `else` branch used to construct a
+`RunnerType.docker` **was the schema default** (flipped to `local` 2026-09-10, along with the
+`retort init` template), and `cli.py`'s `else` branch used to construct a
 `DockerRunner` for it *and for `cloud` and any other unmatched value* — yet all 81 of upstream's
 `workspace.yaml` files set `runner: local`. `SandboxRunner` does not import, subclass or reuse it.
 **On this fork since Phase 0 (2026-09-04), `retort run` fails closed:** `docker` without a docker
@@ -461,8 +462,8 @@ in-container).
   `_container_scores.json` = `scores.json` = {code_quality 0.67, test_coverage 0.98},
   `runner_lane=scored_lane=docker-local`, `sandbox_cpu_arch=x86_64`,
   `sandbox_cpu_model="VirtualApple @ 2.50GHz"`, `sandbox_image_digest_effective` = the local image
-  id. `docker_runner.py` and its tests are deleted; `runner: docker` (still the schema default) is
-  now an alias for `runner: sandbox` with `backend: docker` and refuses to run without a
+  id. `docker_runner.py` and its tests are deleted; `runner: docker` (no longer the schema default — `local` is, since
+  2026-09-10) is now an alias for `runner: sandbox` with `backend: docker` and refuses to run without a
   `playpen.sandbox` block that says so. The integration test that relied on simulated cells uses
   a canned stub runner instead.
 - **1.3 Registry visibility** — DONE 2026-09-08 for the registry half: `create_default_runner_registry`

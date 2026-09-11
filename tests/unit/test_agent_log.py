@@ -119,6 +119,40 @@ class TestReaders:
     def test_read_text_missing_file_is_empty(self, tmp_path: Path):
         assert agent_log.read_text(tmp_path / "nope.log") == ""
         assert agent_log.read_tail(tmp_path / "nope.log") == ""
+        assert agent_log.search(tmp_path / "nope.log", re.compile("x")) is None
+        assert agent_log.contains_any(tmp_path / "nope.log", "x") is False
+
+    def test_truncated_gz_yields_readable_prefix_never_raises(self, tmp_path: Path):
+        """A half-written .gz raises EOFError (not OSError) on read; every
+        reader must return what was readable rather than abort a
+        `diagnose`/`rescore` sweep on the first damaged archive."""
+        body = "".join(f"line {i:05d} {'x' * 40}\n" for i in range(5000))
+        whole = gzip.compress(body.encode())
+        gz = tmp_path / "_agent_stdout.log.gz"
+        gz.write_bytes(whole[: len(whole) // 2])          # cut mid-stream
+        with pytest.raises(EOFError):                      # the raw failure mode
+            with gzip.open(gz, "rb") as fh:
+                fh.read()
+
+        text = agent_log.read_text(gz)
+        assert text.startswith("line 00000")
+        assert 0 < len(text) < len(body)
+        tail = agent_log.read_tail(gz, max_bytes=200)
+        assert tail and text.endswith(tail)
+        assert agent_log.search(gz, re.compile(r"line 00010 x+")) is not None
+        assert agent_log.search(gz, re.compile(r"line 04999")) is None
+        assert agent_log.contains_any(gz, "LINE 00010") is True
+        assert agent_log.contains_any(gz, "line 04999") is False
+        assert agent_consulted(tmp_path, "line 00010") is True   # local_runner caller
+
+    def test_corrupt_gz_body_is_not_fatal(self, tmp_path: Path):
+        gz = tmp_path / "_agent_stdout.log.gz"
+        good = gzip.compress(b"hello\n" * 2000)
+        gz.write_bytes(good[:20] + bytes(200))  # valid header, garbage deflate
+        assert agent_log.search(gz, re.compile("hello")) is None
+        assert agent_log.contains_any(gz, "hello") is False
+        assert isinstance(agent_log.read_text(gz), str)
+        assert isinstance(agent_log.read_tail(gz), str)
 
 
 class TestCompactPrimeLog:

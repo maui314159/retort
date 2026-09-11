@@ -45,7 +45,7 @@ tasks:
   - source: bundled://rest-api-crud
 
 playpen:
-  runner: local            # 'local' is supported; 'docker' is a skeleton
+  runner: local            # the default; 'docker'/'sandbox' need a playpen.sandbox block
   replicates: 3
   timeout_minutes: 30
   local_agents:

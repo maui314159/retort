@@ -333,7 +333,10 @@ class LocalAgentConfig(BaseModel):
 class PlaypenConfig(BaseModel):
     """Configuration for experiment execution environment."""
 
-    runner: Annotated[RunnerType, Field(default=RunnerType.docker)]
+    # `local` is the supported path; `docker` / `sandbox` hard-fail without a
+    # `sandbox:` block, so a default of `docker` made a fresh `retort init`
+    # workspace unrunnable.
+    runner: Annotated[RunnerType, Field(default=RunnerType.local)]
     replicates: Annotated[int, Field(default=3, ge=1, description="Runs per design point")]
     timeout_minutes: Annotated[int, Field(default=30, ge=1)]
     stall_minutes: Annotated[

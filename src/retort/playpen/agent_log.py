@@ -18,12 +18,22 @@ import gzip
 import json
 import os
 import re
+import zlib
 from collections.abc import Iterator
 from pathlib import Path
 from typing import IO
 
 AGENT_STDOUT = "_agent_stdout.log"
 AGENT_STDERR = "_agent_stderr.log"
+
+#: What a missing, unreadable, or half-written transcript raises. A ``.gz``
+#: cut off mid-stream (an archive interrupted while copying, or a run killed
+#: while its log was being compressed) raises ``EOFError`` — NOT an OSError —
+#: and corrupt deflate data raises ``zlib.error``. Every reader treats all
+#: three the same way: what could be read is returned, the rest is absent.
+#: ``retort diagnose`` / ``rescore`` sweep whole archives and must not abort on
+#: the first bad file.
+READ_ERRORS: tuple[type[BaseException], ...] = (OSError, EOFError, zlib.error)
 
 #: Bytes of transcript tail that live-context / diagnose readers look at.
 DEFAULT_TAIL_BYTES = 400_000
@@ -44,21 +54,35 @@ def _open(path: Path) -> IO[bytes] | gzip.GzipFile:
 
 
 def iter_lines(path: Path) -> Iterator[str]:
-    """Yield decoded lines without holding the file in memory."""
-    with _open(path) as fh:
-        for raw in fh:
-            yield raw.decode("utf-8", "replace")
+    """Yield decoded lines without holding the file in memory.
+
+    Stops (rather than raising) at a truncated or corrupt ``.gz``: the lines
+    before the damage are yielded, and a missing file yields nothing.
+    """
+    try:
+        with _open(path) as fh:
+            for raw in fh:
+                yield raw.decode("utf-8", "replace")
+    except READ_ERRORS:
+        return
 
 
 def read_text(path: Path) -> str:
     """The whole transcript, decoded. For parsers that need every event
     (the usage parsers); call ``compact_prime_log`` first where it applies so
-    "whole" is tens, not hundreds, of megabytes."""
+    "whole" is tens, not hundreds, of megabytes. A truncated ``.gz`` yields
+    the readable prefix."""
+    buf = bytearray()
     try:
         with _open(path) as fh:
-            return fh.read().decode("utf-8", "replace")
-    except OSError:
-        return ""
+            # Line iteration, not read(n): GzipFile.read(n) raises EOFError on
+            # a truncated member and DROPS the bytes it had already inflated,
+            # so a chunked read of a damaged .gz would return nothing at all.
+            for raw in fh:
+                buf += raw
+    except READ_ERRORS:
+        pass
+    return bytes(buf).decode("utf-8", "replace")
 
 
 def read_tail(path: Path, max_bytes: int = DEFAULT_TAIL_BYTES) -> str:
@@ -67,21 +91,21 @@ def read_tail(path: Path, max_bytes: int = DEFAULT_TAIL_BYTES) -> str:
     A plain file is seeked; a gzip member cannot be, so it is streamed through
     a rolling window that never exceeds ``2 * max_bytes``.
     """
+    window = bytearray()
     try:
         if path.suffix != ".gz":
             with open(path, "rb") as fh:
                 fh.seek(0, os.SEEK_END)
                 fh.seek(max(0, fh.tell() - max_bytes))
                 return fh.read().decode("utf-8", "replace")
-        window = bytearray()
         with gzip.open(path, "rb") as gz:
-            while chunk := gz.read(1 << 20):
-                window += chunk
+            for raw in gz:  # by line: see read_text on why not read(n)
+                window += raw
                 if len(window) > 2 * max_bytes:
                     del window[:-max_bytes]
-        return bytes(window[-max_bytes:]).decode("utf-8", "replace")
-    except OSError:
-        return ""
+    except READ_ERRORS:
+        pass  # a truncated .gz: the tail of what was readable
+    return bytes(window[-max_bytes:]).decode("utf-8", "replace")
 
 
 def search(path: Path, pattern: re.Pattern[str]) -> re.Match[str] | None:
@@ -89,7 +113,8 @@ def search(path: Path, pattern: re.Pattern[str]) -> re.Match[str] | None:
 
     The callers' patterns (tool refusals, usage-limit signatures) are
     single-line by construction (``[^\\n]`` bounded), so per-line search is
-    equivalent to searching the joined text and needs no buffer.
+    equivalent to searching the joined text and needs no buffer. A missing or
+    truncated file searches what is readable (``iter_lines``) — never raises.
     """
     for line in iter_lines(path):
         match = pattern.search(line)
@@ -99,7 +124,9 @@ def search(path: Path, pattern: re.Pattern[str]) -> re.Match[str] | None:
 
 
 def contains_any(path: Path, *needles: str) -> bool:
-    """Case-insensitive substring test for any of ``needles``, streaming."""
+    """Case-insensitive substring test for any of ``needles``, streaming.
+    Same truncation behaviour as ``search``: never raises, tests what is
+    readable."""
     lowered = [n.lower() for n in needles if n]
     if not lowered:
         return False
