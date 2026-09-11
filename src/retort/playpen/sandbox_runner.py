@@ -23,11 +23,12 @@ Design invariants (each one is a tuning parameter or a comparability rule):
   * Usage parsing delegates to local_runner's ``_parse_agent_usage`` so both
     lanes share one source of truth for tokens/cost.
   * Secrets reach the container via the job definition's Secrets Manager
-    wiring; this runner never sees or logs key material.
+    wiring (batch) or are forwarded by NAME from the host environment
+    (docker); this runner never reads or logs key material.
   * ``runner_lane`` is stamped into metadata: duration/build_time must never be
     pooled across lanes (different hardware).
 
-Like docker_runner, this shells out to the ``aws`` CLI rather than depending
+This shells out to the ``aws`` CLI rather than depending
 on boto3 — no new dependency, and tests monkeypatch one seam (``_aws``).
 """
 
@@ -45,6 +46,7 @@ from pathlib import Path
 from typing import Any
 
 from retort.config.schema import LocalAgentConfig
+from retort.playpen import agent_log as _agent_log
 from retort.playpen import local_runner as _local
 from retort.playpen.runner import (
     RunArtifacts,
@@ -70,6 +72,14 @@ _TIMEOUT_MARGIN_SECONDS = 600
 
 #: Poll interval for DescribeJobs (seconds). Injectable for tests.
 _DEFAULT_POLL_SECONDS = 15.0
+
+#: Execution backends: the production Fargate lane, and the same image run
+#: locally under docker (smoke/test lane, never a data lane).
+_BACKENDS = frozenset({"batch", "docker"})
+
+#: Secrets the docker backend forwards from the host environment by NAME only
+#: (`docker run -e NAME` inherits the value; it never appears on argv).
+_FORWARDED_SECRETS = ("OPENROUTER_API_KEY",)
 
 
 @dataclass(frozen=True)
@@ -111,11 +121,30 @@ class SandboxRunner:
         local_agents: dict[str, LocalAgentConfig] | None = None,
         default_model: str | None = None,
         model_options: dict[str, Any] | None = None,
-        score_in_container: bool = False,
+        score_in_container: bool = True,
         score_metrics: list[str] | None = None,
         queue_grace_seconds: int = _DEFAULT_QUEUE_GRACE_SECONDS,
         poll_seconds: float = _DEFAULT_POLL_SECONDS,
+        backend: str = "batch",
+        docker_images: dict[str, str] | None = None,
+        docker_platform: str = "linux/amd64",
     ) -> None:
+        if backend not in _BACKENDS:
+            raise ValueError(
+                f"SandboxRunner backend must be one of {sorted(_BACKENDS)}, "
+                f"got {backend!r}"
+            )
+        # Where the cell's container runs. `batch`: AWS Batch on Fargate via S3
+        # (the production lane). `docker`: the SAME image and entrypoint under a
+        # local `docker run` with the workspace bind-mounted — a $0 smoke of
+        # every image/entrypoint change and an offline test of the container
+        # contract. It stamps its own lane (docker-local): the host emulates
+        # linux/amd64, so its timings must never pool with anything.
+        self.backend = backend
+        # language -> image reference for the docker backend (a local tag such
+        # as retort-sandbox:python-v5, or <ecr>/retort-sandbox@sha256:...).
+        self.docker_images = docker_images or {}
+        self.docker_platform = docker_platform
         self.s3_bucket = s3_bucket
         self.job_queue = job_queue
         self.job_definition_prefix = job_definition_prefix
@@ -155,6 +184,10 @@ class SandboxRunner:
         self.queue_grace_seconds = queue_grace_seconds
         self.poll_seconds = poll_seconds
         self._envs: dict[str, _SandboxEnv] = {}
+        # language -> (job-definition label, image URI, effective digest), filled
+        # by check_design() BEFORE any job is submitted and reused after each
+        # job — one ECR lookup per language per run, not one per paid cell.
+        self._jobdef_images: dict[str, tuple[str, str, str]] = {}
         # Injectable clocks for tests.
         self._now = time.monotonic
         self._sleep = time.sleep
@@ -168,7 +201,14 @@ class SandboxRunner:
         e.g. ``s3 cp``). Raises RuntimeError with stderr on a nonzero exit.
         """
         cmd = ["aws", "--region", self.region, "--output", "json", *args]
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        except subprocess.TimeoutExpired as exc:
+            # Every caller handles RuntimeError; a hung CLI must not escape as
+            # an uncaught traceback and abort a grid mid-way.
+            raise RuntimeError(
+                f"aws {' '.join(args[:2])} timed out after {exc.timeout:.0f}s"
+            ) from exc
         if proc.returncode != 0:
             raise RuntimeError(
                 f"aws {' '.join(args[:2])} failed ({proc.returncode}): "
@@ -178,6 +218,143 @@ class SandboxRunner:
             return {}
         payload: dict[str, Any] = json.loads(proc.stdout)
         return payload
+
+    # ------------------------------------------------------------ preflight --
+
+    #: Harnesses this lane can run headless in its images.
+    _SUPPORTED_HARNESSES = frozenset({"opencode", "oc", "prime"})
+
+    def check_design(self, run_configs: list[dict[str, str]]) -> list[str]:
+        """Fail-closed design preflight: every factor level this lane cannot
+        HONOUR, before a single job is submitted.
+
+        A level the runner silently ignores is worse than one it rejects — the
+        cell runs, the level is recorded, and the experiment reports an effect
+        (or a null) for a factor that never varied. Today this lane builds the
+        plain prompt (no ``prompts/<level>.md`` injection), runs no ``tooling``
+        pre-run hook, exports no stack preset, and neither of its harness
+        commands takes an effort/thinking flag — so each of those is refused
+        here rather than dropped there. Returns human-readable problems, one
+        per distinct offending level; empty means the design is runnable.
+        """
+        problems: set[str] = set()
+        for rc in run_configs:
+            agent = rc.get("agent", "unknown") or "unknown"
+            profile = self.local_agents.get(agent)
+            harness = profile.harness if profile is not None else agent
+            if harness not in self._SUPPORTED_HARNESSES:
+                problems.add(
+                    f"agent={agent!r} resolves to harness {harness!r}; the sandbox "
+                    f"images carry only {sorted(self._SUPPORTED_HARNESSES - {'oc'})}"
+                )
+            prompt = rc.get("prompt", "none") or "none"
+            if prompt != "none":
+                problems.add(
+                    f"prompt={prompt!r}: the sandbox lane does not inject "
+                    f"prompts/{prompt}.md — the cell would run the PLAIN prompt and "
+                    f"record {prompt!r}"
+                )
+            tooling = rc.get("tooling", "none") or "none"
+            if tooling != "none":
+                problems.add(
+                    f"tooling={tooling!r}: no pre-run hook runs in the container and "
+                    "the images carry no tooling CLIs — the level would be a label"
+                )
+            if rc.get("stack"):
+                problems.add(
+                    f"stack={rc['stack']!r}: stack presets (serving reload, "
+                    "LCM_CONTEXT_THRESHOLD) are a local-lane mechanism"
+                )
+            for factor in ("effort", "thinking"):
+                level = rc.get(factor, "") or ""
+                if level and level != "none":
+                    problems.add(
+                        f"{factor}={level!r}: neither the opencode nor the prime "
+                        "command takes an effort/thinking flag — the level would be "
+                        "recorded but not applied"
+                    )
+        if problems:
+            return sorted(problems)
+        # Container lanes score IN the container (Phase 2); the host never
+        # rescores a workspace built elsewhere. A lane configured not to score
+        # would complete every cell at full cost and then have nothing to
+        # record — refuse before the first submit, not after the last job.
+        if not self.score_in_container:
+            problems.add(
+                "playpen.sandbox.score_in_container is false: container lanes "
+                "score in-container and the host will not rescore their "
+                "workspaces — set it true (the default)"
+            )
+        languages = sorted({rc.get("language", "") for rc in run_configs} - {""})
+        problems.update(self._check_images(languages))
+        return sorted(problems)
+
+    def _check_images(self, languages: list[str]) -> set[str]:
+        """Verify, BEFORE any spend, that each language's image is the pinned
+        one. Batch: the job definition's latest active revision is resolved to
+        a digest and cached for the post-job check. Docker: ``image inspect``.
+        An unpinned language is skipped here (nothing to verify; the effective
+        digest is still recorded per cell)."""
+        problems: set[str] = set()
+        for language in languages:
+            pinned = self.image_digests.get(language, "unpinned")
+            if self.backend == "docker":
+                image = self.docker_images.get(language, "")
+                if not image:
+                    problems.add(
+                        f"language={language!r}: no docker image configured "
+                        "(playpen.sandbox.docker_images)"
+                    )
+                    continue
+                try:
+                    _meta, err = self._verify_docker_image(image, pinned)
+                except (RuntimeError, subprocess.TimeoutExpired) as exc:
+                    err = str(exc)
+                if err:
+                    problems.add(f"language={language!r}: {err}")
+                continue
+            if pinned in ("", "unpinned"):
+                continue
+            try:
+                label, image_uri, effective = self._jobdef_image(language)
+            except RuntimeError as exc:
+                problems.add(
+                    f"language={language!r}: cannot verify the pinned image "
+                    f"{pinned} before submitting — {exc}"
+                )
+                continue
+            if effective != pinned:
+                problems.add(
+                    f"language={language!r}: job definition {label} runs "
+                    f"{image_uri} = {effective or 'unknown'}, but the workspace pins "
+                    f"{pinned}. Update playpen.sandbox.image_digests or re-register "
+                    "the job definition; the two must agree."
+                )
+        return problems
+
+    def _jobdef_image(self, language: str) -> tuple[str, str, str]:
+        """``(name:revision, image URI, effective digest)`` of the latest ACTIVE
+        revision of this language's job definition — what ``submit-job`` by
+        name will run. Cached per language for the run."""
+        cached = self._jobdef_images.get(language)
+        if cached is not None:
+            return cached
+        name = f"{self.job_definition_prefix}-{language}"
+        resp = self._aws([
+            "batch", "describe-job-definitions",
+            "--job-definition-name", name, "--status", "ACTIVE",
+        ])
+        defs = resp.get("jobDefinitions") or []
+        if not defs:
+            raise RuntimeError(f"no ACTIVE job definition named {name}")
+        latest = max(defs, key=lambda d: int(d.get("revision", 0)))
+        image_uri = str((latest.get("containerProperties") or {}).get("image") or "")
+        if not image_uri:
+            raise RuntimeError(f"job definition {name} names no container image")
+        label = f"{name}:{latest.get('revision', '?')}"
+        effective = self._resolve_image_digest(image_uri)
+        self._jobdef_images[language] = (label, image_uri, effective)
+        return self._jobdef_images[language]
 
     # ------------------------------------------------------------ provision --
 
@@ -207,7 +384,7 @@ class SandboxRunner:
                 ["git", "init", "-q"], cwd=env_dir, capture_output=True
             )
 
-        if self._resolve_harness(stack) == "opencode":
+        if self._resolve_harness(stack) in ("opencode", "oc"):
             self._write_opencode_config(env_dir, stack)
 
         self._envs[env_id] = _SandboxEnv(
@@ -282,12 +459,18 @@ class SandboxRunner:
                 output_dir=info.workspace, stderr=str(exc), exit_code=1
             )
 
+        digest = self.image_digests.get(stack.language, "unpinned")
+        if self.backend == "docker":
+            return self._execute_docker(info, stack, agent_cmd, digest)
+
         s3_in = f"s3://{self.s3_bucket}/runs/{env_id}/in.tar.gz"
         s3_out = f"s3://{self.s3_bucket}/runs/{env_id}/out.tar.gz"
         in_tar = self.work_dir / f"{env_id}-in.tar.gz"
         _make_tar(info.workspace, in_tar)
 
-        digest = self.image_digests.get(stack.language, "unpinned")
+        cell_env = self._cell_env(env_id, stack, agent_cmd, digest)
+        cell_env["RETORT_S3_IN"] = s3_in
+        cell_env["RETORT_S3_OUT"] = s3_out
         submitted = self._now()
         try:
             self._aws(["s3", "cp", str(in_tar), s3_in], parse_json=False)
@@ -312,23 +495,7 @@ class SandboxRunner:
                         {"type": "MEMORY", "value": str(self.spec.memory_mb)},
                     ],
                     "environment": [
-                        {"name": "RETORT_S3_IN", "value": s3_in},
-                        {"name": "RETORT_S3_OUT", "value": s3_out},
-                        {"name": "RETORT_AGENT_CMD",
-                         "value": json.dumps(agent_cmd)},
-                        {"name": "RETORT_ENV_ID", "value": env_id},
-                        {"name": "RETORT_LANGUAGE", "value": stack.language},
-                        {"name": "RETORT_MODEL",
-                         "value": self._model_for(stack)},
-                        {"name": "RETORT_IMAGE_DIGEST", "value": digest},
-                        {"name": "RETORT_SCORE_IN_CONTAINER",
-                         "value": "1" if self.score_in_container else "0"},
-                        {"name": "RETORT_STALL_SECONDS",
-                         "value": str(self.stall_minutes * 60)},
-                        {"name": "RETORT_RESPONSES",
-                         "value": ",".join(self.score_metrics)},
-                        {"name": "RETORT_AGENT_TIMEOUT_SECONDS",
-                         "value": str(self.timeout_minutes * 60)},
+                        {"name": k, "value": v} for k, v in cell_env.items()
                     ],
                 }),
             ])
@@ -354,6 +521,15 @@ class SandboxRunner:
             "sandbox_memory_mb": str(self.spec.memory_mb),
             "sandbox_queue_seconds": _queue_seconds(detail),
         }
+        # EFFECTIVE image identity, from what Batch says actually ran — not from
+        # the config. The job definition is addressed by NAME (latest active
+        # revision) and references its image by TAG, so the configured digest
+        # and the running image can silently diverge (register a new revision,
+        # forget the yaml). That is the config-vs-effective gap the project's
+        # first principle exists to close; the mismatch is checked below once
+        # the artifacts are pulled, so the workspace stays diagnosable.
+        image_meta, image_error = self._verify_image(detail, digest)
+        base_meta.update(image_meta)
 
         if status == "TIMEOUT":
             try:
@@ -391,11 +567,206 @@ class SandboxRunner:
                 metadata=base_meta,
             )
 
+        if image_error is not None:
+            # HARNESS failure, never a data point: the cell ran on an image
+            # other than the one provenance would have recorded.
+            return RunArtifacts(
+                output_dir=info.workspace,
+                stderr=f"HARNESS: {image_error}",
+                exit_code=1,
+                metadata=base_meta,
+            )
+
+        return self._collect(info, stack, base_meta, f"Batch job {job_id} {status}")
+
+    # -------------------------------------------------------------- docker --
+
+    def _docker(
+        self, args: list[str], *, timeout: float
+    ) -> subprocess.CompletedProcess[str]:
+        """Run one ``docker`` CLI command; the seam tests monkeypatch.
+
+        Raises ``subprocess.TimeoutExpired`` when ``timeout`` elapses (the
+        caller kills the container by name) and ``RuntimeError`` when docker
+        itself is missing.
+        """
+        try:
+            return subprocess.run(
+                ["docker", *args], capture_output=True, text=True, timeout=timeout,
+            )
+        except FileNotFoundError as exc:
+            raise RuntimeError("docker is not on PATH") from exc
+
+    def _execute_docker(
+        self, info: _SandboxEnv, stack: StackConfig, agent_cmd: list[str], digest: str
+    ) -> RunArtifacts:
+        """Run the cell in the sandbox image under a local ``docker run``.
+
+        Same image, same entrypoint, same ``RETORT_*`` contract as the Batch
+        lane; the workspace is bind-mounted at ``/workspace`` instead of
+        travelling through S3 (``RETORT_S3_IN``/``OUT`` are left unset and the
+        entrypoint skips the transfers). Secrets are forwarded by NAME only.
+        ``runner_lane`` is ``docker-local``; the host emulates linux/amd64, so
+        nothing measured here is comparable to either real lane.
+
+        ``work_dir`` must be under a path Docker Desktop shares into its VM
+        (the default ``~/.retort-sandbox`` is; ``/private/tmp`` is NOT — a
+        mount from there appears EMPTY inside the container, observed
+        2026-09-05).
+        """
+        env_id = info.env_id
+        base_meta = {
+            "runner_lane": "docker-local",
+            "sandbox_job_id": env_id,
+            "sandbox_image_digest": digest,
+            "sandbox_vcpu": str(self.spec.vcpu),
+            "sandbox_memory_mb": str(self.spec.memory_mb),
+            "sandbox_queue_seconds": "",
+        }
+        image = self.docker_images.get(stack.language, "")
+        if not image:
+            return RunArtifacts(
+                output_dir=info.workspace,
+                stderr=(
+                    f"HARNESS: no docker image configured for language "
+                    f"{stack.language!r} (playpen.sandbox.docker_images)"
+                ),
+                exit_code=1,
+                metadata=base_meta,
+            )
+        base_meta["sandbox_docker_image"] = image
+
+        try:
+            image_meta, image_error = self._verify_docker_image(image, digest)
+        except (RuntimeError, subprocess.TimeoutExpired) as exc:
+            return RunArtifacts(
+                output_dir=info.workspace, stderr=f"HARNESS: {exc}",
+                exit_code=1, metadata=base_meta,
+            )
+        base_meta.update(image_meta)
+        if image_error is not None:
+            # Checked BEFORE the run here (inspect is free and local): a cell
+            # on the wrong image must not even start.
+            return RunArtifacts(
+                output_dir=info.workspace, stderr=f"HARNESS: {image_error}",
+                exit_code=1, metadata=base_meta,
+            )
+
+        cmd = [
+            "run", "--rm", "--name", env_id,
+            "--platform", self.docker_platform,
+            "--cpus", str(self.spec.vcpu), "--memory", f"{self.spec.memory_mb}m",
+            "-v", f"{info.workspace}:/workspace",
+        ]
+        for key, value in self._cell_env(env_id, stack, agent_cmd, digest).items():
+            cmd.extend(["-e", f"{key}={value}"])
+        import os
+        for secret in _FORWARDED_SECRETS:
+            if secret in os.environ:
+                cmd.extend(["-e", secret])  # value inherited, never on argv
+        cmd.append(image)
+
+        timeout = self.timeout_minutes * 60 + _TIMEOUT_MARGIN_SECONDS
+        try:
+            proc = self._docker(cmd, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            try:
+                self._docker(["kill", env_id], timeout=60)
+            except (RuntimeError, subprocess.TimeoutExpired):
+                logger.warning("docker kill failed for %s", env_id)
+            return RunArtifacts(
+                output_dir=info.workspace,
+                stderr=f"docker-local cell {env_id} exceeded {timeout}s "
+                       "(agent timeout + margin); container killed",
+                exit_code=124,
+                metadata=base_meta,
+            )
+        except RuntimeError as exc:
+            return RunArtifacts(
+                output_dir=info.workspace, stderr=f"HARNESS: {exc}",
+                exit_code=1, metadata=base_meta,
+            )
+        base_meta["sandbox_container_exit"] = str(proc.returncode)
+        if proc.stderr:
+            (info.workspace / "_container_stderr.log").write_text(
+                proc.stderr[-200_000:]
+            )
+        return self._collect(
+            info, stack, base_meta,
+            f"docker-local container {env_id} exited {proc.returncode}",
+        )
+
+    def _verify_docker_image(
+        self, image: str, configured_digest: str
+    ) -> tuple[dict[str, str], str | None]:
+        """Effective identity of a local image via ``docker image inspect``.
+
+        ``RepoDigests`` carries the registry manifest digest(s) for a pulled
+        image — comparable to ``image_digests``. A locally BUILT image has
+        none, only ``.Id`` (its config digest); that is recorded as
+        ``sandbox_container_image_id``, and a pinned digest then cannot be
+        verified — fail closed, same rule as the Batch lane (run local builds
+        unpinned).
+        """
+        proc = self._docker([
+            "image", "inspect", "--format", "{{join .RepoDigests \",\"}}|{{.Id}}",
+            image,
+        ], timeout=60)
+        if proc.returncode != 0:
+            raise RuntimeError(
+                f"docker image inspect {image!r} failed: {proc.stderr.strip()[:500]}"
+            )
+        repo_digests_raw, _, image_id = proc.stdout.strip().partition("|")
+        meta: dict[str, str] = {}
+        if image_id:
+            meta["sandbox_container_image_id"] = image_id
+        repo_digests = [
+            d.split("@", 1)[1] for d in repo_digests_raw.split(",") if "@" in d
+        ]
+        if repo_digests:
+            meta["sandbox_image_digest_effective"] = repo_digests[0]
+        pinned = configured_digest not in ("", "unpinned")
+        if pinned and configured_digest not in repo_digests:
+            have = ", ".join(repo_digests) or "no registry digest (local build?)"
+            return meta, (
+                f"image mismatch — local image {image} has {have}, but the "
+                f"workspace pins {configured_digest}. Pull the pinned image or "
+                "run the local build unpinned."
+            )
+        return meta, None
+
+    def _cell_env(
+        self, env_id: str, stack: StackConfig, agent_cmd: list[str], digest: str
+    ) -> dict[str, str]:
+        """The ``RETORT_*`` contract with entrypoint.sh, shared by both backends
+        (S3 locations are added by the Batch path only)."""
+        return {
+            "RETORT_AGENT_CMD": json.dumps(agent_cmd),
+            "RETORT_ENV_ID": env_id,
+            "RETORT_LANGUAGE": stack.language,
+            "RETORT_MODEL": self._model_for(stack),
+            "RETORT_IMAGE_DIGEST": digest,
+            "RETORT_SCORE_IN_CONTAINER": "1" if self.score_in_container else "0",
+            "RETORT_STALL_SECONDS": str(self.stall_minutes * 60),
+            "RETORT_RESPONSES": ",".join(self.score_metrics),
+            "RETORT_AGENT_TIMEOUT_SECONDS": str(self.timeout_minutes * 60),
+        }
+
+    # -------------------------------------------------------------- collect --
+
+    def _collect(
+        self, info: _SandboxEnv, stack: StackConfig, base_meta: dict[str, str],
+        context: str,
+    ) -> RunArtifacts:
+        """Turn a finished cell's workspace into RunArtifacts — identical for
+        both backends: ``_sandbox_meta.json`` is the source of duration and
+        exit, the transcript is compacted/parsed, watchdog kills surface like
+        the local guard."""
         meta_file = info.workspace / "_sandbox_meta.json"
         if not meta_file.exists():
             return RunArtifacts(
                 output_dir=info.workspace,
-                stderr=f"Batch job {job_id} {status} but _sandbox_meta.json "
+                stderr=f"{context} but _sandbox_meta.json "
                        "missing from artifacts — entrypoint did not complete",
                 exit_code=1,
                 metadata=base_meta,
@@ -414,14 +785,37 @@ class SandboxRunner:
             if k in sandbox_meta
         }
         base_meta.update(score_meta)
+        # In-container witnesses written by entrypoint.sh: the image id the
+        # ECS agent reports (an image CONFIG digest — a second, independent
+        # identity, not comparable to the ECR manifest digest above), and the
+        # hardware the task landed on. Fargate places tasks on mixed instance
+        # generations; recording the CPU model is what lets build_time be
+        # grouped by hardware instead of carrying it as an unrecorded factor.
+        for src_key, dst_key in (
+            ("container_image_id", "sandbox_container_image_id"),
+            ("cpu_model", "sandbox_cpu_model"),
+            ("cpu_arch", "sandbox_cpu_arch"),
+            ("availability_zone", "sandbox_az"),
+        ):
+            if sandbox_meta.get(src_key):
+                base_meta[dst_key] = str(sandbox_meta[src_key])
         if (info.workspace / "_container_scores.json").exists():
             base_meta["sandbox_container_scores"] = "_container_scores.json"
 
-        stdout_text = _read_text(info.workspace / "_agent_stdout.log")
+        harness = self._resolve_harness(stack)
+        stdout_log = info.workspace / "_agent_stdout.log"
+        if harness == "prime":
+            # ~90% of a prime transcript is message_update snapshots the record
+            # never needs (agent_log.compact_prime_log has the measurement).
+            # Compact BEFORE reading so the parse below is tens of MB, not
+            # hundreds — this ran on the host for every prime cell. Images
+            # built after this change compact in-container too; doing it here
+            # as well covers the images already in use.
+            _agent_log.compact_prime_log(stdout_log)
+        stdout_text = _agent_log.read_text(stdout_log)
         stderr_text = _read_text(info.workspace / "_agent_stderr.log")
         token_count, usage_meta = _local._parse_agent_usage(
-            self._resolve_harness(stack), stdout_text, info.workspace,
-            self._model_for(stack),
+            harness, stdout_text, info.workspace, self._model_for(stack),
         )
 
         # Watchdog kills surface exactly like the local progress guard: exit
@@ -439,7 +833,7 @@ class SandboxRunner:
                 msg = f"Timeout after {agent_seconds:.0f}s (in-container wall)"
             return RunArtifacts(
                 output_dir=info.workspace,
-                stdout=stdout_text,
+                stdout=stdout_text[-10000:],
                 stderr=(stderr_text[-5000:] + "\n" + msg) if stderr_text else msg,
                 exit_code=124,
                 duration_seconds=agent_seconds,
@@ -447,10 +841,15 @@ class SandboxRunner:
                 metadata={**usage_meta, **base_meta},
             )
 
+        # Same bound as LocalRunner (stdout[-10000:], stderr[-5000:]): the full
+        # transcript lives in the workspace file; RunArtifacts carries a tail.
+        # Bounding it identically also keeps token_efficiency's text-length
+        # fallback comparable across lanes, which an unbounded sandbox stdout
+        # silently was not.
         return RunArtifacts(
             output_dir=info.workspace,
-            stdout=stdout_text,
-            stderr=stderr_text,
+            stdout=stdout_text[-10000:],
+            stderr=stderr_text[-5000:] if stderr_text else "",
             exit_code=agent_exit,
             duration_seconds=agent_seconds,
             token_count=token_count,
@@ -498,6 +897,81 @@ class SandboxRunner:
             f"agent {stack.agent!r} resolves to {harness!r}"
         )
 
+    def _verify_image(
+        self, job_detail: dict[str, Any], configured_digest: str
+    ) -> tuple[dict[str, str], str | None]:
+        """Resolve the image the job ACTUALLY ran and compare it to the config.
+
+        Returns ``(metadata, error)``. ``metadata`` always carries
+        ``sandbox_job_definition`` (``name:revision``) and
+        ``sandbox_image_digest_effective`` when they could be determined.
+        ``error`` is set when a digest was configured and the effective one is
+        different or could not be established — fail closed; an unverifiable
+        pin is no pin. With no configured digest (``"unpinned"``) the effective
+        digest is recorded and nothing fails: that is the honest state.
+        """
+        meta: dict[str, str] = {}
+        jobdef = str(job_detail.get("jobDefinition") or "")
+        if jobdef:
+            # arn:aws:batch:…:job-definition/retort-sandbox-python:8
+            meta["sandbox_job_definition"] = jobdef.rsplit("/", 1)[-1]
+        container = job_detail.get("container") or {}
+        image_uri = str(container.get("image") or "")
+        pinned = configured_digest not in ("", "unpinned")
+
+        if not image_uri:
+            if pinned:
+                return meta, (
+                    "Batch reported no container image for the job; the "
+                    f"configured digest {configured_digest} cannot be verified"
+                )
+            return meta, None
+
+        # The preflight resolved this language's job-definition image once;
+        # a job that reports the same URI needs no second lookup. A different
+        # URI means the definition changed under a running grid — resolve it.
+        cached = next(
+            (c for c in self._jobdef_images.values() if c[1] == image_uri), None
+        )
+        try:
+            effective = cached[2] if cached else self._resolve_image_digest(image_uri)
+        except RuntimeError as exc:
+            if pinned:
+                return meta, f"could not resolve image {image_uri!r} to a digest: {exc}"
+            logger.warning("image digest unresolved for %s: %s", image_uri, exc)
+            return meta, None
+        if effective:
+            meta["sandbox_image_digest_effective"] = effective
+        if pinned and effective != configured_digest:
+            jobdef_label = meta.get("sandbox_job_definition", "?")
+            return meta, (
+                f"image mismatch — job definition {jobdef_label} "
+                f"ran {image_uri} = {effective or 'unknown'}, but the workspace "
+                f"pins {configured_digest}. Update playpen.sandbox.image_digests "
+                "or re-register the job definition; the two must agree."
+            )
+        return meta, None
+
+    def _resolve_image_digest(self, image_uri: str) -> str:
+        """``repo@sha256:…`` is already a digest; ``repo:tag`` is looked up in ECR.
+
+        Only the ECR registry the job definition points at is consulted — the
+        tag is resolved against the same repository Batch pulled from.
+        """
+        if "@sha256:" in image_uri:
+            return image_uri.split("@", 1)[1]
+        # <account>.dkr.ecr.<region>.amazonaws.com/<repo>:<tag>
+        path = image_uri.split("/", 1)[1] if "/" in image_uri else image_uri
+        repo, _, tag = path.rpartition(":")
+        if not repo or not tag:
+            raise RuntimeError(f"unrecognised image reference {image_uri!r}")
+        resp = self._aws([
+            "ecr", "describe-images", "--repository-name", repo,
+            "--image-ids", f"imageTag={tag}",
+        ])
+        details = resp.get("imageDetails") or []
+        return str(details[0].get("imageDigest", "")) if details else ""
+
     def _poll_job(self, job_id: str) -> tuple[str, dict[str, Any]]:
         """Poll DescribeJobs until terminal or deadline.
 
@@ -525,6 +999,8 @@ class SandboxRunner:
             shutil.rmtree(info.workspace, ignore_errors=True)
         for suffix in ("-in.tar.gz", "-out.tar.gz"):
             (self.work_dir / f"{env_id}{suffix}").unlink(missing_ok=True)
+        if self.backend != "batch":
+            return  # nothing in S3 to clean up
         try:
             self._aws([
                 "s3", "rm", f"s3://{self.s3_bucket}/runs/{env_id}",

@@ -10,10 +10,17 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import click
 
 from retort import __version__
+
+if TYPE_CHECKING:
+    from retort.config.schema import WorkspaceConfig
+    from retort.playpen.runner import RunArtifacts, StackConfig
+    from retort.playpen.sandbox_runner import SandboxRunner
+    from retort.scoring.collector import ScoreCollector, ScoreVector
 from retort.analysis.anova import run_all_responses, run_anova
 from retort.analysis.residuals import check_residuals
 from retort.design.factors import FactorRegistry
@@ -62,7 +69,7 @@ tasks:
   - source: bundled://rest-api-crud
 
 playpen:
-  runner: docker
+  runner: local            # `docker` / `sandbox` also need a playpen.sandbox block
   replicates: 3
   timeout_minutes: 30
   local_agents:
@@ -168,14 +175,14 @@ def _live_context_tokens(
     # output). Imported here because this path (live context for an in-flight
     # cell) was unreachable until the run-process detection was fixed to match by
     # cwd, so the missing import never fired.
+    from retort.playpen import agent_log
     from retort.playpen.local_runner import _turn_context
 
-    log = workspace / "_agent_stdout.log"
-    if log.is_file():
-        try:
-            tail = log.read_bytes()[-400_000:].decode("utf-8", "replace")
-        except OSError:
-            tail = ""
+    log = agent_log.find_agent_log(workspace)
+    if log is not None:
+        # Seeks to the tail (or streams a rolling window for .gz); never loads
+        # the whole transcript.
+        tail = agent_log.read_tail(log)
         latest: int | None = None
         peak = 0
         for line in tail.splitlines():
@@ -238,6 +245,35 @@ def _live_context_tokens(
     return None, None
 
 
+#: Files the harness itself writes into a rep dir, by exact name. Anything
+#: underscore- or dot-prefixed is harness-owned by convention (``_meta.json``,
+#: ``_agent_stdout.log``, ``_sandbox_meta.json``, ``_container_scores.json``,
+#: ``_score_stdout.log``, ...), so this set only needs the names that do NOT
+#: follow that convention. ``opencode.json`` is the per-run agent config the
+#: opencode harness drops into the workspace.
+_HARNESS_FILES = frozenset({
+    "TASK.md", "stack.json", "REQUIREMENTS.json", "scores.json",
+    "evaluation.md", "assessment.json", "findings.jsonl", "FEEDBACK.md",
+    "README.md", "prompts.txt", "opencode.json",
+})
+
+
+def _harness_owned_file(name: str) -> bool:
+    """True when ``name`` is something the harness (not the agent) wrote.
+
+    Rule, not list: underscore/dot-prefixed names, the explicit
+    ``_HARNESS_FILES``, and the ``.gz`` form of any of those (the data branch
+    gzips logs over 1 MB). The zero-write HARNESS classification below depends
+    on this being complete — a container-lane archive always carries
+    ``_sandbox_meta.json`` + ``_container_scores.json``, and a gzipped archive
+    ``_agent_stdout.log.gz``; before this rule covered them, ``produced`` was
+    never empty for such runs and a blocked file tool was labelled GENUINE.
+    """
+    if name.endswith(".gz"):
+        name = name[: -len(".gz")]
+    return name.startswith(("_", ".")) or name in _HARNESS_FILES
+
+
 def _harness_failure(rep_dir: Path) -> str | None:
     """Was the agent PREVENTED from working in this archived run?
 
@@ -257,15 +293,9 @@ def _harness_failure(rep_dir: Path) -> str | None:
     """
     from retort.playpen.local_runner import _TOOL_REFUSAL_RE
 
-    _SKIP = {
-        "TASK.md", "stack.json", "REQUIREMENTS.json", "_meta.json", "scores.json",
-        "evaluation.md", "assessment.json", "findings.jsonl", "FEEDBACK.md",
-        "_agent_stdout.log", "_agent_stderr.log", "README.md", "prompts.txt",
-    }
     produced = [
         p for p in rep_dir.rglob("*")
-        if p.is_file() and p.name not in _SKIP
-        and not p.name.startswith(".")
+        if p.is_file() and not _harness_owned_file(p.name)
         and "summary" not in p.parts and "data" not in p.parts
     ]
     if produced:
@@ -275,11 +305,16 @@ def _harness_failure(rep_dir: Path) -> str | None:
         "agent wrote NO source files — a model that cannot do the task still writes "
         "something. Suspect the harness before the model."
     )
-    log = rep_dir / "_agent_stdout.log"
-    if log.is_file():
+    from retort.playpen import agent_log
+
+    log = agent_log.find_agent_log(rep_dir)
+    if log is not None:
+        # Line-by-line (the refusal signatures are single-line) over .log or
+        # .log.gz — `retort diagnose` walks every failed archive, and one prime
+        # transcript was 193 MB.
         try:
-            m = _TOOL_REFUSAL_RE.search(log.read_text(errors="replace"))
-        except OSError:
+            m = agent_log.search(log, _TOOL_REFUSAL_RE)
+        except agent_log.READ_ERRORS:  # search() already swallows; belt and braces
             m = None
         if m:
             why += (
@@ -394,6 +429,42 @@ def _load_from_stdin() -> FactorRegistry:
 
     data = json.load(sys.stdin)
     return FactorRegistry.from_dict(data)
+
+
+def _build_sandbox_runner(workspace_config: WorkspaceConfig) -> SandboxRunner:
+    """SandboxRunner from playpen.sandbox (``runner: sandbox``, or
+    ``runner: docker`` as the alias for backend=docker).
+
+    The opencode profile's model_options (e.g. the OpenRouter provider pin)
+    ride along exactly as in the local lane; profiles + the playpen default
+    model give the sandbox the SAME model-resolution chain as LocalRunner, and
+    stall_minutes reaches the in-container watchdog so a hung agent dies in
+    minutes, not the whole Batch wall.
+    """
+    from retort.playpen.sandbox_runner import SandboxRunner, SandboxSpec
+
+    _sbx = workspace_config.playpen.sandbox
+    assert _sbx is not None
+    _oc_profile = (workspace_config.playpen.local_agents or {}).get("opencode")
+    return SandboxRunner(
+        backend=_sbx.backend,
+        docker_images=_sbx.docker_images,
+        s3_bucket=_sbx.s3_bucket,
+        job_queue=_sbx.job_queue,
+        job_definition_prefix=_sbx.job_definition_prefix,
+        image_digests=_sbx.image_digests,
+        spec=SandboxSpec(vcpu=_sbx.vcpu, memory_mb=_sbx.memory_mb),
+        region=_sbx.region,
+        timeout_minutes=workspace_config.playpen.timeout_minutes,
+        stall_minutes=workspace_config.playpen.stall_minutes,
+        local_agents=workspace_config.playpen.local_agents,
+        default_model=workspace_config.playpen.model,
+        model_options=(
+            _oc_profile.model_options if _oc_profile is not None else None
+        ),
+        score_in_container=_sbx.score_in_container,
+        score_metrics=[r.name for r in workspace_config.responses],
+    )
 
 
 @main.command("run")
@@ -524,7 +595,6 @@ def run_experiments(
     import yaml as _yaml
 
     from retort.config.loader import load_workspace
-    from retort.playpen.docker_runner import DockerRunner
     from retort.playpen.local_runner import LocalRunner
     from retort.playpen.runner import StackConfig, TaskSpec
     from retort.playpen.task_loader import load_task, task_requirements_path
@@ -856,36 +926,13 @@ def run_experiments(
         # ephemeral container. duration_seconds is the IN-CONTAINER agent time
         # and metadata carries runner_lane=sandbox — never pool duration or
         # build_time across lanes.
-        from retort.playpen.sandbox_runner import SandboxRunner, SandboxSpec
-        _sbx = workspace_config.playpen.sandbox
-        if _sbx is None:
+        if workspace_config.playpen.sandbox is None:
             raise click.ClickException(
-                "runner: sandbox requires a playpen.sandbox block "
-                "(s3_bucket at minimum) — see docs/future-experiments.md §0c."
+                "runner: sandbox requires a playpen.sandbox block (s3_bucket for "
+                "backend=batch; docker_images for backend=docker) — see "
+                "docs/sandbox-runner.md."
             )
-        # The opencode profile's model_options (e.g. the OpenRouter provider
-        # pin) rides along exactly as in the local lane; profiles + the
-        # playpen default model give the sandbox the SAME model-resolution
-        # chain as LocalRunner, and stall_minutes reaches the in-container
-        # watchdog so a hung agent dies in minutes, not the whole Batch wall.
-        _oc_profile = (workspace_config.playpen.local_agents or {}).get("opencode")
-        runner = SandboxRunner(
-            s3_bucket=_sbx.s3_bucket,
-            job_queue=_sbx.job_queue,
-            job_definition_prefix=_sbx.job_definition_prefix,
-            image_digests=_sbx.image_digests,
-            spec=SandboxSpec(vcpu=_sbx.vcpu, memory_mb=_sbx.memory_mb),
-            region=_sbx.region,
-            timeout_minutes=workspace_config.playpen.timeout_minutes,
-            stall_minutes=workspace_config.playpen.stall_minutes,
-            local_agents=workspace_config.playpen.local_agents,
-            default_model=workspace_config.playpen.model,
-            model_options=(
-                _oc_profile.model_options if _oc_profile is not None else None
-            ),
-            score_in_container=_sbx.score_in_container,
-            score_metrics=[r.name for r in workspace_config.responses],
-        )
+        runner = _build_sandbox_runner(workspace_config)
     elif runner_type == "metaharness":
         from retort.playpen.metaharness_runner import MetaHarnessRunner
         runner = MetaHarnessRunner(
@@ -893,10 +940,54 @@ def run_experiments(
             max_turns=workspace_config.playpen.max_turns,
             default_model=workspace_config.playpen.model,
         )
+    elif runner_type == "docker":
+        # `docker` is an alias for the sandbox runner's local docker backend:
+        # the SAME image + entrypoint as the Fargate lane under `docker run`,
+        # lane docker-local. (The former DockerRunner simulated results with
+        # random metrics when docker was absent; it is gone.) The schema
+        # default and the `retort init` template are `local`.
+        if shutil.which("docker") is None:
+            raise click.ClickException(
+                "runner: docker requested but `docker` is not on PATH. Set "
+                "`playpen.runner: local` (the supported path) or install docker."
+            )
+        _sbx = workspace_config.playpen.sandbox
+        if _sbx is None or _sbx.backend != "docker":
+            raise click.ClickException(
+                "runner: docker needs a playpen.sandbox block with "
+                "`backend: docker` and `docker_images: {<language>: <image>}` "
+                "— see docs/sandbox-runner.md §7 (1.2b)."
+            )
+        runner = _build_sandbox_runner(workspace_config)
     else:
-        runner = DockerRunner(timeout_minutes=workspace_config.playpen.timeout_minutes)
+        # `cloud` is a reserved name in the schema with no runner behind it;
+        # anything else is a typo. Both used to fall through to DockerRunner —
+        # i.e. to simulated results. Fail closed.
+        from retort.config.schema import RunnerType
+        _implemented = [r.value for r in RunnerType if r.value != "cloud"]
+        raise click.ClickException(
+            f"runner: {runner_type!r} has no implementation. Choose one of "
+            f"{' | '.join(_implemented)}. (`cloud` is a reserved schema name — "
+            "the AWS Batch/Fargate lane is `sandbox`, see docs/sandbox-runner.md.)"
+        )
     metric_names = [r.name for r in workspace_config.responses]
     collector = ScoreCollector(metrics=metric_names)
+
+    # LANE PREFLIGHT. A runner that silently ignores a factor level records the
+    # level as run — the experiment then reports an effect (or a null) for a
+    # factor that never varied, which is the set-but-not-verified failure this
+    # project keeps re-learning. Runners that know which levels they cannot
+    # honour expose check_design(); refuse the whole grid before any cell runs.
+    _check_design = getattr(runner, "check_design", None)
+    if _check_design is not None:
+        _problems = _check_design(list(design.run_configs()))
+        if _problems:
+            raise click.ClickException(
+                f"LANE PREFLIGHT FAILED — `runner: {runner_type}` cannot honour "
+                "this design:\n  - " + "\n  - ".join(_problems) + "\n"
+                "  A level the lane ignores would still be RECORDED as run. Remove "
+                "the level, or run it on `runner: local`."
+            )
 
     # A `tooling: graphify` cell whose agent never opened the graph is a
     # `tooling: none` cell wearing a label, and its null is worthless. The
@@ -1062,6 +1153,19 @@ def run_experiments(
                     # — on any turn that happens not to write a file; that matches
                     # the refusal regex yet the run still produces a complete, passing
                     # implementation. Aborting on it discarded good 80B runs (exp-30).
+                    if artifacts.stderr.startswith("HARNESS:"):
+                        # The runner itself says this cell is not a data point
+                        # (wrong image, unverifiable pin, no image configured).
+                        # Stop: every following cell would fail the same way at
+                        # full cost, and a crash row per cell would look like data.
+                        _why = artifacts.stderr[len("HARNESS:"):].strip()
+                        raise _stop_with_evidence(
+                            f"HARNESS BROKEN — {_why}\n"
+                            "  Stopping before the next cell; nothing was recorded "
+                            "for this one and --resume re-runs it once fixed.",
+                            archive_root, run_config, rep, artifacts,
+                            workspace_config.experiment.visibility,
+                        )
                     _refusal = artifacts.metadata.get("tool_refusal")
                     if _refusal and artifacts.metadata.get("wrote_nothing") == "true":
                         raise click.ClickException(
@@ -1098,7 +1202,14 @@ def run_experiments(
                     else:
                         no_write_streak = 0
 
-                    scores = collector.collect(artifacts, stack)
+                    try:
+                        scores = _collect_scores(
+                            collector, artifacts, stack, metric_names)
+                    except _HarnessStopError as stop:
+                        raise _stop_with_evidence(
+                            str(stop), archive_root, run_config, rep, artifacts,
+                            workspace_config.experiment.visibility,
+                        ) from None
 
                     # Conformance gate: an agent-succeeded run whose tests never
                     # executed is not a valid success — record it as failed.
@@ -1184,7 +1295,14 @@ def run_experiments(
                             )
                             a2 = runner.execute(env_id2, stack, task)
                             if not a2.usage_limited:
-                                s2 = collector.collect(a2, stack)
+                                try:
+                                    s2 = _collect_scores(
+                                        collector, a2, stack, metric_names)
+                                except _HarnessStopError as stop:
+                                    raise _stop_with_evidence(
+                                        str(stop), archive_root, run_config, rep, a2,
+                                        workspace_config.experiment.visibility,
+                                    ) from None
                                 tf2 = _tests_did_not_run(s2)
                                 arch2 = _archive_run_workspace(
                                     archive_root, run_config, rep, a2,
@@ -1809,11 +1927,25 @@ def _archive_run_workspace(
                        err=True)
             return None
 
+    _run_md: dict[str, str] = dict(getattr(artifacts, "metadata", None) or {})
     meta = {
         "visibility": visibility,
         "run_config": run_config,
         "replicate": replicate,
         "succeeded": artifacts.succeeded,
+        # Which lane ran the cell and which lane produced scores.json. A
+        # container-lane archive rescored on the host later gets
+        # `rescored_lane: host` stamped beside these (retort rescore), so a
+        # host-rescored sandbox run is never mistaken for an in-container one.
+        "runner_lane": _run_md.get("runner_lane", "local"),
+        "scored_lane": _run_md.get("scored_lane", "host"),
+        # The runner's per-run metadata, verbatim. Until 2026-09-05 this dict
+        # lived only in process memory: the DB row keeps status + metrics, and
+        # _meta.json kept four fields — so sandbox_image_digest, the job id,
+        # queue seconds, kill_reason and the usage breakdown of every
+        # exp-mu-primeagent cell were never written anywhere. The archive is
+        # the durable record; this is where the effective stack goes.
+        "metadata": dict(_run_md),
     }
     try:
         (dest / "_meta.json").write_text(json.dumps(meta, indent=2, sort_keys=True))
@@ -2710,6 +2842,127 @@ def _persist_design_matrix(
         config_to_row_id[json.dumps(run_config, sort_keys=True)] = existing_row.id
 
     return matrix.id, config_to_row_id
+
+
+#: Lanes whose cells are built and scored inside a container. Their scores
+#: come from the container, never from the host.
+_CONTAINER_LANES = frozenset({"sandbox", "docker-local"})
+_CONTAINER_SCORES = "_container_scores.json"
+
+
+class _HarnessStopError(Exception):
+    """A cell whose result must never become a data point AND must stop the
+    run: raised inside the cell loop, which archives the workspace as evidence
+    FIRST (teardown would otherwise delete it) and then re-raises as a
+    ClickException naming the archive."""
+
+
+def _stop_with_evidence(
+    message: str, archive_root: Path, run_config: dict[str, str], rep: int,
+    artifacts: RunArtifacts, visibility: str,
+) -> click.ClickException:
+    """Archive the cell's workspace, then build the ClickException that stops
+    the run. Raising before archiving lets the loop's ``finally: teardown``
+    wipe the very files (transcript, _sandbox_meta.json, _score_stdout.log)
+    needed to diagnose the failure — and the message would point at a
+    directory that no longer exists."""
+    archived = None
+    try:
+        archived = _archive_run_workspace(
+            archive_root, run_config, rep, artifacts, visibility=visibility,
+            replace_existing=True,
+        )
+    except Exception as exc:  # evidence is best-effort; the stop is not
+        click.echo(f"  (archiving evidence failed: {exc})", err=True)
+    where = f"\n  Evidence archived at: {archived}" if archived else ""
+    return click.ClickException(message + where)
+
+
+def _collect_scores(
+    collector: ScoreCollector,
+    artifacts: RunArtifacts,
+    stack: StackConfig,
+    metric_names: list[str],
+) -> ScoreVector:
+    """The authoritative score vector for one cell.
+
+    Local lane: the host ``ScoreCollector``, as always. Container lanes
+    (``runner_lane`` in :data:`_CONTAINER_LANES`): the scores the container
+    computed with the SAME collector — ``_container_scores.json`` — are the
+    result, and the host does not rescore. Host scoring of a workspace built
+    elsewhere is wrong three ways: it needs every language toolchain on the
+    host, it re-creates the host contention the lane exists to remove (16
+    cells returning at once = 16 concurrent ``go test``), and its
+    ``build_time`` measures the host. A ``null`` in the file is a scorer's
+    "not applicable" (left NULL, exactly as the collector would); an ABSENT
+    metric is recorded in metadata as ``scored_missing`` and left NULL. A
+    container lane whose cell completed but produced NO file is a HARNESS
+    failure and stops the run (``_HarnessStopError``; the loop archives the
+    evidence first) — never a silent host fallback. A cell that did not
+    succeed (crash, kill, HARNESS artifact) never has its container file
+    adopted: the host collector runs on whatever came back, stamped
+    ``scored_lane=host``, and the row is a retry, not a data point.
+    """
+    from retort.scoring.collector import ScoreResult
+    from retort.scoring.collector import ScoreVector as _ScoreVector
+
+    lane = artifacts.metadata.get("runner_lane", "local")
+    if lane not in _CONTAINER_LANES:
+        artifacts.metadata["scored_lane"] = "host"
+        return collector.collect(artifacts, stack)
+
+    path = artifacts.output_dir / _CONTAINER_SCORES if artifacts.output_dir else None
+    if not artifacts.succeeded:
+        # Crashed, killed, or a HARNESS artifact: nothing in the container
+        # file is a data point (it may describe a half-written workspace or
+        # the WRONG image). The host collector runs on whatever came back,
+        # stamped host, and the row is a retry.
+        artifacts.metadata["scored_lane"] = "host"
+        return collector.collect(artifacts, stack)
+    if path is None or not path.is_file():
+        if artifacts.succeeded:
+            raise _HarnessStopError(
+                f"HARNESS BROKEN — `runner_lane={lane}` cell completed but left no "
+                f"{_CONTAINER_SCORES} in {artifacts.output_dir}.\n"
+                "  Container lanes score IN the container; the host will not "
+                "rescore a workspace built elsewhere (wrong toolchain, wrong "
+                "hardware, host contention). Set playpen.sandbox."
+                "score_in_container: true (the default) and make sure the image "
+                "carries retort's scorer suite (score_full.py). Nothing was "
+                "recorded for this cell; --resume re-runs it."
+            )
+
+    try:
+        data = json.loads(path.read_text())
+    except (ValueError, OSError) as exc:
+        raise _HarnessStopError(
+            f"HARNESS BROKEN — `runner_lane={lane}` cell left an unreadable "
+            f"{_CONTAINER_SCORES} in {artifacts.output_dir}: {exc}\n"
+            "  The container's scorer (score_full.py) must write a JSON object "
+            "of metric -> value. Nothing was recorded for this cell; --resume "
+            "re-runs it."
+        ) from exc
+    if not isinstance(data, dict):
+        raise _HarnessStopError(
+            f"HARNESS BROKEN — `runner_lane={lane}` cell left a "
+            f"{_CONTAINER_SCORES} in {artifacts.output_dir} that is not a JSON "
+            f"object (got {type(data).__name__}).\n"
+            "  The container's scorer (score_full.py) must write a JSON object "
+            "of metric -> value. Nothing was recorded for this cell; --resume "
+            "re-runs it."
+        )
+    missing = [m for m in metric_names if m not in data]
+    if missing:
+        artifacts.metadata["scored_missing"] = ",".join(missing)
+        click.echo(
+            f" ⚠️  container scored no value for {missing} (left NULL)",
+            err=True, nl=False,
+        )
+    artifacts.metadata["scored_lane"] = lane
+    return _ScoreVector(scores=[
+        ScoreResult(metric_name=m, value=data[m])
+        for m in metric_names if data.get(m) is not None
+    ])
 
 
 def _tests_did_not_run(scores) -> bool:

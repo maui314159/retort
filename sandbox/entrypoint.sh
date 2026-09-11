@@ -2,8 +2,10 @@
 # retort sandbox container entrypoint — one experiment cell, then exit.
 #
 # Contract with sandbox_runner.py (env, all required unless noted):
-#   RETORT_S3_IN        s3://... input workspace tarball
-#   RETORT_S3_OUT       s3://... where to upload the artifacts tarball
+#   RETORT_S3_IN        s3://... input workspace tarball (Batch lane; unset
+#                       under the docker-local backend, where /workspace is a
+#                       bind mount and no transfer happens)
+#   RETORT_S3_OUT       s3://... where to upload the artifacts tarball (same)
 #   RETORT_AGENT_CMD    JSON array: the headless agent command
 #   RETORT_ENV_ID       cell id (logging only)
 #   RETORT_LANGUAGE     language factor (scoring stage)
@@ -20,6 +22,13 @@
 #   * The artifacts tarball is uploaded EVEN when the agent fails (trap), so a
 #     failed run stays diagnosable.
 set -euo pipefail
+
+# No core dumps. A crashing agent runtime (Bun segfaulted under amd64
+# emulation, 2026-09-05) otherwise writes a core into its cwd — the
+# WORKSPACE — at gigabytes per minute: 64 GB in ten minutes, and the growing
+# file counted as "progress" so the stall guard never fired. On Fargate the
+# same would fill the ephemeral disk and break the artifact upload.
+ulimit -c 0
 
 WS=/workspace
 mkdir -p "$WS"
@@ -50,16 +59,60 @@ try:
     meta["kill_reason"] = open("/tmp/kill_reason").read().strip()
 except Exception:
     pass
+# Witnesses of what ACTUALLY ran, independent of anything the runner passed
+# in. RETORT_IMAGE_DIGEST above is the CONFIGURED digest; the ECS agent's
+# ImageID is the image's config digest (a different identity from the ECR
+# manifest digest — recorded as a second witness, never compared to it).
+# Fargate lands tasks on mixed instance generations, so the CPU model and AZ
+# are recorded to let build_time be grouped by hardware rather than carry it
+# as an unrecorded factor. All best-effort: a missing witness is a missing
+# key, never a crash.
+import urllib.request
+def _get(url):
+    with urllib.request.urlopen(url, timeout=3) as r:
+        return json.load(r)
+uri = os.environ.get("ECS_CONTAINER_METADATA_URI_V4")
+if uri:
+    try:
+        c = _get(uri)
+        meta["container_image_id"] = c.get("ImageID", "")
+        meta["container_image"] = c.get("Image", "")
+    except Exception:
+        pass
+    try:
+        t = _get(uri + "/task")
+        meta["availability_zone"] = t.get("AvailabilityZone", "")
+    except Exception:
+        pass
+import platform
+meta["cpu_arch"] = platform.machine()  # x86_64 on Fargate; tells emulation apart
+try:
+    # x86 exposes "model name"; arm64 (and an emulated amd64 container on an
+    # arm64 host, whose /proc/cpuinfo is the host's) exposes none — so the
+    # key is present only when a real model string exists, never invented.
+    for line in open("/proc/cpuinfo"):
+        if line.lower().startswith(("model name", "hardware")):
+            meta["cpu_model"] = line.split(":", 1)[1].strip()
+            break
+except Exception:
+    pass
 open(sys.argv[1], "w").write(json.dumps(meta))
 EOF
-  tar -C "$WS" -czf /tmp/out.tar.gz . || true
-  aws s3 cp /tmp/out.tar.gz "$RETORT_S3_OUT" || true
+  # Batch lane: ship the workspace back through S3. docker-local lane: the
+  # workspace is a bind mount, the host already has it — no transfer.
+  if [ -n "${RETORT_S3_OUT:-}" ]; then
+    tar -C "$WS" -czf /tmp/out.tar.gz . || true
+    aws s3 cp /tmp/out.tar.gz "$RETORT_S3_OUT" || true
+  fi
 }
 trap finish EXIT
 
 # ---- pull the workspace ----------------------------------------------------
-aws s3 cp "$RETORT_S3_IN" /tmp/in.tar.gz
-tar -C "$WS" -xzf /tmp/in.tar.gz
+# RETORT_S3_IN unset => docker-local lane, workspace bind-mounted at $WS.
+if [ -n "${RETORT_S3_IN:-}" ]; then
+  aws s3 cp "$RETORT_S3_IN" /tmp/in.tar.gz
+  tar -C "$WS" -xzf /tmp/in.tar.gz
+fi
 
 # ---- opencode auth + isolation --------------------------------------------
 # Key material comes from the job definition's Secrets Manager wiring; it is
@@ -154,6 +207,20 @@ set -e
 T1=$(python3 -c 'import time; print(time.monotonic())')
 AGENT_SECONDS=$(python3 -c "print(f'{$T1 - $T0:.1f}')")
 
+# prime-agent's --mode json transcript is ~90% message_update snapshots the
+# record never needs (retort.playpen.agent_log.compact_prime_log documents the
+# measurement: 193 MB -> ~21 MB, usage/cost/stopReason all on message_end).
+# Compact here so the artifact tarball, S3 and the host never carry the bulk.
+# Outside the timed window; best-effort; the host compacts again if needed.
+python3 - <<'EOF' || true
+import json, os, pathlib
+from retort.playpen.agent_log import compact_prime_log
+cmd = json.loads(os.environ.get("RETORT_AGENT_CMD", "[]"))
+if cmd and "prime" in os.path.basename(cmd[0]):
+    before, after = compact_prime_log(pathlib.Path("/workspace/_agent_stdout.log"))
+    print(f"compact_prime_log: {before} -> {after} bytes")
+EOF
+
 # ---- scoring ---------------------------------------------------------------
 # Full scorer parity (v3): the image carries retort itself, and score_full.py
 # runs the REAL ScoreCollector over the workspace for the metrics named in
@@ -169,7 +236,14 @@ if [ "${RETORT_SCORE_IN_CONTAINER:-0}" = "1" ]; then
     python3 /score_gate.py > "$WS/_score_stdout.log" 2>&1 || true
   fi
   if [ -n "${RETORT_RESPONSES:-}" ]; then
-    python3 /score_full.py >> "$WS/_score_stdout.log" 2>&1 || true
+    # The scorers must see the SAME artifact facts the host lane's collector
+    # sees: the agent's real exit code (a stall/timeout kill is 124, not 0),
+    # its in-container seconds and its kill reason. Without these a killed
+    # cell scored as a success and token_efficiency fell back to guessing
+    # from transcript length.
+    RETORT_AGENT_EXIT="$AGENT_EXIT" RETORT_AGENT_SECONDS="$AGENT_SECONDS" \
+    RETORT_KILL_REASON="$(cat /tmp/kill_reason 2>/dev/null || true)" \
+      python3 /score_full.py >> "$WS/_score_stdout.log" 2>&1 || true
   fi
 fi
 

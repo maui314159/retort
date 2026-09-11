@@ -1,19 +1,18 @@
-# retort sandbox image — python cells.
+# retort sandbox image — python cells. ONE recipe: scorer suite + opencode +
+# prime-agent. Generations are immutable ECR tags (python-v5, python-v6, ...);
+# the DIGEST is the tuning parameter that lands in every run's provenance.
 #
-# PINNING: build once, push to ECR, and record the pushed image DIGEST
-# (sha256:...) in the experiment's SandboxRunner(image_digests={...}) — the
-# digest is a tuning parameter that lands in every run's provenance. Never run
-# two arms of one experiment on different digests. Rebuild = new digest = new
-# provenance value. The ECR repo is IMMUTABLE: each rebuild pushes a NEW tag
-# (python-v2, python-v3, ...) and registers a new job-definition revision.
-#
-# Build (REPO ROOT as context — the wheel stage needs the source tree):
+# Build with sandbox/build_images.sh (stages the prime-agent bundle, passes
+# the provenance build-args below, pushes, and appends the pushed digest to
+# sandbox/images.lock.json). Direct build, from the REPO ROOT:
 #   docker build -f sandbox/Dockerfile.python --platform linux/amd64 \
-#     --provenance=false --sbom=false -t retort-sandbox:python-v3 .
+#     --provenance=false --sbom=false -t retort-sandbox:python-local .
 #
 # opencode >= 1.18.20 is REQUIRED: 1.18.15 hangs at init on any per-model
 # `options` key (the OpenRouter provider pin uses one). Verified 2026-08-31.
+ARG PYTHON_BASE=python:3.12-slim
 ARG OPENCODE_VERSION=1.18.20
+ARG NODE_MAJOR=22
 
 # ---- wheel stage: retort itself, built from this worktree ------------------
 # Full scorer parity requires retort's REAL scorer code in the container.
@@ -22,33 +21,51 @@ ARG OPENCODE_VERSION=1.18.20
 # this image infeasible); the runtime stage installs the wheel --no-deps plus
 # only the scoring path's real dependencies, and PROVES the import works at
 # build time so a missing dep fails the build, not a run.
-FROM python:3.12-slim AS wheel
+FROM ${PYTHON_BASE} AS wheel
 WORKDIR /src
 COPY pyproject.toml README.md* ./
 COPY src ./src
 RUN pip wheel --no-deps --no-build-isolation -w /wheels . \
     || (pip install hatchling && pip wheel --no-deps -w /wheels .)
 
-FROM python:3.12-slim
+FROM ${PYTHON_BASE}
 
 ARG OPENCODE_VERSION
+ARG NODE_MAJOR
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        awscli ca-certificates curl git tar unzip \
+        ca-certificates curl git gnupg tar unzip \
     && rm -rf /var/lib/apt/lists/*
+
+# awscli v2 from the official installer — the Debian package's postinst is
+# broken against the floating python:3.12-slim base (python3-distro dpkg
+# error, hit 2026-09-01); the zip install is AWS's supported path anyway.
+RUN curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip \
+    && unzip -q /tmp/awscliv2.zip -d /tmp \
+    && /tmp/aws/install --bin-dir /usr/local/bin \
+    && rm -rf /tmp/aws /tmp/awscliv2.zip \
+    && aws --version
+
+# Node from NodeSource, PINNED to a major (Debian's node is too old for
+# current agent output and for the prime-agent bundle, which needs >= 20).
+# The digest freezes the exact minor per image.
+RUN curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/* \
+    && node --version && npm --version
 
 # Scoring toolchain: pytest/coverage (test_coverage), ruff (code_quality /
 # defect_rate lint paths). Versions float at build time but are FROZEN per
 # image digest — the digest in provenance pins them.
 RUN pip install --no-cache-dir pytest coverage ruff
 
-# retort itself: wheel --no-deps + ONLY the scoring path's dependencies
-# (pluggy for the scorer registry, pydantic/pyyaml for config imports, click
-# for cli-module imports reached via playpen). Deliberately NOT the design
-# deps (OApackage/pyDOE3/pandas/scipy/statsmodels) — score_full.py never
-# imports retort.design. The import check below fails the BUILD if this
-# minimal set ever stops being enough.
+# retort scorer suite: wheel --no-deps + ONLY the scoring path's
+# dependencies (pluggy for the scorer registry, pydantic/pyyaml for config
+# imports, click for cli-module imports reached via playpen). Deliberately
+# NOT the design deps (OApackage/pyDOE3/pandas/scipy/statsmodels) —
+# score_full.py never imports retort.design. The import check fails the
+# BUILD if this minimal set ever stops being enough.
 COPY --from=wheel /wheels /wheels
 RUN pip install --no-cache-dir --no-deps /wheels/retort-*.whl \
     && pip install --no-cache-dir pluggy pydantic pyyaml click \
@@ -58,11 +75,54 @@ create_default_registry()" \
     && rm -rf /wheels
 
 # opencode at a pinned version (npm dist ships the binary via optional deps).
-RUN apt-get update && apt-get install -y --no-install-recommends nodejs npm \
-    && npm install -g "opencode-ai@${OPENCODE_VERSION}" \
-    && rm -rf /var/lib/apt/lists/* \
-    && opencode --version
+RUN npm install -g "opencode-ai@${OPENCODE_VERSION}" && opencode --version
 
+# ---- prime-agent ------------------------------------------------------------
+# The bundle deliberately externalizes native/interop packages (upstream
+# scripts/bundle.mjs `external:` list); node resolves them upward from the
+# bundle dir, so they live in /opt/prime-agent/node_modules. Installed into
+# the EMPTY dir BEFORE the package is copied in: installing beside the real
+# package.json makes npm chase its workspace-internal deps and fail. The
+# scaffolding package.json npm writes is removed; the real one arrives with
+# the COPY below and is load-bearing (cli.js reads version + asset root
+# from it — deleting it was the first v4 build's runtime breakage).
+RUN mkdir -p /opt/prime-agent && cd /opt/prime-agent \
+    && npm install --no-save --no-audit --no-fund --omit=dev \
+       zeromq@6.5.0 koffi@2.16.2 undici@7.29.0 \
+       "@silvia-odwyer/photon-node@0.3.4" "@mariozechner/clipboard@0.3.9" \
+    && rm -f package.json package-lock.json
+
+# The staged package (package.json + dist/, maps and .d.ts stripped), copied
+# from the LOCAL source build by build_images.sh — NOT committed, and
+# deliberately not rebuilt in-image: `npm run build` regenerates
+# models.generated.ts from the live models.dev catalog, so an in-image build
+# would embed whatever the catalog said on build day. Its tree sha256 is
+# recorded in the image labels and images.lock.json.
+COPY sandbox/prime-pkg/ /opt/prime-agent/
+
+# Prebuilt IPython kernel venv. prime-agent's ipython tool otherwise
+# bootstraps its runtime AT FIRST TOOL CALL via uv (network, latency, drift —
+# and uv is absent here, so every tool call failed: the v4b lesson). The
+# PRIME_AGENT_KERNEL_PYTHON contract (core/kernel/bootstrap.ts): a python
+# with ipykernel + prime-agent-runtime + the DEFAULT_RLM_EXTRA_PACKAGES list.
+RUN python3 -m venv /opt/prime-agent/kernel-venv \
+    && /opt/prime-agent/kernel-venv/bin/pip install --no-cache-dir --quiet \
+       ipykernel nest-asyncio /opt/prime-agent/runtime-src \
+       requests httpx pyyaml tomli python-dotenv pandas numpy scipy \
+       beautifulsoup4 lxml pydantic tyro \
+    && rm -rf /opt/prime-agent/runtime-src
+
+RUN printf '%s\n' \
+    '#!/bin/sh' \
+    '# prime-agent dist bundle, staged from the local build (see image labels).' \
+    'export PI_SKIP_VERSION_CHECK="${PI_SKIP_VERSION_CHECK:-1}"' \
+    'export PRIME_AGENT_KERNEL_PYTHON="${PRIME_AGENT_KERNEL_PYTHON:-/opt/prime-agent/kernel-venv/bin/python}"' \
+    'exec node /opt/prime-agent/dist/bundle/cli.js "$@"' \
+    > /usr/local/bin/prime-agent \
+    && chmod 755 /usr/local/bin/prime-agent \
+    && node /opt/prime-agent/dist/bundle/cli.js --version
+
+# ---- cell contract ------------------------------------------------------------
 # Non-root: agents get no reason to touch the system.
 RUN useradd --create-home --shell /bin/bash retort \
     && mkdir -p /workspace && chown retort:retort /workspace
@@ -70,6 +130,20 @@ COPY sandbox/entrypoint.sh /entrypoint.sh
 COPY sandbox/score_gate.py /score_gate.py
 COPY sandbox/score_full.py /score_full.py
 RUN chmod +x /entrypoint.sh
+
+# Provenance: how to rebuild THIS image (build_images.sh fills these in).
+ARG RETORT_COMMIT=unknown
+ARG RETORT_DIRTY=unknown
+ARG PRIME_AGENT_VERSION=unknown
+ARG PRIME_BUNDLE_SHA256=unknown
+LABEL org.opencontainers.image.source="https://github.com/adrianco/retort" \
+      org.opencontainers.image.revision="${RETORT_COMMIT}" \
+      retort.sandbox.language="python" \
+      retort.sandbox.dirty="${RETORT_DIRTY}" \
+      retort.sandbox.opencode="${OPENCODE_VERSION}" \
+      retort.sandbox.prime_agent="${PRIME_AGENT_VERSION}" \
+      retort.sandbox.prime_bundle_sha256="${PRIME_BUNDLE_SHA256}"
+
 USER retort
 ENV HOME=/home/retort
 

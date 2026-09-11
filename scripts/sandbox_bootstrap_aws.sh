@@ -152,18 +152,32 @@ if ! aws batch describe-job-queues --job-queues "$NAME" --region "$REGION" \
     --compute-environment-order "order=1,computeEnvironment=${NAME}"
 else say "Job queue $NAME exists"; fi
 
-# Job definitions: one per language lane, registered from the LATEST pushed
-# tag for that lane (python-v3, go-v1, typescript-v1, ...). Registering a new
-# revision is harmless (revisions are immutable); the runner always uses the
-# latest. A lane whose tag has never been pushed is skipped with a note —
-# bootstrap must stay runnable before the first image build.
-for LANG_TAG in "python:python-v3" "go:go-v2" "typescript:typescript-v2"; do
+# Job definitions: one per language lane, registered BY DIGEST. The tag is
+# only how we find the digest; the definition itself names
+# <repo>@sha256:..., so the yaml's image_digests, the job definition and the
+# running image cannot disagree (the runner verifies that on every job and
+# fails the cell as HARNESS if they do). Registering a new revision is
+# harmless (revisions are immutable); the runner always uses the latest.
+# Override the tags with SANDBOX_TAGS="python:python-v5 go:go-v4 ...".
+# A lane whose tag has never been pushed is skipped with a note — bootstrap
+# must stay runnable before the first image build.
+TAGS_DEFAULT="python:python-v5 go:go-v5 typescript:typescript-v5"
+# shellcheck disable=SC2086  # word-splitting the lane list is intended
+for LANG_TAG in ${SANDBOX_TAGS:-$TAGS_DEFAULT}; do
   LANG="${LANG_TAG%%:*}"; TAG="${LANG_TAG##*:}"
-  IMAGE="${ACCOUNT}.dkr.ecr.${REGION}.amazonaws.com/${NAME}:${TAG}"
-  if [ "$MODE" != "--dry-run" ] && ! aws ecr describe-images        --repository-name "$NAME" --image-ids "imageTag=${TAG}"        --region "$REGION" >/dev/null 2>&1; then
-    say "SKIP job definition ${NAME}-${LANG}: image tag ${TAG} not pushed yet"
-    continue
+  REPO="${ACCOUNT}.dkr.ecr.${REGION}.amazonaws.com/${NAME}"
+  if [ "$MODE" = "--dry-run" ]; then
+    DIGEST="sha256:DRYRUN"
+  else
+    DIGEST=$(aws ecr describe-images --repository-name "$NAME" --image-ids "imageTag=${TAG}" \
+      --region "$REGION" --query 'imageDetails[0].imageDigest' --output text 2>/dev/null || true)
+    if [ -z "$DIGEST" ] || [ "$DIGEST" = "None" ]; then
+      say "SKIP job definition ${NAME}-${LANG}: image tag ${TAG} not pushed yet"
+      continue
+    fi
   fi
+  IMAGE="${REPO}@${DIGEST}"
+  say "job definition ${NAME}-${LANG}: ${TAG} -> ${DIGEST}"
   run aws batch register-job-definition --job-definition-name "${NAME}-${LANG}" \
     --type container --region "$REGION" \
     --platform-capabilities FARGATE \

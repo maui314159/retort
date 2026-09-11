@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from pathlib import Path
 
+import click
+import pytest
 from click.testing import CliRunner
 
 from retort.cli import main as cli
@@ -30,6 +33,54 @@ def test_init_creates_workspace(tmp_path: Path):
     assert "design_matrix_cells" in tables
     assert "experiment_runs" in tables
     assert "run_results" in tables
+
+
+def test_init_workspace_defaults_to_local_runner(tmp_path: Path, monkeypatch):
+    """`runner: docker` hard-fails without a `playpen.sandbox` block, so a fresh
+    `retort init` workspace must default to `local` — both in the template and
+    in the schema default a template-less YAML would inherit."""
+    from retort.config.loader import load_workspace, load_workspace_dict
+
+    ws = tmp_path / "fresh"
+    assert CliRunner().invoke(cli, ["init", str(ws)]).exit_code == 0
+    assert load_workspace(ws / "workspace.yaml").playpen.runner == "local"
+    assert load_workspace_dict({
+        "experiment": {"name": "x", "visibility": "private"},
+        "factors": {"language": {"levels": ["python", "go"]}},
+        "responses": ["code_quality"],
+        "tasks": [{"source": "bundled://rest-api-crud"}],
+    }).playpen.runner == "local"
+
+    # And `retort run` on the generated workspace reaches the LocalRunner —
+    # never the docker refusal.
+    import pandas as pd
+
+    from retort.playpen.runner import TaskSpec
+    monkeypatch.setattr(
+        "retort.playpen.task_loader.load_task",
+        lambda source: TaskSpec(name="t", description="d", prompt="Do it."))
+    monkeypatch.setattr("retort.cli.shutil.which", lambda name: None)  # no docker
+    # The template enables the spec-gate judge, whose preflight would refuse the
+    # run before the runner is built; the runner choice is what is under test.
+    yaml_path = ws / "workspace.yaml"
+    yaml_path.write_text(yaml_path.read_text().replace(
+        "evaluation:\n  enabled: true", "evaluation:\n  enabled: false"))
+
+    class _ReachedError(Exception):
+        pass
+
+    def _execute(self, env_id, stack, task):
+        raise _ReachedError(stack.language)
+    monkeypatch.setattr("retort.playpen.local_runner.LocalRunner.execute", _execute)
+    design = ws / "design.csv"
+    pd.DataFrame([{"language": "python", "agent": "claude-code", "thinking": "off",
+                   "framework": "fastapi"}]).to_csv(design, index_label="run")
+    res = CliRunner().invoke(cli, ["run", "--phase", "screening",
+                                   "--config", str(ws / "workspace.yaml"),
+                                   "--design", str(design)])
+    assert "runner: docker" not in res.output
+    assert "not on PATH" not in res.output
+    assert isinstance(res.exception, _ReachedError), (res.output, res.exception)
 
 
 def test_init_refuses_existing_dir(tmp_path: Path):
@@ -1357,6 +1408,60 @@ def test_run_row_exists_distinguishes_orphan(tmp_path: Path):
     assert not _run_row_exists(db, rc, 2)
 
 
+class TestHarnessFailureSkipsHarnessOwnedFiles:
+    """`_harness_failure`'s zero-write HARNESS classification depends on every
+    harness-owned file being excluded from `produced`. A container-lane or
+    gzipped archive carries `_sandbox_meta.json`, `_container_scores.json`,
+    `_agent_stdout.log.gz`, ...; before the skip rule covered them, such a run
+    could never be classified HARNESS and a blocked file tool read as GENUINE."""
+
+    _REFUSAL = "Refusing to write outside the workspace: /var/folders/x/app.py\n"
+
+    def _plain(self, rep: Path) -> None:
+        rep.mkdir(parents=True)
+        (rep / "_agent_stdout.log").write_text('{"type":"turn"}\n' + self._REFUSAL)
+        (rep / "_meta.json").write_text("{}")
+        (rep / "TASK.md").write_text("task")
+
+    def _container_gz(self, rep: Path) -> None:
+        import gzip
+        rep.mkdir(parents=True)
+        with gzip.open(rep / "_agent_stdout.log.gz", "wb") as fh:
+            fh.write(('{"type":"turn"}\n' + self._REFUSAL).encode())
+        (rep / "_sandbox_meta.json").write_text("{}")
+        (rep / "_container_scores.json").write_text("{}")
+        (rep / "_container_stderr.log").write_text("")
+        (rep / "_score_stdout.log").write_text("")
+        (rep / "opencode.json").write_text("{}")
+        (rep / "_agent_stderr.log.gz").write_bytes(b"")
+
+    def test_gzipped_container_archive_matches_plain_log_case(self, tmp_path: Path):
+        from retort.cli import _harness_failure
+        self._plain(tmp_path / "plain")
+        self._container_gz(tmp_path / "container")
+        plain = _harness_failure(tmp_path / "plain")
+        container = _harness_failure(tmp_path / "container")
+        assert plain is not None and "wrote NO source files" in plain
+        assert "REFUSED" in plain and "Refusing to write" in plain
+        assert container == plain
+
+    def test_a_real_source_file_is_still_judged_on_the_code(self, tmp_path: Path):
+        from retort.cli import _harness_failure
+        self._container_gz(tmp_path / "rep1")
+        (tmp_path / "rep1" / "app.py").write_text("print(1)\n")
+        assert _harness_failure(tmp_path / "rep1") is None
+
+    def test_rule_covers_gz_and_prefixed_names(self):
+        from retort.cli import _harness_owned_file
+        for name in ("_meta.json", "_agent_stdout.log.gz", "_sandbox_meta.json",
+                     "_container_scores.json", "_container_stderr.log",
+                     "_score_stdout.log", "opencode.json", "TASK.md",
+                     "scores.json.gz", ".gitignore", "._junk"):
+            assert _harness_owned_file(name), name
+        for name in ("app.py", "main.go", "package.json", "tsconfig.json", "log.gz"):
+            assert not _harness_owned_file(name), name
+
+
 def test_diagnose_classifies_tooling_false_failure(tmp_path: Path):
     """diagnose must re-test a failed run's archive and, when it now passes,
     classify it TOOLING (a scorer false-failure), not GENUINE."""
@@ -1614,6 +1719,219 @@ def test_every_command_is_registered_and_imports():
     assert len(cli.commands) >= 10
 
 
+class TestRunnerSelectionFailsClosed:
+    """`retort run` must never simulate a cell (the deleted DockerRunner did)
+    through a default, a typo, or the reserved `cloud` name — and a lane that
+    cannot honour a factor level refuses the grid before any cell runs."""
+
+    def _ws(self, tmp_path: Path, playpen: str, factors: str = "") -> Path:
+        cfg = tmp_path / "workspace.yaml"
+        cfg.write_text(
+            "experiment:\n  name: test\n  visibility: private\n"
+            "factors:\n  language:\n    levels: [python, go]\n"
+            "  model:\n    levels: [opus, sonnet]\n" + factors +
+            "responses:\n  - code_quality\n"
+            "tasks:\n  - source: bundled://rest-api-crud\n"
+            "playpen:\n" + playpen + "  replicates: 1\n"
+            "evaluation:\n  enabled: false\n")
+        return cfg
+
+    def _design(self, tmp_path: Path, row: dict) -> Path:
+        import pandas as pd
+        path = tmp_path / "design.csv"
+        pd.DataFrame([row]).to_csv(path, index_label="run")
+        return path
+
+    def _stub(self, monkeypatch):
+        from retort.playpen.runner import TaskSpec
+        monkeypatch.setattr("retort.playpen.task_loader.load_task",
+            lambda source: TaskSpec(name="t", description="d", prompt="Do it."))
+
+    def _run(self, cfg: Path, design: Path):
+        return CliRunner().invoke(cli, ["run", "--phase", "screening",
+                                        "--config", str(cfg), "--design", str(design)])
+
+    _ROW = {"language": "python", "model": "opus"}
+
+    @staticmethod
+    def _no_cell_ran(tmp_path: Path) -> bool:
+        # `runs/` itself is created during setup; a cell leaves a rep* dir.
+        return not list((tmp_path / "runs").rglob("rep*"))
+
+    def test_cloud_name_is_refused(self, tmp_path, monkeypatch):
+        self._stub(monkeypatch)
+        cfg = self._ws(tmp_path, "  runner: cloud\n")
+        res = self._run(cfg, self._design(tmp_path, self._ROW))
+        assert res.exit_code != 0
+        assert "no implementation" in res.output
+        assert "sandbox" in res.output
+        assert self._no_cell_ran(tmp_path)
+
+    def test_docker_without_binary_is_refused(self, tmp_path, monkeypatch):
+        self._stub(monkeypatch)
+        monkeypatch.setattr("retort.cli.shutil.which", lambda name: None)
+        cfg = self._ws(tmp_path, "  runner: docker\n")
+        res = self._run(cfg, self._design(tmp_path, self._ROW))
+        assert res.exit_code != 0
+        assert "not on PATH" in res.output
+        assert self._no_cell_ran(tmp_path)
+
+    def test_sandbox_refuses_a_level_it_would_ignore(self, tmp_path, monkeypatch):
+        self._stub(monkeypatch)
+
+        # No AWS call may happen: the preflight fires before the cell loop.
+        def _no_aws(*a, **k):
+            raise AssertionError("aws called during preflight")
+        monkeypatch.setattr("retort.playpen.sandbox_runner.SandboxRunner._aws", _no_aws)
+        cfg = self._ws(
+            tmp_path,
+            "  runner: sandbox\n  sandbox:\n    s3_bucket: bkt\n",
+            factors=("  agent:\n    levels: [opencode, prime]\n"
+                     "  prompt:\n    levels: [none, bdd]\n"),
+        )
+        design = self._design(tmp_path, {"language": "python", "model": "opus",
+                                         "agent": "opencode", "prompt": "bdd"})
+        res = self._run(cfg, design)
+        assert res.exit_code != 0, res.output
+        assert "LANE PREFLIGHT FAILED" in res.output
+        assert "prompt='bdd'" in res.output
+        assert self._no_cell_ran(tmp_path)
+
+
+class TestContainerLaneScoring:
+    """_collect_scores: container lanes are scored IN the container; the host
+    never rescores a workspace built elsewhere, and never falls back silently."""
+
+    class _Collector:
+        def __init__(self):
+            self.calls = 0
+
+        def collect(self, artifacts, stack):
+            from retort.scoring.collector import ScoreResult, ScoreVector
+            self.calls += 1
+            return ScoreVector(scores=[ScoreResult("code_quality", 0.5)])
+
+    def _artifacts(self, tmp_path, lane, *, scores=None, exit_code=0):
+        from retort.playpen.runner import RunArtifacts
+        ws = tmp_path / "ws"
+        ws.mkdir(exist_ok=True)
+        if scores is not None:
+            (ws / "_container_scores.json").write_text(json.dumps(scores))
+        md = {"runner_lane": lane} if lane else {}
+        return RunArtifacts(output_dir=ws, exit_code=exit_code, metadata=md)
+
+    def test_local_lane_uses_host_collector(self, tmp_path):
+        from retort.cli import _collect_scores
+        from retort.playpen.runner import StackConfig
+        col = self._Collector()
+        art = self._artifacts(tmp_path, None)
+        sv = _collect_scores(col, art, StackConfig("python", "a", "f"),
+                             ["code_quality"])
+        assert col.calls == 1 and sv.get("code_quality") == 0.5
+        assert art.metadata["scored_lane"] == "host"
+
+    def test_sandbox_lane_takes_container_scores_and_skips_host(self, tmp_path):
+        from retort.cli import _collect_scores
+        from retort.playpen.runner import StackConfig
+        col = self._Collector()
+        art = self._artifacts(tmp_path, "sandbox", scores={
+            "code_quality": 0.9, "test_coverage": 0.8, "runtime": None,
+        })
+        sv = _collect_scores(col, art, StackConfig("go", "a", "f"),
+                             ["code_quality", "test_coverage", "runtime"])
+        assert col.calls == 0                       # host did NOT rescore
+        assert sv.to_dict() == {"code_quality": 0.9, "test_coverage": 0.8}
+        assert sv.get("runtime") is None            # null = not applicable, stays NULL
+        assert art.metadata["scored_lane"] == "sandbox"
+        assert "scored_missing" not in art.metadata
+
+    def test_absent_metric_is_recorded_not_invented(self, tmp_path):
+        from retort.cli import _collect_scores
+        from retort.playpen.runner import StackConfig
+        col = self._Collector()
+        art = self._artifacts(tmp_path, "docker-local", scores={"code_quality": 0.9})
+        sv = _collect_scores(col, art, StackConfig("go", "a", "f"),
+                             ["code_quality", "test_coverage"])
+        assert col.calls == 0
+        assert sv.to_dict() == {"code_quality": 0.9}
+        assert art.metadata["scored_missing"] == "test_coverage"
+        assert art.metadata["scored_lane"] == "docker-local"
+
+    def test_malformed_scores_file_is_harness_broken(self, tmp_path):
+        from retort.cli import _HarnessStopError, _collect_scores
+        from retort.playpen.runner import StackConfig
+        col = self._Collector()
+        art = self._artifacts(tmp_path, "sandbox")
+        (art.output_dir / "_container_scores.json").write_text('{"code_quality": 0.9')
+        with pytest.raises(_HarnessStopError, match="HARNESS BROKEN") as ei:
+            _collect_scores(col, art, StackConfig("go", "a", "f"), ["code_quality"])
+        assert "_container_scores.json" in str(ei.value)
+        assert "Expecting" in str(ei.value)        # the json parse error, named
+        assert col.calls == 0                          # no silent host fallback
+
+    def test_non_object_scores_file_is_harness_broken(self, tmp_path):
+        from retort.cli import _HarnessStopError, _collect_scores
+        from retort.playpen.runner import StackConfig
+        col = self._Collector()
+        art = self._artifacts(tmp_path, "docker-local", scores=[0.9, 0.8])
+        with pytest.raises(_HarnessStopError, match="HARNESS BROKEN") as ei:
+            _collect_scores(col, art, StackConfig("go", "a", "f"), ["code_quality"])
+        assert "not a JSON object" in str(ei.value)
+        assert "list" in str(ei.value)
+        assert col.calls == 0
+
+    def test_completed_cell_without_scores_file_is_harness_broken(self, tmp_path):
+        from retort.cli import _collect_scores
+        from retort.playpen.runner import StackConfig
+        col = self._Collector()
+        art = self._artifacts(tmp_path, "sandbox")   # succeeded, no file
+        from retort.cli import _HarnessStopError
+        with pytest.raises(_HarnessStopError, match="HARNESS BROKEN"):
+            _collect_scores(col, art, StackConfig("go", "a", "f"), ["code_quality"])
+        assert col.calls == 0                        # no silent host fallback
+
+    def test_failed_cell_never_adopts_container_scores(self, tmp_path):
+        """A killed or HARNESS cell may leave a _container_scores.json (the
+        entrypoint scores after a watchdog kill; a wrong-image cell scores
+        happily). None of that is a data point: the host collector runs and
+        the row is stamped host, i.e. a retry."""
+        from retort.cli import _collect_scores
+        from retort.playpen.runner import StackConfig
+        col = self._Collector()
+        art = self._artifacts(tmp_path, "sandbox",
+                              scores={"code_quality": 1.0}, exit_code=1)
+        art.stderr = "HARNESS: image mismatch"
+        sv = _collect_scores(col, art, StackConfig("go", "a", "f"), ["code_quality"])
+        assert col.calls == 1
+        assert sv.get("code_quality") == 0.5         # host collector's value, not 1.0
+        assert art.metadata["scored_lane"] == "host"
+
+    def test_crashed_cell_without_scores_file_scores_on_host_as_retry(self, tmp_path):
+        from retort.cli import _collect_scores
+        from retort.playpen.runner import StackConfig
+        col = self._Collector()
+        art = self._artifacts(tmp_path, "sandbox", exit_code=124)
+        _collect_scores(col, art, StackConfig("go", "a", "f"), ["code_quality"])
+        assert col.calls == 1
+        assert art.metadata["scored_lane"] == "host"
+
+    def test_rescore_stamps_container_archive(self, tmp_path):
+        from retort.commands.scoring import _stamp_rescored_lane
+        rep = tmp_path / "rep1"
+        rep.mkdir()
+        (rep / "_meta.json").write_text(json.dumps(
+            {"runner_lane": "sandbox", "scored_lane": "sandbox"}))
+        _stamp_rescored_lane(rep)
+        assert json.loads((rep / "_meta.json").read_text())["rescored_lane"] == "host"
+        # local-lane archives and pre-lane archives are untouched
+        (rep / "_meta.json").write_text(json.dumps({"runner_lane": "local"}))
+        _stamp_rescored_lane(rep)
+        assert "rescored_lane" not in json.loads((rep / "_meta.json").read_text())
+        (rep / "_meta.json").write_text(json.dumps({"replicate": 1}))
+        _stamp_rescored_lane(rep)
+        assert "rescored_lane" not in json.loads((rep / "_meta.json").read_text())
+
+
 class TestRunExecutionPath:
     """Cover the `run` command's execute -> score -> gate -> persist -> archive
     loop (the core that stays in cli.py). The runner/scorer/spec-gate are mocked
@@ -1687,6 +2005,57 @@ class TestRunExecutionPath:
         # archive of the run's code was written under runs/
         runs = tmp_path / "runs"
         assert runs.exists() and any(runs.rglob("app.py"))
+
+    def test_harness_artifact_stops_the_run_with_evidence(self, tmp_path, monkeypatch):
+        """A runner-declared HARNESS cell (wrong image, unverifiable pin) must
+        stop the grid — every following cell would burn the same way — and the
+        workspace must survive teardown so it can be diagnosed."""
+        from retort.playpen.runner import RunArtifacts
+        cfg = self._ws(tmp_path, evaluation=False)
+        self._patch(monkeypatch, tmp_path,
+                    self._sv(code_quality=0.9, test_coverage=1.0))
+        pp = tmp_path / "pp"
+        (pp / "_sandbox_meta.json").write_text("{}")
+        monkeypatch.setattr(
+            "retort.playpen.local_runner.LocalRunner.execute",
+            lambda *a, **k: RunArtifacts(
+                output_dir=pp, exit_code=1,
+                stderr="HARNESS: image mismatch — rev 9 ran v5",
+                metadata={"runner_lane": "sandbox"}))
+        result = CliRunner().invoke(
+            cli, ["run", "--phase", "screening", "--config", str(cfg),
+                  "--design", str(self._design1(tmp_path)), "--no-second-chance"])
+        assert result.exit_code != 0
+        assert "HARNESS BROKEN" in result.output
+        assert "image mismatch" in result.output
+        assert "Evidence archived at" in result.output
+        status, vals = self._db_rows(tmp_path)
+        assert status is None and vals == {}          # nothing recorded
+        assert any((tmp_path / "runs").rglob("_sandbox_meta.json"))  # kept
+
+    def test_missing_container_scores_stops_after_archive(self, tmp_path, monkeypatch):
+        from retort.playpen.runner import RunArtifacts
+        cfg = self._ws(tmp_path, evaluation=False)
+        self._patch(monkeypatch, tmp_path,
+                    self._sv(code_quality=0.9, test_coverage=1.0))
+        pp = tmp_path / "pp"
+        (pp / "_score_stdout.log").write_text("score_full crashed: ImportError\n")
+        monkeypatch.setattr(
+            "retort.playpen.local_runner.LocalRunner.execute",
+            lambda *a, **k: RunArtifacts(
+                output_dir=pp, exit_code=0, metadata={"runner_lane": "sandbox"}))
+        result = CliRunner().invoke(
+            cli, ["run", "--phase", "screening", "--config", str(cfg),
+                  "--design", str(self._design1(tmp_path)), "--no-second-chance"])
+        assert result.exit_code != 0
+        assert "HARNESS BROKEN" in result.output
+        assert "_container_scores.json" in result.output
+        assert "Evidence archived at" in result.output
+        # the file that explains the failure survived teardown
+        kept = list((tmp_path / "runs").rglob("_score_stdout.log"))
+        assert kept and "ImportError" in kept[0].read_text()
+        status, _ = self._db_rows(tmp_path)
+        assert status is None
 
     def test_gate_marks_failed_when_tests_did_not_run(self, tmp_path, monkeypatch):
         cfg = self._ws(tmp_path, evaluation=False)

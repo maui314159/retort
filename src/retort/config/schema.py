@@ -167,7 +167,36 @@ class SandboxConfig(BaseModel):
     identical across the arms of one experiment.
     """
 
-    s3_bucket: Annotated[str, Field(min_length=3, description="Artifacts bucket (runs/ prefix)")]
+    backend: Annotated[
+        Literal["batch", "docker"],
+        Field(
+            default="batch",
+            description=(
+                "Where the cell's container runs. `batch`: AWS Batch on Fargate "
+                "via S3 (the production lane). `docker`: the SAME image and "
+                "entrypoint under a local `docker run` with the workspace "
+                "bind-mounted — a $0 smoke/test lane that stamps "
+                "runner_lane=docker-local; its timings (amd64 emulated on the "
+                "host) never pool with anything."
+            ),
+        ),
+    ]
+    s3_bucket: Annotated[
+        str,
+        Field(default="", description="Artifacts bucket (runs/ prefix); required for backend=batch"),
+    ]
+    docker_images: Annotated[
+        dict[str, str],
+        Field(
+            default_factory=dict,
+            description=(
+                "backend=docker only: language -> local image reference "
+                "(e.g. retort-sandbox:python-v5, or <ecr>/retort-sandbox@sha256:...). "
+                "A pinned image_digests entry is verified against the image's "
+                "RepoDigests; local builds have none, so run them unpinned."
+            ),
+        ),
+    ]
     job_queue: Annotated[str, Field(default="retort-sandbox")]
     job_definition_prefix: Annotated[
         str,
@@ -192,14 +221,29 @@ class SandboxConfig(BaseModel):
     score_in_container: Annotated[
         bool,
         Field(
-            default=False,
+            default=True,
             description=(
-                "Run the v1 mechanical gate (pytest+coverage, python only) "
-                "inside the container. Off until the §0c scorer-parity smoke "
-                "passes for the image in use."
+                "Run retort's scorer suite INSIDE the container and make its "
+                "_container_scores.json the authoritative scores for the cell "
+                "(host toolchains, host contention and a host build_time are "
+                "all wrong for a workspace built elsewhere). On by default since "
+                "the §0c parity check passed for python/go/typescript; a "
+                "container lane that produces no scores file is a HARNESS "
+                "failure, never a silent host fallback."
             ),
         ),
     ]
+
+    @model_validator(mode="after")
+    def _backend_requirements(self) -> SandboxConfig:
+        if self.backend == "batch" and len(self.s3_bucket) < 3:
+            raise ValueError("playpen.sandbox.s3_bucket is required for backend=batch")
+        if self.backend == "docker" and not self.docker_images:
+            raise ValueError(
+                "playpen.sandbox.docker_images (language -> image) is required "
+                "for backend=docker"
+            )
+        return self
 
 
 class LocalInferenceCost(BaseModel):
@@ -289,7 +333,10 @@ class LocalAgentConfig(BaseModel):
 class PlaypenConfig(BaseModel):
     """Configuration for experiment execution environment."""
 
-    runner: Annotated[RunnerType, Field(default=RunnerType.docker)]
+    # `local` is the supported path; `docker` / `sandbox` hard-fail without a
+    # `sandbox:` block, so a default of `docker` made a fresh `retort init`
+    # workspace unrunnable.
+    runner: Annotated[RunnerType, Field(default=RunnerType.local)]
     replicates: Annotated[int, Field(default=3, ge=1, description="Runs per design point")]
     timeout_minutes: Annotated[int, Field(default=30, ge=1)]
     stall_minutes: Annotated[

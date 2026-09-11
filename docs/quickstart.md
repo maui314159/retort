@@ -10,7 +10,7 @@ Get a Retort experiment running in 10 minutes.
 - **`claude` CLI**, authenticated — required by `LocalRunner`
 - **`bd` (beads) CLI** — required only if your workspace uses `tooling: beads`
 - **Per-language toolchains** for every language you list as a factor (e.g. `node`+`npm` for typescript, `go` for go, `rustup` for rust)
-- ~~Docker~~ — `DockerRunner` is a skeleton; use `runner: local` in `workspace.yaml`. Docker is only needed if you plan to develop the Docker path.
+- Docker — only for `runner: docker`, which runs the sandbox-lane images locally (see [sandbox-runner.md](sandbox-runner.md)); `runner: local` needs no Docker.
 - `pip install -e ".[dev,test]"` from a clone of https://github.com/adrianco/retort
 
 ## 1. Initialize a workspace
@@ -45,7 +45,7 @@ tasks:
   - source: bundled://rest-api-crud
 
 playpen:
-  runner: local            # 'local' is supported; 'docker' is a skeleton
+  runner: local            # the default; 'docker'/'sandbox' need a playpen.sandbox block
   replicates: 3
   timeout_minutes: 30
   local_agents:

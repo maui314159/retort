@@ -1,8 +1,9 @@
 """Abstract playpen runner protocol and shared data types.
 
 A PlaypenRunner provisions an isolated environment, executes an agent task,
-and tears it down. Concrete implementations include DockerRunner (default)
-and CloudRunner (optional).
+and tears it down. Concrete implementations: LocalRunner, SandboxRunner (the
+AWS Batch/Fargate lane, also the local ``docker`` backend) and MetaHarnessRunner.
+``cloud`` is a reserved schema name with no runner behind it.
 """
 
 from __future__ import annotations
@@ -186,16 +187,18 @@ class RunnerRegistry:
 def create_default_runner_registry() -> RunnerRegistry:
     """Create a registry with built-in and plugin runners.
 
-    The ``docker`` and ``local`` runners are always registered.
+    The ``local``, ``sandbox`` and ``docker`` (= sandbox, backend=docker)
+    runners are always registered.
     Additional runners discovered via the ``retort.plugins`` entry-point
     group are added afterwards and may override built-ins.
     """
-    from retort.playpen.docker_runner import DockerRunner
     from retort.playpen.local_runner import LocalRunner
     from retort.playpen.metaharness_runner import MetaHarnessRunner
+    from retort.playpen.sandbox_runner import SandboxRunner
 
     registry = RunnerRegistry()
-    registry.register("docker", DockerRunner())
+    registry.register("sandbox", SandboxRunner(s3_bucket=""))
+    registry.register("docker", SandboxRunner(s3_bucket="", backend="docker"))
     registry.register("local", LocalRunner())
     registry.register("metaharness", MetaHarnessRunner())
 
