@@ -183,6 +183,10 @@ class SandboxRunner:
         self.queue_grace_seconds = queue_grace_seconds
         self.poll_seconds = poll_seconds
         self._envs: dict[str, _SandboxEnv] = {}
+        # language -> (job-definition label, image URI, effective digest), filled
+        # by check_design() BEFORE any job is submitted and reused after each
+        # job — one ECR lookup per language per run, not one per paid cell.
+        self._jobdef_images: dict[str, tuple[str, str, str]] = {}
         # Injectable clocks for tests.
         self._now = time.monotonic
         self._sleep = time.sleep
@@ -196,7 +200,14 @@ class SandboxRunner:
         e.g. ``s3 cp``). Raises RuntimeError with stderr on a nonzero exit.
         """
         cmd = ["aws", "--region", self.region, "--output", "json", *args]
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        except subprocess.TimeoutExpired as exc:
+            # Every caller handles RuntimeError; a hung CLI must not escape as
+            # an uncaught traceback and abort a grid mid-way.
+            raise RuntimeError(
+                f"aws {' '.join(args[:2])} timed out after {exc.timeout:.0f}s"
+            ) from exc
         if proc.returncode != 0:
             raise RuntimeError(
                 f"aws {' '.join(args[:2])} failed ({proc.returncode}): "
@@ -261,7 +272,88 @@ class SandboxRunner:
                         "command takes an effort/thinking flag — the level would be "
                         "recorded but not applied"
                     )
+        if problems:
+            return sorted(problems)
+        # Container lanes score IN the container (Phase 2); the host never
+        # rescores a workspace built elsewhere. A lane configured not to score
+        # would complete every cell at full cost and then have nothing to
+        # record — refuse before the first submit, not after the last job.
+        if not self.score_in_container:
+            problems.add(
+                "playpen.sandbox.score_in_container is false: container lanes "
+                "score in-container and the host will not rescore their "
+                "workspaces — set it true (the default)"
+            )
+        languages = sorted({rc.get("language", "") for rc in run_configs} - {""})
+        problems.update(self._check_images(languages))
         return sorted(problems)
+
+    def _check_images(self, languages: list[str]) -> set[str]:
+        """Verify, BEFORE any spend, that each language's image is the pinned
+        one. Batch: the job definition's latest active revision is resolved to
+        a digest and cached for the post-job check. Docker: ``image inspect``.
+        An unpinned language is skipped here (nothing to verify; the effective
+        digest is still recorded per cell)."""
+        problems: set[str] = set()
+        for language in languages:
+            pinned = self.image_digests.get(language, "unpinned")
+            if self.backend == "docker":
+                image = self.docker_images.get(language, "")
+                if not image:
+                    problems.add(
+                        f"language={language!r}: no docker image configured "
+                        "(playpen.sandbox.docker_images)"
+                    )
+                    continue
+                try:
+                    _meta, err = self._verify_docker_image(image, pinned)
+                except (RuntimeError, subprocess.TimeoutExpired) as exc:
+                    err = str(exc)
+                if err:
+                    problems.add(f"language={language!r}: {err}")
+                continue
+            if pinned in ("", "unpinned"):
+                continue
+            try:
+                label, image_uri, effective = self._jobdef_image(language)
+            except RuntimeError as exc:
+                problems.add(
+                    f"language={language!r}: cannot verify the pinned image "
+                    f"{pinned} before submitting — {exc}"
+                )
+                continue
+            if effective != pinned:
+                problems.add(
+                    f"language={language!r}: job definition {label} runs "
+                    f"{image_uri} = {effective or 'unknown'}, but the workspace pins "
+                    f"{pinned}. Update playpen.sandbox.image_digests or re-register "
+                    "the job definition; the two must agree."
+                )
+        return problems
+
+    def _jobdef_image(self, language: str) -> tuple[str, str, str]:
+        """``(name:revision, image URI, effective digest)`` of the latest ACTIVE
+        revision of this language's job definition — what ``submit-job`` by
+        name will run. Cached per language for the run."""
+        cached = self._jobdef_images.get(language)
+        if cached is not None:
+            return cached
+        name = f"{self.job_definition_prefix}-{language}"
+        resp = self._aws([
+            "batch", "describe-job-definitions",
+            "--job-definition-name", name, "--status", "ACTIVE",
+        ])
+        defs = resp.get("jobDefinitions") or []
+        if not defs:
+            raise RuntimeError(f"no ACTIVE job definition named {name}")
+        latest = max(defs, key=lambda d: int(d.get("revision", 0)))
+        image_uri = str((latest.get("containerProperties") or {}).get("image") or "")
+        if not image_uri:
+            raise RuntimeError(f"job definition {name} names no container image")
+        label = f"{name}:{latest.get('revision', '?')}"
+        effective = self._resolve_image_digest(image_uri)
+        self._jobdef_images[language] = (label, image_uri, effective)
+        return self._jobdef_images[language]
 
     # ------------------------------------------------------------ provision --
 
@@ -545,7 +637,7 @@ class SandboxRunner:
 
         try:
             image_meta, image_error = self._verify_docker_image(image, digest)
-        except RuntimeError as exc:
+        except (RuntimeError, subprocess.TimeoutExpired) as exc:
             return RunArtifacts(
                 output_dir=info.workspace, stderr=f"HARNESS: {exc}",
                 exit_code=1, metadata=base_meta,
@@ -834,8 +926,14 @@ class SandboxRunner:
                 )
             return meta, None
 
+        # The preflight resolved this language's job-definition image once;
+        # a job that reports the same URI needs no second lookup. A different
+        # URI means the definition changed under a running grid — resolve it.
+        cached = next(
+            (c for c in self._jobdef_images.values() if c[1] == image_uri), None
+        )
         try:
-            effective = self._resolve_image_digest(image_uri)
+            effective = cached[2] if cached else self._resolve_image_digest(image_uri)
         except RuntimeError as exc:
             if pinned:
                 return meta, f"could not resolve image {image_uri!r} to a digest: {exc}"

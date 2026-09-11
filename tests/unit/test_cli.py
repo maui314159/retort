@@ -1760,9 +1760,26 @@ class TestContainerLaneScoring:
         from retort.playpen.runner import StackConfig
         col = self._Collector()
         art = self._artifacts(tmp_path, "sandbox")   # succeeded, no file
-        with pytest.raises(click.ClickException, match="HARNESS BROKEN"):
+        from retort.cli import _HarnessStopError
+        with pytest.raises(_HarnessStopError, match="HARNESS BROKEN"):
             _collect_scores(col, art, StackConfig("go", "a", "f"), ["code_quality"])
         assert col.calls == 0                        # no silent host fallback
+
+    def test_failed_cell_never_adopts_container_scores(self, tmp_path):
+        """A killed or HARNESS cell may leave a _container_scores.json (the
+        entrypoint scores after a watchdog kill; a wrong-image cell scores
+        happily). None of that is a data point: the host collector runs and
+        the row is stamped host, i.e. a retry."""
+        from retort.cli import _collect_scores
+        from retort.playpen.runner import StackConfig
+        col = self._Collector()
+        art = self._artifacts(tmp_path, "sandbox",
+                              scores={"code_quality": 1.0}, exit_code=1)
+        art.stderr = "HARNESS: image mismatch"
+        sv = _collect_scores(col, art, StackConfig("go", "a", "f"), ["code_quality"])
+        assert col.calls == 1
+        assert sv.get("code_quality") == 0.5         # host collector's value, not 1.0
+        assert art.metadata["scored_lane"] == "host"
 
     def test_crashed_cell_without_scores_file_scores_on_host_as_retry(self, tmp_path):
         from retort.cli import _collect_scores
@@ -1863,6 +1880,57 @@ class TestRunExecutionPath:
         # archive of the run's code was written under runs/
         runs = tmp_path / "runs"
         assert runs.exists() and any(runs.rglob("app.py"))
+
+    def test_harness_artifact_stops_the_run_with_evidence(self, tmp_path, monkeypatch):
+        """A runner-declared HARNESS cell (wrong image, unverifiable pin) must
+        stop the grid — every following cell would burn the same way — and the
+        workspace must survive teardown so it can be diagnosed."""
+        from retort.playpen.runner import RunArtifacts
+        cfg = self._ws(tmp_path, evaluation=False)
+        self._patch(monkeypatch, tmp_path,
+                    self._sv(code_quality=0.9, test_coverage=1.0))
+        pp = tmp_path / "pp"
+        (pp / "_sandbox_meta.json").write_text("{}")
+        monkeypatch.setattr(
+            "retort.playpen.local_runner.LocalRunner.execute",
+            lambda *a, **k: RunArtifacts(
+                output_dir=pp, exit_code=1,
+                stderr="HARNESS: image mismatch — rev 9 ran v5",
+                metadata={"runner_lane": "sandbox"}))
+        result = CliRunner().invoke(
+            cli, ["run", "--phase", "screening", "--config", str(cfg),
+                  "--design", str(self._design1(tmp_path)), "--no-second-chance"])
+        assert result.exit_code != 0
+        assert "HARNESS BROKEN" in result.output
+        assert "image mismatch" in result.output
+        assert "Evidence archived at" in result.output
+        status, vals = self._db_rows(tmp_path)
+        assert status is None and vals == {}          # nothing recorded
+        assert any((tmp_path / "runs").rglob("_sandbox_meta.json"))  # kept
+
+    def test_missing_container_scores_stops_after_archive(self, tmp_path, monkeypatch):
+        from retort.playpen.runner import RunArtifacts
+        cfg = self._ws(tmp_path, evaluation=False)
+        self._patch(monkeypatch, tmp_path,
+                    self._sv(code_quality=0.9, test_coverage=1.0))
+        pp = tmp_path / "pp"
+        (pp / "_score_stdout.log").write_text("score_full crashed: ImportError\n")
+        monkeypatch.setattr(
+            "retort.playpen.local_runner.LocalRunner.execute",
+            lambda *a, **k: RunArtifacts(
+                output_dir=pp, exit_code=0, metadata={"runner_lane": "sandbox"}))
+        result = CliRunner().invoke(
+            cli, ["run", "--phase", "screening", "--config", str(cfg),
+                  "--design", str(self._design1(tmp_path)), "--no-second-chance"])
+        assert result.exit_code != 0
+        assert "HARNESS BROKEN" in result.output
+        assert "_container_scores.json" in result.output
+        assert "Evidence archived at" in result.output
+        # the file that explains the failure survived teardown
+        kept = list((tmp_path / "runs").rglob("_score_stdout.log"))
+        assert kept and "ImportError" in kept[0].read_text()
+        status, _ = self._db_rows(tmp_path)
+        assert status is None
 
     def test_gate_marks_failed_when_tests_did_not_run(self, tmp_path, monkeypatch):
         cfg = self._ws(tmp_path, evaluation=False)

@@ -61,7 +61,22 @@ def _make_runner(tmp_path: Path, **kwargs) -> SandboxRunner:
     defaults.update(kwargs)
     runner = SandboxRunner(**defaults)
     runner._sleep = lambda _s: None
+
+    # No unit test may reach a real AWS account. Every test that needs the
+    # seam wires a fake (see _wire_success); this default catches the ones
+    # that forgot (the first preflight-image check did exactly that).
+    def _no_aws(args: list[str], *, parse_json: bool = True) -> dict:
+        raise AssertionError(f"real aws would have been called: {args[:3]}")
+
+    runner._aws = _no_aws  # type: ignore[method-assign]
     return runner
+
+
+# What `describe-job-definitions` returns for the default fake: one ACTIVE
+# revision naming the python-v4c tag, which resolves to the pinned digest.
+def _jobdef(tag: str = "python-v4c", revision: int = 8) -> dict:
+    return {"jobDefinitionName": "retort-sandbox-python", "revision": revision,
+            "containerProperties": {"image": f"{_ECR}/retort-sandbox:{tag}"}}
 
 
 def _artifact_tar(path: Path, files: dict[str, str]) -> None:
@@ -74,7 +89,8 @@ def _artifact_tar(path: Path, files: dict[str, str]) -> None:
 
 
 def _wire_success(runner: SandboxRunner, *, artifacts: dict[str, str],
-                  job_detail: dict | None = None) -> list[list[str]]:
+                  job_detail: dict | None = None,
+                  jobdefs: list[dict] | None = None) -> list[list[str]]:
     """Mock _aws for the happy path; returns the recorded call list."""
     calls: list[list[str]] = []
     # What Batch reports for a real job: the job definition it resolved (name +
@@ -93,6 +109,8 @@ def _wire_success(runner: SandboxRunner, *, artifacts: dict[str, str],
             return {"jobId": "job-1"}
         if args[:2] == ["batch", "describe-jobs"]:
             return {"jobs": [detail]}
+        if args[:2] == ["batch", "describe-job-definitions"]:
+            return {"jobDefinitions": jobdefs if jobdefs is not None else [_jobdef()]}
         if args[:2] == ["ecr", "describe-images"]:
             return {"imageDetails": [{"imageDigest": _ECR_TAGS.get(
                 args[args.index("--image-ids") + 1], "")}]}
@@ -417,6 +435,41 @@ class TestImageIdentity:
         assert art.metadata["sandbox_image_digest_effective"] == "sha256:abc123"
         assert art.metadata["sandbox_job_definition"] == "retort-sandbox-python:8"
 
+    def test_preflight_cache_is_reused_after_the_job(self, tmp_path):
+        """One ECR lookup per language per run: the post-job check reuses
+        what check_design resolved instead of paying (and risking) a
+        describe-images call per cell."""
+        runner = _make_runner(tmp_path)
+        calls = _wire_success(runner, artifacts={
+            "_sandbox_meta.json": _META, "_agent_stdout.log": _STEP_FINISH,
+        })
+        assert runner.check_design([{"language": "python", "agent": "opencode"}]) == []
+        for _ in range(2):
+            env_id = runner.provision(_stack(), _task())
+            art = runner.execute(env_id, _stack(), _task())
+            assert art.exit_code == 0
+            assert art.metadata["sandbox_image_digest_effective"] == "sha256:abc123"
+        ecr_calls = [c for c in calls if c[:2] == ["ecr", "describe-images"]]
+        assert len(ecr_calls) == 1
+
+    def test_aws_timeout_is_a_clean_failure_not_a_traceback(self, tmp_path):
+        runner = _make_runner(tmp_path)
+        env_id = runner.provision(_stack(), _task())
+
+        def hung(cmd, **kw):
+            raise subprocess.TimeoutExpired(cmd, kw.get("timeout", 300))
+        # go through the REAL _aws so the timeout conversion is what's tested
+        runner._aws = type(runner)._aws.__get__(runner)  # type: ignore[method-assign]
+        import retort.playpen.sandbox_runner as mod
+        orig = mod.subprocess.run
+        mod.subprocess.run = hung
+        try:
+            art = runner.execute(env_id, _stack(), _task())
+        finally:
+            mod.subprocess.run = orig
+        assert art.exit_code == 1
+        assert "timed out" in art.stderr
+
     def test_mismatch_is_a_harness_failure(self, tmp_path):
         # Someone registered revision 9 with python-v5 and forgot the yaml.
         runner = _make_runner(tmp_path)
@@ -540,6 +593,18 @@ def _wire_docker(runner: SandboxRunner, *, meta: str | None = _META,
 class TestDockerBackend:
     """backend=docker: the same image + entrypoint under a local `docker run`,
     workspace bind-mounted, no AWS, its own lane stamp."""
+
+    def test_hung_daemon_at_inspect_is_a_harness_artifact(self, tmp_path):
+        runner = self._runner(tmp_path)
+        env_id = runner.provision(_stack(), _task())
+
+        def hung(args, *, timeout):
+            raise subprocess.TimeoutExpired(args, timeout)
+        runner._docker = hung  # type: ignore[method-assign]
+        art = runner.execute(env_id, _stack(), _task())
+        assert art.exit_code == 1
+        assert art.stderr.startswith("HARNESS:")
+        assert art.metadata["runner_lane"] == "docker-local"
 
     def _runner(self, tmp_path, **kw):
         defaults = dict(backend="docker", s3_bucket="",
@@ -679,12 +744,77 @@ class TestDesignPreflight:
 
     def test_runnable_design_has_no_problems(self, tmp_path):
         runner = _make_runner(tmp_path)
+        calls = _wire_success(runner, artifacts={})
         rcs = [
             {"language": "python", "agent": "opencode", "model": "m",
              "tooling": "none"},
             {"language": "go", "agent": "prime", "model": "m", "prompt": "none"},
         ]
         assert runner.check_design(rcs) == []
+        # python is pinned: its job definition was resolved ONCE, before any
+        # submit. go is unpinned: nothing to verify, no lookup.
+        jobdef_calls = [c for c in calls if c[:2] == ["batch", "describe-job-definitions"]]
+        assert [c[c.index("--job-definition-name") + 1] for c in jobdef_calls] == [
+            "retort-sandbox-python"
+        ]
+        assert not any(c[:2] == ["batch", "submit-job"] for c in calls)
+
+    def test_pin_mismatch_is_refused_before_any_submit(self, tmp_path):
+        """The whole point of Phase 0: a grid must not run on the wrong image
+        at full Batch cost and then be discovered afterwards."""
+        runner = _make_runner(tmp_path)
+        calls = _wire_success(runner, artifacts={}, jobdefs=[_jobdef("python-v5", 9)])
+        problems = runner.check_design([{"language": "python", "agent": "opencode"}])
+        assert len(problems) == 1
+        assert "retort-sandbox-python:9" in problems[0]
+        assert "sha256:def456" in problems[0] and "sha256:abc123" in problems[0]
+        assert not any(c[:2] == ["batch", "submit-job"] for c in calls)
+
+    def test_unverifiable_pin_is_refused_before_any_submit(self, tmp_path):
+        runner = _make_runner(tmp_path)
+
+        def denied(args, *, parse_json=True):
+            if args[:2] == ["batch", "describe-job-definitions"]:
+                raise RuntimeError("AccessDeniedException: batch:DescribeJobDefinitions")
+            return {}
+        runner._aws = denied
+        problems = runner.check_design([{"language": "python", "agent": "opencode"}])
+        assert len(problems) == 1
+        assert "cannot verify the pinned image" in problems[0]
+        assert "AccessDenied" in problems[0]
+
+    def test_unpinned_language_makes_no_aws_call(self, tmp_path):
+        runner = _make_runner(tmp_path, image_digests={})  # _make_runner's _aws raises
+        assert runner.check_design([{"language": "go", "agent": "opencode"}]) == []
+
+    def test_scoring_off_is_refused(self, tmp_path):
+        runner = _make_runner(tmp_path, image_digests={}, score_in_container=False)
+        problems = runner.check_design([{"language": "go", "agent": "opencode"}])
+        assert len(problems) == 1
+        assert "score_in_container" in problems[0]
+
+    def test_docker_backend_verifies_images_at_preflight(self, tmp_path):
+        runner = _make_runner(
+            tmp_path, backend="docker", image_digests={},
+            docker_images={"python": "retort-sandbox:python-local"},
+        )
+        runner._docker = lambda args, *, timeout: subprocess.CompletedProcess(
+            args, 0, stdout="|sha256:img", stderr="")
+        assert runner.check_design([{"language": "python", "agent": "opencode"}]) == []
+        problems = runner.check_design([{"language": "go", "agent": "opencode"}])
+        assert problems and "no docker image configured" in problems[0]
+
+    def test_docker_preflight_survives_a_hung_daemon(self, tmp_path):
+        runner = _make_runner(
+            tmp_path, backend="docker", image_digests={},
+            docker_images={"python": "retort-sandbox:python-local"},
+        )
+
+        def hung(args, *, timeout):
+            raise subprocess.TimeoutExpired(args, timeout)
+        runner._docker = hung
+        problems = runner.check_design([{"language": "python", "agent": "opencode"}])
+        assert len(problems) == 1 and "python" in problems[0]
 
     def test_prompt_level_is_refused_not_dropped(self, tmp_path):
         runner = _make_runner(tmp_path)

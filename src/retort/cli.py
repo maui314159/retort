@@ -1130,6 +1130,19 @@ def run_experiments(
                     # — on any turn that happens not to write a file; that matches
                     # the refusal regex yet the run still produces a complete, passing
                     # implementation. Aborting on it discarded good 80B runs (exp-30).
+                    if artifacts.stderr.startswith("HARNESS:"):
+                        # The runner itself says this cell is not a data point
+                        # (wrong image, unverifiable pin, no image configured).
+                        # Stop: every following cell would fail the same way at
+                        # full cost, and a crash row per cell would look like data.
+                        _why = artifacts.stderr[len("HARNESS:"):].strip()
+                        raise _stop_with_evidence(
+                            f"HARNESS BROKEN — {_why}\n"
+                            "  Stopping before the next cell; nothing was recorded "
+                            "for this one and --resume re-runs it once fixed.",
+                            archive_root, run_config, rep, artifacts,
+                            workspace_config.experiment.visibility,
+                        )
                     _refusal = artifacts.metadata.get("tool_refusal")
                     if _refusal and artifacts.metadata.get("wrote_nothing") == "true":
                         raise click.ClickException(
@@ -1166,7 +1179,14 @@ def run_experiments(
                     else:
                         no_write_streak = 0
 
-                    scores = _collect_scores(collector, artifacts, stack, metric_names)
+                    try:
+                        scores = _collect_scores(
+                            collector, artifacts, stack, metric_names)
+                    except _HarnessStopError as stop:
+                        raise _stop_with_evidence(
+                            str(stop), archive_root, run_config, rep, artifacts,
+                            workspace_config.experiment.visibility,
+                        ) from None
 
                     # Conformance gate: an agent-succeeded run whose tests never
                     # executed is not a valid success — record it as failed.
@@ -1252,7 +1272,14 @@ def run_experiments(
                             )
                             a2 = runner.execute(env_id2, stack, task)
                             if not a2.usage_limited:
-                                s2 = _collect_scores(collector, a2, stack, metric_names)
+                                try:
+                                    s2 = _collect_scores(
+                                        collector, a2, stack, metric_names)
+                                except _HarnessStopError as stop:
+                                    raise _stop_with_evidence(
+                                        str(stop), archive_root, run_config, rep, a2,
+                                        workspace_config.experiment.visibility,
+                                    ) from None
                                 tf2 = _tests_did_not_run(s2)
                                 arch2 = _archive_run_workspace(
                                     archive_root, run_config, rep, a2,
@@ -2800,6 +2827,34 @@ _CONTAINER_LANES = frozenset({"sandbox", "docker-local"})
 _CONTAINER_SCORES = "_container_scores.json"
 
 
+class _HarnessStopError(Exception):
+    """A cell whose result must never become a data point AND must stop the
+    run: raised inside the cell loop, which archives the workspace as evidence
+    FIRST (teardown would otherwise delete it) and then re-raises as a
+    ClickException naming the archive."""
+
+
+def _stop_with_evidence(
+    message: str, archive_root: Path, run_config: dict[str, str], rep: int,
+    artifacts: RunArtifacts, visibility: str,
+) -> click.ClickException:
+    """Archive the cell's workspace, then build the ClickException that stops
+    the run. Raising before archiving lets the loop's ``finally: teardown``
+    wipe the very files (transcript, _sandbox_meta.json, _score_stdout.log)
+    needed to diagnose the failure — and the message would point at a
+    directory that no longer exists."""
+    archived = None
+    try:
+        archived = _archive_run_workspace(
+            archive_root, run_config, rep, artifacts, visibility=visibility,
+            replace_existing=True,
+        )
+    except Exception as exc:  # evidence is best-effort; the stop is not
+        click.echo(f"  (archiving evidence failed: {exc})", err=True)
+    where = f"\n  Evidence archived at: {archived}" if archived else ""
+    return click.ClickException(message + where)
+
+
 def _collect_scores(
     collector: ScoreCollector,
     artifacts: RunArtifacts,
@@ -2819,10 +2874,11 @@ def _collect_scores(
     "not applicable" (left NULL, exactly as the collector would); an ABSENT
     metric is recorded in metadata as ``scored_missing`` and left NULL. A
     container lane whose cell completed but produced NO file is a HARNESS
-    failure and stops the run — never a silent host fallback. A crashed cell
-    (no artifacts) has nothing to score in either lane; the host collector
-    runs on whatever came back, stamped ``scored_lane=host``, and the row is
-    a retry, not a data point.
+    failure and stops the run (``_HarnessStopError``; the loop archives the
+    evidence first) — never a silent host fallback. A cell that did not
+    succeed (crash, kill, HARNESS artifact) never has its container file
+    adopted: the host collector runs on whatever came back, stamped
+    ``scored_lane=host``, and the row is a retry, not a data point.
     """
     from retort.scoring.collector import ScoreResult
     from retort.scoring.collector import ScoreVector as _ScoreVector
@@ -2833,9 +2889,16 @@ def _collect_scores(
         return collector.collect(artifacts, stack)
 
     path = artifacts.output_dir / _CONTAINER_SCORES if artifacts.output_dir else None
+    if not artifacts.succeeded:
+        # Crashed, killed, or a HARNESS artifact: nothing in the container
+        # file is a data point (it may describe a half-written workspace or
+        # the WRONG image). The host collector runs on whatever came back,
+        # stamped host, and the row is a retry.
+        artifacts.metadata["scored_lane"] = "host"
+        return collector.collect(artifacts, stack)
     if path is None or not path.is_file():
         if artifacts.succeeded:
-            raise click.ClickException(
+            raise _HarnessStopError(
                 f"HARNESS BROKEN — `runner_lane={lane}` cell completed but left no "
                 f"{_CONTAINER_SCORES} in {artifacts.output_dir}.\n"
                 "  Container lanes score IN the container; the host will not "
@@ -2845,9 +2908,6 @@ def _collect_scores(
                 "carries retort's scorer suite (score_full.py). Nothing was "
                 "recorded for this cell; --resume re-runs it."
             )
-        # Crashed before scoring could run: not a data point either way.
-        artifacts.metadata["scored_lane"] = "host"
-        return collector.collect(artifacts, stack)
 
     data = json.loads(path.read_text())
     missing = [m for m in metric_names if m not in data]

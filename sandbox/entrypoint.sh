@@ -236,7 +236,14 @@ if [ "${RETORT_SCORE_IN_CONTAINER:-0}" = "1" ]; then
     python3 /score_gate.py > "$WS/_score_stdout.log" 2>&1 || true
   fi
   if [ -n "${RETORT_RESPONSES:-}" ]; then
-    python3 /score_full.py >> "$WS/_score_stdout.log" 2>&1 || true
+    # The scorers must see the SAME artifact facts the host lane's collector
+    # sees: the agent's real exit code (a stall/timeout kill is 124, not 0),
+    # its in-container seconds and its kill reason. Without these a killed
+    # cell scored as a success and token_efficiency fell back to guessing
+    # from transcript length.
+    RETORT_AGENT_EXIT="$AGENT_EXIT" RETORT_AGENT_SECONDS="$AGENT_SECONDS" \
+    RETORT_KILL_REASON="$(cat /tmp/kill_reason 2>/dev/null || true)" \
+      python3 /score_full.py >> "$WS/_score_stdout.log" 2>&1 || true
   fi
 fi
 
