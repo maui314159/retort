@@ -154,7 +154,9 @@ def compact_prime_log(path: Path | str) -> tuple[int, int]:
     other event are kept verbatim: they are the evidence that identified the
     zero-write failure. Non-JSON lines are kept. Idempotent; a file with no
     ``message_update`` lines is left untouched. Works on ``.log`` and ``.log.gz``
-    (output keeps the input's form). Accepts a str because the in-container
+    (output keeps the input's form). A truncated or corrupt ``.gz`` (see
+    ``READ_ERRORS``) is compacted down to its readable prefix; never raises.
+    Accepts a str because the in-container
     caller (entrypoint.sh) passes one — the first local echo cell (2026-09-05)
     hit ``'str' object has no attribute 'stat'`` here and silently skipped.
     """
@@ -166,18 +168,27 @@ def compact_prime_log(path: Path | str) -> tuple[int, int]:
     tmp = path.with_name(path.name + ".compact.tmp")
     dropped = 0
     opener = gzip.open if path.suffix == ".gz" else open
+    truncated = False
     with _open(path) as src, opener(tmp, "wb") as dst:
-        for raw in src:
-            if _MESSAGE_UPDATE_HINT in raw:
-                try:
-                    event = json.loads(raw)
-                except ValueError:
-                    event = None
-                if isinstance(event, dict) and event.get("type") == "message_update":
-                    dropped += 1
-                    continue
-            dst.write(raw)
-    if dropped == 0:
+        try:
+            for raw in src:
+                if _MESSAGE_UPDATE_HINT in raw:
+                    try:
+                        event = json.loads(raw)
+                    except ValueError:
+                        event = None
+                    if (isinstance(event, dict)
+                            and event.get("type") == "message_update"):
+                        dropped += 1
+                        continue
+                dst.write(raw)
+        except READ_ERRORS:
+            # Same contract as every other reader here: a transcript cut off
+            # mid-stream is evidence, not an abort. Keep the readable prefix
+            # (compacted) rather than leaving a source the parsers cannot open
+            # — and never let this escape runner.execute() into the run loop.
+            truncated = True
+    if dropped == 0 and not truncated:
         tmp.unlink(missing_ok=True)
         return before, before
     os.replace(tmp, path)

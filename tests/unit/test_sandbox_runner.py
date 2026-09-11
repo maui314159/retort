@@ -816,6 +816,15 @@ class TestDesignPreflight:
         problems = runner.check_design([{"language": "python", "agent": "opencode"}])
         assert len(problems) == 1 and "python" in problems[0]
 
+    def test_oc_alias_is_provisioned_like_opencode(self, tmp_path):
+        """`oc` is accepted by check_design and _build_agent_command as an
+        opencode alias, so provision() must seed opencode.json for it too —
+        an exact "opencode" match left an `oc` cell without permissions or
+        the model registration (review 2026-09-11)."""
+        runner = _make_runner(tmp_path, image_digests={})
+        env_id = runner.provision(_stack(agent="oc"), _task())
+        assert (runner.work_dir / env_id / "opencode.json").exists()
+
     def test_prompt_level_is_refused_not_dropped(self, tmp_path):
         runner = _make_runner(tmp_path)
         problems = runner.check_design([

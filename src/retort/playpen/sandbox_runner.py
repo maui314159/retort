@@ -23,7 +23,8 @@ Design invariants (each one is a tuning parameter or a comparability rule):
   * Usage parsing delegates to local_runner's ``_parse_agent_usage`` so both
     lanes share one source of truth for tokens/cost.
   * Secrets reach the container via the job definition's Secrets Manager
-    wiring; this runner never sees or logs key material.
+    wiring (batch) or are forwarded by NAME from the host environment
+    (docker); this runner never reads or logs key material.
   * ``runner_lane`` is stamped into metadata: duration/build_time must never be
     pooled across lanes (different hardware).
 
@@ -383,7 +384,7 @@ class SandboxRunner:
                 ["git", "init", "-q"], cwd=env_dir, capture_output=True
             )
 
-        if self._resolve_harness(stack) == "opencode":
+        if self._resolve_harness(stack) in ("opencode", "oc"):
             self._write_opencode_config(env_dir, stack)
 
         self._envs[env_id] = _SandboxEnv(

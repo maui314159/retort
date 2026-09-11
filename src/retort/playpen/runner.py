@@ -1,8 +1,9 @@
 """Abstract playpen runner protocol and shared data types.
 
 A PlaypenRunner provisions an isolated environment, executes an agent task,
-and tears it down. Concrete implementations include LocalRunner, SandboxRunner
-and CloudRunner (optional).
+and tears it down. Concrete implementations: LocalRunner, SandboxRunner (the
+AWS Batch/Fargate lane, also the local ``docker`` backend) and MetaHarnessRunner.
+``cloud`` is a reserved schema name with no runner behind it.
 """
 
 from __future__ import annotations

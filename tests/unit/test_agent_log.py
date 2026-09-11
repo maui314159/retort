@@ -224,3 +224,22 @@ class TestAgentConsultedGzAware:
         assert agent_consulted(tmp_path, "graphify query") is True
         assert agent_consulted(tmp_path, "beads") is False
         assert agent_consulted(tmp_path / "empty", "graphify") is None
+
+
+def test_compact_prime_log_tolerates_truncated_gz(tmp_path):
+    """A transcript cut off mid-stream is evidence, not an abort: the readable
+    prefix is compacted and nothing escapes into runner.execute()."""
+    import gzip
+    import os
+    lines = []
+    for i in range(400):
+        noise = os.urandom(24).hex()             # incompressible, so a cut
+        lines.append(f'{{"type":"message_update","i":{i},"n":"{noise}"}}\n'.encode())
+        lines.append(f'{{"type":"tool_execution_end","i":{i},"n":"{noise}"}}\n'.encode())
+    raw = gzip.compress(b"".join(lines))         # in the bytes is a cut in the lines
+    path = tmp_path / "_agent_stdout.log.gz"
+    path.write_bytes(raw[: int(len(raw) * 0.9)])  # written 90%, then killed
+    before, after = agent_log.compact_prime_log(path)
+    assert before > 0 and after < before
+    kept = list(agent_log.iter_lines(path))
+    assert kept and all("tool_execution_end" in ln for ln in kept)

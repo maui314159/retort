@@ -19,7 +19,7 @@ Docker)"* under **Not yet** — this is that runner, under the name `sandbox` (s
 | 4 | **In-container scoring** | `sandbox/score_full.py`, `score_gate.py` → `_container_scores.json` | **Authoritative for container lanes since Phase 2 (2026-09-05):** `cli._collect_scores` takes the file as `scores.json`; the host never rescores; a completed cell with no file is HARNESS BROKEN (§3.4). `score_in_container` defaults on |
 | 5 | **Image identity in provenance** | `sandbox_image_digest[_effective]`, `sandbox_job_definition`, `_sandbox_meta.json` witnesses | **Verified per job** against Batch's container image since Phase 0 (2026-09-04); mismatch or unverifiable pin fails the cell as HARNESS (§5.1) |
 | 6 | **Parallelism** | `retort run --shard i/N` processes sharing one `retort.db` | Implemented; design point **16 concurrent cells** (§6) |
-| 7 | **Bootstrap** | `scripts/sandbox_bootstrap_aws.sh` | Implemented; registers job-defs **by digest** (Phase 0); still hard-codes the account id (Phase 4) |
+| 7 | **Bootstrap** | `scripts/sandbox_bootstrap_aws.sh` | Implemented; registers job-defs **by digest** (Phase 0); derives the account id at run time (no id in the tree since Phase 4) |
 | 9 | **Transcript readers** | `src/retort/playpen/agent_log.py` | Bounded, `.gz`-aware, streaming (Phase 0); prime transcripts compacted at write time, 193 MB → 21 MB measured (§5.5) |
 | 10 | **`docker` backend** (local lane) | `SandboxRunner(backend="docker")`, `playpen.sandbox.backend: docker` + `docker_images` | Implemented 2026-09-04 (Phase 1.2b): same image + entrypoint under `docker run`, bind-mounted workspace, no AWS; stamps `runner_lane=docker-local` (never pooled). **$0 echo cell passed 2026-09-05** on python-v4c with the new entrypoint mounted in (file round-trip, meta written, S3 skipped). **Real agent cell passed 2026-09-08** (opencode × GLM-5.3-flash × python on `retort-sandbox:python-local` under Colima+Rosetta: 15/15 tests, coverage 0.98, 160 s, `scored_lane=docker-local`, witnesses `cpu_arch=x86_64`). `DockerRunner` deleted the same day; `runner: docker` is now the alias for this backend |
 | 8 | **Parity harness** | `sandbox/parity_check.py` | Implemented; caught three would-be false-zero bugs before the first grid |
@@ -335,8 +335,8 @@ after a fresh clone before rescoring.
 
 - Two mechanisms *appear* to select a runner, but `cli.py` constructs **all four** runners directly
   (`local`, `sandbox`, `metaharness`, `docker`); the `RunnerRegistry` backs only `retort plugin
-  list/show`. The cli branch is the house pattern; the gap is that `plugin list` cannot name `sandbox`.
-- Hard-coded AWS account id in `sandbox/Dockerfile.*-v3/-v4` `FROM` lines and the bootstrap script.
+  list/show`. The cli branch is the house pattern; `plugin list` names `sandbox` and `docker` since 2026-09-08.
+- ~~Hard-coded AWS account id in `sandbox/Dockerfile.*-v3/-v4` `FROM` lines~~ — gone with Phase 4 (2026-09-10); the bootstrap and build scripts derive it at run time.
 - Remaining before broader use: claude-code on the lane (API-key billing decision), live-triggered
   second chance on Fargate, a `csharp` image.
 
